@@ -1,0 +1,200 @@
+package com.privateedition.infrastructure.sweetbook;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.privateedition.application.AppException;
+import com.privateedition.application.SweetbookViews;
+import com.privateedition.config.SweetbookProperties;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.MultipartBodyBuilder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.WebClient;
+
+@Component
+@RequiredArgsConstructor
+public class SweetbookClient {
+
+	private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() {
+	};
+
+	private final WebClient.Builder webClientBuilder;
+	private final ObjectMapper objectMapper;
+	private final SweetbookProperties sweetbookProperties;
+
+	public List<SweetbookViews.BookSpec> getBookSpecs() {
+		List<SweetbookViews.BookSpec> result = new ArrayList<>();
+		for (JsonNode item : extractArray(getJson("/book-specs"))) {
+			result.add(new SweetbookViews.BookSpec(
+				field(item, "uid", "bookSpecUid"),
+				field(item, "name", "displayName", "title"),
+				intField(item, "minPages", "minimumPages"),
+				intField(item, "maxPages", "maximumPages")
+			));
+		}
+		return result;
+	}
+
+	public List<SweetbookViews.Template> getTemplates(String bookSpecUid) {
+		List<SweetbookViews.Template> result = new ArrayList<>();
+		for (JsonNode item : extractArray(getJson("/templates?bookSpecUid=" + bookSpecUid))) {
+			result.add(new SweetbookViews.Template(
+				field(item, "uid", "templateUid"),
+				field(item, "name", "displayName", "title"),
+				field(item, "category", "group"),
+				field(item, "role", "type", "kind")
+			));
+		}
+		return result;
+	}
+
+	public String createBook(Map<String, Object> payload) {
+		JsonNode response = postJson("/books", payload);
+		return field(response, "bookUid", "uid", "id");
+	}
+
+	public void addCover(String bookUid, String templateUid, Map<String, Object> params) {
+		postMultipart("/books/" + bookUid + "/cover", templateUid, params, null);
+	}
+
+	public void addContents(String bookUid, String templateUid, Map<String, Object> params, String breakBefore) {
+		postMultipart("/books/" + bookUid + "/contents", templateUid, params, breakBefore);
+	}
+
+	public void finalizeBook(String bookUid) {
+		postJson("/books/" + bookUid + "/finalization", Map.of());
+	}
+
+	public Map<String, Object> estimateOrder(Map<String, Object> payload) {
+		JsonNode response = postJson("/orders/estimate", payload);
+		Map<String, Object> result = toMap(response);
+		result.putIfAbsent("currency", field(response, "currency", "currencyCode"));
+		result.putIfAbsent("totalAmount", field(response, "totalAmount", "amount", "totalPrice"));
+		result.putIfAbsent("shippingFee", field(response, "shippingFee", "shippingAmount"));
+		return result;
+	}
+
+	public Map<String, Object> createOrder(Map<String, Object> payload, String idempotencyKey) {
+		JsonNode response = postJson("/orders", payload, headers -> headers.add("Idempotency-Key", idempotencyKey));
+		Map<String, Object> result = toMap(response);
+		result.putIfAbsent("orderUid", field(response, "orderUid", "uid", "id"));
+		result.putIfAbsent("status", field(response, "status", "orderStatus"));
+		result.putIfAbsent("totalAmount", field(response, "totalAmount", "amount", "totalPrice"));
+		return result;
+	}
+
+	private JsonNode getJson(String path) {
+		return baseClient().get()
+			.uri(path)
+			.retrieve()
+			.onStatus(status -> status.isError(), response -> response.bodyToMono(String.class)
+				.map(body -> new AppException(HttpStatus.BAD_GATEWAY, "Sweetbook API error: " + body)))
+			.bodyToMono(JsonNode.class)
+			.block(Duration.ofSeconds(30));
+	}
+
+	private JsonNode postJson(String path, Map<String, Object> payload) {
+		return postJson(path, payload, headers -> {
+		});
+	}
+
+	private JsonNode postJson(String path, Map<String, Object> payload, Consumer<HttpHeaders> headerCustomizer) {
+		return baseClient().post()
+			.uri(path)
+			.headers(headerCustomizer)
+			.contentType(MediaType.APPLICATION_JSON)
+			.bodyValue(payload)
+			.retrieve()
+			.onStatus(status -> status.isError(), response -> response.bodyToMono(String.class)
+				.map(body -> new AppException(HttpStatus.BAD_GATEWAY, "Sweetbook API error: " + body)))
+			.bodyToMono(JsonNode.class)
+			.block(Duration.ofSeconds(30));
+	}
+
+	private void postMultipart(String path, String templateUid, Map<String, Object> params, String breakBefore) {
+		MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
+		multipartBodyBuilder.part("templateUid", templateUid);
+		try {
+			multipartBodyBuilder.part("params", objectMapper.writeValueAsString(params));
+		} catch (Exception exception) {
+			throw new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to serialize Sweetbook params", exception);
+		}
+		if (breakBefore != null && !breakBefore.isBlank()) {
+			multipartBodyBuilder.part("breakBefore", breakBefore);
+		}
+
+		baseClient().post()
+			.uri(path)
+			.contentType(MediaType.MULTIPART_FORM_DATA)
+			.body(BodyInserters.fromMultipartData(multipartBodyBuilder.build()))
+			.retrieve()
+			.onStatus(status -> status.isError(), response -> response.bodyToMono(String.class)
+				.map(body -> new AppException(HttpStatus.BAD_GATEWAY, "Sweetbook API error: " + body)))
+			.toBodilessEntity()
+			.block(Duration.ofSeconds(30));
+	}
+
+	private WebClient baseClient() {
+		return webClientBuilder.clone()
+			.baseUrl(sweetbookProperties.getBaseUrl())
+			.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + sweetbookProperties.getApiKey())
+			.defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+			.build();
+	}
+
+	private Iterable<JsonNode> extractArray(JsonNode node) {
+		if (node == null || node.isNull()) {
+			return List.of();
+		}
+		if (node.isArray()) {
+			return node;
+		}
+		if (node.has("items")) {
+			return node.path("items");
+		}
+		if (node.has("data")) {
+			return node.path("data");
+		}
+		if (node.has("content")) {
+			return node.path("content");
+		}
+		return List.of();
+	}
+
+	private String field(JsonNode node, String... names) {
+		for (String name : names) {
+			JsonNode candidate = node.path(name);
+			if (!candidate.isMissingNode() && !candidate.isNull() && !candidate.asText().isBlank()) {
+				return candidate.asText();
+			}
+		}
+		return "";
+	}
+
+	private Integer intField(JsonNode node, String... names) {
+		for (String name : names) {
+			JsonNode candidate = node.path(name);
+			if (!candidate.isMissingNode() && !candidate.isNull()) {
+				return candidate.asInt();
+			}
+		}
+		return null;
+	}
+
+	private Map<String, Object> toMap(JsonNode node) {
+		if (node == null || node.isNull()) {
+			return new LinkedHashMap<>();
+		}
+		return objectMapper.convertValue(node, MAP_TYPE);
+	}
+}
