@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:private_edition}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${SPRING_DATASOURCE_USERNAME:${MYSQL_USERNAME:root}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${MYSQL_PASSWORD:${MYSQL_ROOT_PASSWORD:privateedition}}}
+
+  h2:
+    console:
+      enabled: false

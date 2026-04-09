@@ -13,6 +13,8 @@ export function signup(body: {
   email: string;
   password: string;
   displayName: string;
+  role: "FAN" | "CREATOR";
+  channelHandle?: string;
 }) {
   return post<AuthUser>("/auth/signup", body);
 }

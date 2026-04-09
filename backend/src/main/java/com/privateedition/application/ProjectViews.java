@@ -72,6 +72,35 @@ public final class ProjectViews {
 	) {
 	}
 
+	public record OrderSummary(
+		Long projectId,
+		String projectStatus,
+		String orderStatus,
+		String orderUid,
+		BigDecimal totalAmount,
+		boolean simulated,
+		Instant orderedAt,
+		OrderShipping shipping,
+		OrderEdition edition
+	) {
+	}
+
+	public record OrderShipping(
+		String recipientName,
+		String recipientPhone,
+		String postalCode,
+		String address1,
+		String address2
+	) {
+	}
+
+	public record OrderEdition(
+		Long id,
+		String title,
+		EditionViews.Creator creator
+	) {
+	}
+
 	public record MyProjectSummary(
 		Long projectId,
 		Long editionId,

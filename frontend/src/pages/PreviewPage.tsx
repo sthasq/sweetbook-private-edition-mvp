@@ -4,6 +4,7 @@ import { getPreview, generateBook } from "../api/projects";
 import type { ProjectPreview } from "../types/api";
 import Spinner from "../components/Spinner";
 import ErrorBox from "../components/ErrorBox";
+import ProjectStepper from "../components/ProjectStepper";
 
 export default function PreviewPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -44,14 +45,7 @@ export default function PreviewPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
-      {/* Step indicator */}
-      <div className="flex items-center gap-2 mb-8 text-xs text-stone-500">
-        <span>1. 개인화</span>
-        <span className="text-stone-300">/</span>
-        <span className="text-brand-700 font-medium">2. 미리보기</span>
-        <span className="text-stone-300">/</span>
-        <span>3. 주문</span>
-      </div>
+      <ProjectStepper current="preview" className="mb-8" />
 
       <h1 className="text-2xl font-bold text-stone-900 mb-2">책 미리보기</h1>
       <p className="text-sm text-stone-600 mb-8">
@@ -188,7 +182,7 @@ export default function PreviewPage() {
       <div className="mt-8 flex items-center justify-between">
         {readOnly ? (
           <p className="text-sm text-stone-500">
-            주문이 완료된 프로젝트입니다. 미리보기만 확인할 수 있습니다.
+            주문이 완료된 프로젝트입니다. 주문 요약과 배송 정보를 다시 확인할 수 있습니다.
           </p>
         ) : (
           <button
@@ -203,10 +197,10 @@ export default function PreviewPage() {
         {readOnly ? (
           <button
             type="button"
-            onClick={() => navigate("/me/projects")}
+            onClick={() => navigate(`/projects/${projectId}/complete`)}
             className="rounded-full border border-stone-300 bg-white px-8 py-3 text-sm font-semibold text-stone-700 hover:border-brand-400 hover:text-brand-700 transition-colors"
           >
-            내 프로젝트로
+            주문 요약 보기
           </button>
         ) : (
           <button

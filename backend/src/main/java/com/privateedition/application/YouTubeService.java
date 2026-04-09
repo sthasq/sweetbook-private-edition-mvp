@@ -29,6 +29,10 @@ public class YouTubeService {
 	private final GoogleProperties googleProperties;
 	private final YouTubeClient youTubeClient;
 
+	public YouTubeViews.Availability getAvailability() {
+		return new YouTubeViews.Availability(googleProperties.isConfigured());
+	}
+
 	public YouTubeViews.AuthUrl getAuthUrl(HttpSession session) {
 		if (!googleProperties.isConfigured()) {
 			return new YouTubeViews.AuthUrl(false, null, null);

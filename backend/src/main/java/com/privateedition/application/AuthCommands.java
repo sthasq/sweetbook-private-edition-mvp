@@ -1,5 +1,7 @@
 package com.privateedition.application;
 
+import com.privateedition.domain.AppUserRole;
+
 public final class AuthCommands {
 
 	private AuthCommands() {
@@ -8,7 +10,9 @@ public final class AuthCommands {
 	public record SignUp(
 		String email,
 		String password,
-		String displayName
+		String displayName,
+		AppUserRole role,
+		String channelHandle
 	) {
 	}
 

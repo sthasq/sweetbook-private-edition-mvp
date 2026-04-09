@@ -170,6 +170,35 @@ public class ProjectService {
 		return result;
 	}
 
+	public ProjectViews.OrderSummary getOrderSummary(Long projectId) {
+		FanProject project = requireOwnedProject(projectId);
+		OrderRecord orderRecord = orderRecordRepository.findByFanProjectId(projectId)
+			.orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Order not found for project: " + projectId));
+		EditionViews.Detail edition = editionService.getEdition(project.getEditionVersion().getEdition().getId());
+
+		return new ProjectViews.OrderSummary(
+			projectId,
+			project.getStatus().name(),
+			orderRecord.getStatus().name(),
+			orderRecord.getSweetbookOrderUid(),
+			orderRecord.getTotalAmount(),
+			!sweetbookService.isLiveEnabled(),
+			orderRecord.getOrderedAt(),
+			new ProjectViews.OrderShipping(
+				orderRecord.getRecipientName(),
+				orderRecord.getRecipientPhone(),
+				orderRecord.getPostalCode(),
+				orderRecord.getAddress1(),
+				orderRecord.getAddress2()
+			),
+			new ProjectViews.OrderEdition(
+				edition.id(),
+				edition.title(),
+				edition.creator()
+			)
+		);
+	}
+
 	public List<ProjectViews.MyProjectSummary> listMyProjects() {
 		AppUser currentUser = currentUserService.requireCurrentAppUser();
 		return fanProjectRepository.findByOwnerUserIdOrderByUpdatedAtDesc(currentUser.getId()).stream()
@@ -227,8 +256,9 @@ public class ProjectService {
 	private String resolveContinuePath(FanProject project) {
 		return switch (project.getStatus()) {
 			case DRAFT -> "/projects/" + project.getId() + "/personalize";
-			case PERSONALIZED, ORDERED -> "/projects/" + project.getId() + "/preview";
+			case PERSONALIZED -> "/projects/" + project.getId() + "/preview";
 			case BOOK_CREATED, FINALIZED -> "/projects/" + project.getId() + "/shipping";
+			case ORDERED -> "/projects/" + project.getId() + "/complete";
 		};
 	}
 }

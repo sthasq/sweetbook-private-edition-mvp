@@ -24,6 +24,8 @@ interface AuthContextValue {
     email: string;
     password: string;
     displayName: string;
+    role: "FAN" | "CREATOR";
+    channelHandle?: string;
   }) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refresh: () => Promise<AuthUser | null>;
@@ -89,6 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string;
     password: string;
     displayName: string;
+    role: "FAN" | "CREATOR";
+    channelHandle?: string;
   }) {
     const currentUser = await signupRequest(body);
     setUser(currentUser);

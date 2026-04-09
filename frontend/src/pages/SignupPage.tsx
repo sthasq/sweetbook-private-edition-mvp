@@ -7,7 +7,9 @@ export default function SignupPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, loading, signup } = useAuth();
+  const [role, setRole] = useState<"FAN" | "CREATOR">("FAN");
   const [displayName, setDisplayName] = useState("");
+  const [channelHandle, setChannelHandle] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -25,7 +27,13 @@ export default function SignupPage() {
     setSubmitting(true);
     setError("");
     try {
-      const currentUser = await signup({ email, password, displayName });
+      const currentUser = await signup({
+        email,
+        password,
+        displayName,
+        role,
+        channelHandle: role === "CREATOR" ? channelHandle : undefined,
+      });
       navigate(resolvePostAuthPath(currentUser, next), { replace: true });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "회원가입에 실패했습니다.");
@@ -41,13 +49,51 @@ export default function SignupPage() {
           Signup
         </p>
         <h1 className="mt-4 text-3xl font-bold text-stone-900">
-          팬 계정 만들기
+          {role === "CREATOR" ? "크리에이터 계정 만들기" : "팬 계정 만들기"}
         </h1>
         <p className="mt-3 text-sm text-stone-600">
-          새 계정은 팬 권한으로 생성되며, 개인화 프로젝트와 주문 흐름을 저장할 수 있습니다.
+          {role === "CREATOR"
+            ? "새 크리에이터 계정은 Studio에 바로 연결되며, 에디션 초안 작성과 발행 흐름을 시작할 수 있습니다."
+            : "새 팬 계정은 개인화 프로젝트와 주문 흐름을 저장할 수 있습니다."}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <div>
+            <span className="block text-sm font-medium text-stone-700 mb-2">
+              가입 유형
+            </span>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setRole("FAN")}
+                className={`rounded-2xl border px-4 py-3 text-left text-sm transition-colors ${
+                  role === "FAN"
+                    ? "border-brand-500 bg-brand-50 text-brand-700"
+                    : "border-stone-200 bg-stone-50 text-stone-600 hover:border-stone-300"
+                }`}
+              >
+                <span className="block font-semibold">팬</span>
+                <span className="mt-1 block text-xs text-inherit">
+                  개인화 프로젝트와 주문용 계정
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole("CREATOR")}
+                className={`rounded-2xl border px-4 py-3 text-left text-sm transition-colors ${
+                  role === "CREATOR"
+                    ? "border-brand-500 bg-brand-50 text-brand-700"
+                    : "border-stone-200 bg-stone-50 text-stone-600 hover:border-stone-300"
+                }`}
+              >
+                <span className="block font-semibold">크리에이터</span>
+                <span className="mt-1 block text-xs text-inherit">
+                  Studio에서 에디션 제작용 계정
+                </span>
+              </button>
+            </div>
+          </div>
+
           <div>
             <label
               htmlFor="displayName"
@@ -63,6 +109,27 @@ export default function SignupPage() {
               placeholder="Sweetbook Fan"
             />
           </div>
+
+          {role === "CREATOR" && (
+            <div>
+              <label
+                htmlFor="channelHandle"
+                className="block text-sm font-medium text-stone-700 mb-1.5"
+              >
+                크리에이터 아이디 (@아이디)
+              </label>
+              <input
+                id="channelHandle"
+                value={channelHandle}
+                onChange={(e) => setChannelHandle(e.target.value)}
+                className="w-full rounded-lg border border-stone-300 bg-stone-50 px-4 py-2.5 text-sm text-stone-900 outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                placeholder="@sweetbook_creator"
+              />
+              <p className="mt-1.5 text-xs text-stone-500">
+                프로필과 에디션에 표시될 공개 아이디입니다. `@` 없이 입력해도 됩니다.
+              </p>
+            </div>
+          )}
 
           <div>
             <label

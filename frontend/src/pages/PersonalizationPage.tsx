@@ -11,6 +11,7 @@ import type {
 } from "../types/api";
 import Spinner from "../components/Spinner";
 import ErrorBox from "../components/ErrorBox";
+import ProjectStepper from "../components/ProjectStepper";
 
 export default function PersonalizationPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -160,14 +161,7 @@ export default function PersonalizationPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-12">
-      {/* Step indicator */}
-      <div className="flex items-center gap-2 mb-8 text-xs text-stone-500">
-        <span className="text-brand-700 font-medium">1. 개인화</span>
-        <span className="text-stone-300">/</span>
-        <span>2. 미리보기</span>
-        <span className="text-stone-300">/</span>
-        <span>3. 주문</span>
-      </div>
+      <ProjectStepper current="personalize" className="mb-8" />
 
       <h1 className="text-2xl font-bold text-stone-900 mb-2">
         나만의 정보 입력

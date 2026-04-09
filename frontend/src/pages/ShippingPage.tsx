@@ -4,6 +4,7 @@ import { estimateOrder, createOrder, getPreview } from "../api/projects";
 import type { ShippingInput, ProjectPreview, EstimateResponse } from "../types/api";
 import Spinner from "../components/Spinner";
 import ErrorBox from "../components/ErrorBox";
+import ProjectStepper from "../components/ProjectStepper";
 
 const INITIAL_SHIPPING: ShippingInput = {
   recipientName: "",
@@ -52,15 +53,8 @@ export default function ShippingPage() {
     setOrdering(true);
     setError("");
     try {
-      const res = await createOrder(pid, form);
-      navigate(`/projects/${projectId}/complete`, {
-        state: {
-          orderUid: res.orderUid,
-          totalAmount: res.totalAmount,
-          simulated: res.simulated,
-          edition: preview?.edition,
-        },
-      });
+      await createOrder(pid, form);
+      navigate(`/projects/${projectId}/complete`);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "주문 실패");
     } finally {
@@ -78,14 +72,7 @@ export default function ShippingPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-12">
-      {/* Step indicator */}
-      <div className="flex items-center gap-2 mb-8 text-xs text-stone-500">
-        <span>1. 개인화</span>
-        <span className="text-stone-300">/</span>
-        <span>2. 미리보기</span>
-        <span className="text-stone-300">/</span>
-        <span className="text-brand-700 font-medium">3. 주문</span>
-      </div>
+      <ProjectStepper current="shipping" className="mb-8" />
 
       <h1 className="text-2xl font-bold text-stone-900 mb-2">배송 정보</h1>
       <p className="text-sm text-stone-600 mb-8">

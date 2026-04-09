@@ -3,6 +3,7 @@ package com.privateedition.api;
 import com.privateedition.application.AuthCommands;
 import com.privateedition.application.AuthService;
 import com.privateedition.application.AuthViews;
+import com.privateedition.domain.AppUserRole;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -28,7 +30,7 @@ public class AuthController {
 
 	private final AuthService authService;
 
-	@Operation(summary = "Register a new fan account")
+	@Operation(summary = "Register a new account")
 	@PostMapping("/signup")
 	public AuthViews.CurrentUser signUp(
 		@Valid @RequestBody SignUpRequest request,
@@ -65,10 +67,12 @@ public class AuthController {
 record SignUpRequest(
 	@NotBlank @Email @Size(max = 255) String email,
 	@NotBlank @Size(min = 8, max = 100) String password,
-	@NotBlank @Size(max = 100) String displayName
+	@NotBlank @Size(max = 100) String displayName,
+	@NotNull AppUserRole role,
+	@Size(max = 100) String channelHandle
 ) {
 	AuthCommands.SignUp toCommand() {
-		return new AuthCommands.SignUp(email, password, displayName);
+		return new AuthCommands.SignUp(email, password, displayName, role, channelHandle);
 	}
 }
 

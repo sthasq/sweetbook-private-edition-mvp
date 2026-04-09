@@ -120,6 +120,9 @@ public class EditionService {
 		publishedVersion.setEdition(edition);
 		publishedVersion.setVersionNumber(nextVersionNumber);
 		publishedVersion.setBookSpecUid(draftVersion.getBookSpecUid());
+		publishedVersion.setSweetbookCoverTemplateUid(draftVersion.getSweetbookCoverTemplateUid());
+		publishedVersion.setSweetbookPublishTemplateUid(draftVersion.getSweetbookPublishTemplateUid());
+		publishedVersion.setSweetbookContentTemplateUid(draftVersion.getSweetbookContentTemplateUid());
 		publishedVersion.setOfficialIntro(new LinkedHashMap<>(draftVersion.getOfficialIntro()));
 		publishedVersion.setOfficialClosing(new LinkedHashMap<>(draftVersion.getOfficialClosing()));
 		publishedVersion.setApprovedAt(Instant.now());
@@ -162,10 +165,16 @@ public class EditionService {
 					.orElse(null);
 				if (latestPublished != null) {
 					clonedDraft.setBookSpecUid(latestPublished.getBookSpecUid());
+					clonedDraft.setSweetbookCoverTemplateUid(latestPublished.getSweetbookCoverTemplateUid());
+					clonedDraft.setSweetbookPublishTemplateUid(latestPublished.getSweetbookPublishTemplateUid());
+					clonedDraft.setSweetbookContentTemplateUid(latestPublished.getSweetbookContentTemplateUid());
 					clonedDraft.setOfficialIntro(new LinkedHashMap<>(latestPublished.getOfficialIntro()));
 					clonedDraft.setOfficialClosing(new LinkedHashMap<>(latestPublished.getOfficialClosing()));
 				} else {
 					clonedDraft.setBookSpecUid(sweetbookProperties.getDefaultBookSpecUid());
+					clonedDraft.setSweetbookCoverTemplateUid(sweetbookProperties.getDefaultCoverTemplateUid());
+					clonedDraft.setSweetbookPublishTemplateUid(sweetbookProperties.getDefaultPublishTemplateUid());
+					clonedDraft.setSweetbookContentTemplateUid(sweetbookProperties.getDefaultContentTemplateUid());
 					clonedDraft.setOfficialIntro(defaultIntro(edition));
 					clonedDraft.setOfficialClosing(defaultClosing(edition));
 				}
@@ -181,12 +190,37 @@ public class EditionService {
 		version.setBookSpecUid(command.bookSpecUid() == null || command.bookSpecUid().isBlank()
 			? sweetbookProperties.getDefaultBookSpecUid()
 			: command.bookSpecUid());
-		version.setOfficialIntro(command.officialIntro() == null || command.officialIntro().isEmpty()
-			? defaultIntro(version.getEdition())
-			: new LinkedHashMap<>(command.officialIntro()));
-		version.setOfficialClosing(command.officialClosing() == null || command.officialClosing().isEmpty()
-			? defaultClosing(version.getEdition())
-			: new LinkedHashMap<>(command.officialClosing()));
+		version.setSweetbookCoverTemplateUid(firstNonBlank(
+			command.sweetbookCoverTemplateUid(),
+			sweetbookProperties.getDefaultCoverTemplateUid()
+		).toString());
+		version.setSweetbookPublishTemplateUid(firstNonBlank(
+			command.sweetbookPublishTemplateUid(),
+			sweetbookProperties.getDefaultPublishTemplateUid()
+		).toString());
+		version.setSweetbookContentTemplateUid(firstNonBlank(
+			command.sweetbookContentTemplateUid(),
+			sweetbookProperties.getDefaultContentTemplateUid()
+		).toString());
+		version.setOfficialIntro(normalizeCopyBlock(command.officialIntro(), defaultIntro(version.getEdition())));
+		version.setOfficialClosing(normalizeCopyBlock(command.officialClosing(), defaultClosing(version.getEdition())));
+	}
+
+	private Map<String, Object> normalizeCopyBlock(Map<String, Object> source, Map<String, Object> fallback) {
+		if (source == null || source.isEmpty()) {
+			return fallback;
+		}
+
+		Map<String, Object> normalized = new LinkedHashMap<>();
+		normalized.put("title", firstNonBlank(source.get("title"), source.get("heading"), fallback.get("title")));
+		normalized.put("message", firstNonBlank(source.get("message"), source.get("body"), fallback.get("message")));
+		source.forEach((key, value) -> {
+			String textKey = String.valueOf(key);
+			if (!normalized.containsKey(textKey)) {
+				normalized.put(textKey, value);
+			}
+		});
+		return normalized;
 	}
 
 	private void replaceChildCollections(EditionVersion version, EditionCommands.StudioEdition command) {
@@ -315,6 +349,9 @@ public class EditionService {
 			version.getId(),
 			version.getVersionNumber(),
 			version.getBookSpecUid(),
+			version.getSweetbookCoverTemplateUid(),
+			version.getSweetbookPublishTemplateUid(),
+			version.getSweetbookContentTemplateUid(),
 			new LinkedHashMap<>(version.getOfficialIntro()),
 			new LinkedHashMap<>(version.getOfficialClosing()),
 			version.getApprovedAt(),
@@ -335,5 +372,14 @@ public class EditionService {
 		closing.put("title", "Official closing");
 		closing.put("message", edition == null ? "Creator closing note" : edition.getTitle() + "의 마지막 인사를 여기에 담습니다.");
 		return closing;
+	}
+
+	private Object firstNonBlank(Object... candidates) {
+		for (Object candidate : candidates) {
+			if (candidate instanceof String text && !text.isBlank()) {
+				return text;
+			}
+		}
+		return "";
 	}
 }

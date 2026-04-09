@@ -1,12 +1,17 @@
 import { get, post } from "./client";
 import type {
   YouTubeAuthUrl,
+  YouTubeAvailability,
   YouTubeConnection,
   YouTubeChannel,
   YouTubeChannelDetail,
   YouTubeVideo,
   YouTubeAnalyzeResult,
 } from "../types/api";
+
+export function getAvailability() {
+  return get<YouTubeAvailability>("/youtube/availability");
+}
 
 export function getAuthUrl() {
   return get<YouTubeAuthUrl>("/youtube/auth-url");

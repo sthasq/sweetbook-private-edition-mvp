@@ -39,6 +39,9 @@ export interface EditionSnapshot {
   id: number;
   versionNumber: number;
   bookSpecUid: string;
+  sweetbookCoverTemplateUid: string;
+  sweetbookPublishTemplateUid: string;
+  sweetbookContentTemplateUid: string;
   officialIntro: Record<string, unknown>;
   officialClosing: Record<string, unknown>;
   approvedAt: string;
@@ -111,6 +114,32 @@ export interface OrderResponse {
   simulated: boolean;
 }
 
+export interface OrderShippingSummary {
+  recipientName: string;
+  recipientPhone: string;
+  postalCode: string;
+  address1: string;
+  address2: string;
+}
+
+export interface OrderSummaryEdition {
+  id: number;
+  title: string;
+  creator: Creator;
+}
+
+export interface ProjectOrderSummary {
+  projectId: number;
+  projectStatus: string;
+  orderStatus: string;
+  orderUid: string;
+  totalAmount: number;
+  simulated: boolean;
+  orderedAt: string;
+  shipping: OrderShippingSummary;
+  edition: OrderSummaryEdition;
+}
+
 /* ── Auth ── */
 
 export interface AuthUser {
@@ -136,6 +165,10 @@ export interface YouTubeAuthUrl {
   enabled: boolean;
   authUrl: string;
   state: string;
+}
+
+export interface YouTubeAvailability {
+  enabled: boolean;
 }
 
 export interface YouTubeConnection {
@@ -185,4 +218,20 @@ export interface ShippingInput {
   address1: string;
   address2?: string;
   quantity?: number;
+}
+
+/* ── Sweetbook ── */
+
+export interface SweetbookBookSpec {
+  uid: string;
+  name: string;
+  minPages: number | null;
+  maxPages: number | null;
+}
+
+export interface SweetbookTemplate {
+  uid: string;
+  name: string;
+  category: string;
+  role: string;
 }

@@ -34,6 +34,12 @@ public class YouTubeController {
 		return youTubeService.getAuthUrl(session);
 	}
 
+	@Operation(summary = "Check whether YouTube OAuth is available")
+	@GetMapping("/availability")
+	public YouTubeViews.Availability getAvailability() {
+		return youTubeService.getAvailability();
+	}
+
 	@Operation(summary = "Exchange Google OAuth code and store session tokens")
 	@PostMapping("/callback")
 	public YouTubeViews.Connection handleCallback(@Valid @RequestBody YouTubeCallbackRequest request, HttpSession session) {

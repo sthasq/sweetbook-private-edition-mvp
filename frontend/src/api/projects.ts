@@ -5,6 +5,7 @@ import type {
   BookGeneration,
   EstimateResponse,
   OrderResponse,
+  ProjectOrderSummary,
   ShippingInput,
 } from "../types/api";
 
@@ -25,6 +26,10 @@ export function updateProject(
 
 export function getPreview(id: number) {
   return get<ProjectPreview>(`/projects/${id}/preview`);
+}
+
+export function getOrderSummary(id: number) {
+  return get<ProjectOrderSummary>(`/projects/${id}/order-summary`);
 }
 
 export function generateBook(id: number) {

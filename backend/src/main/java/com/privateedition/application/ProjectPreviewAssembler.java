@@ -35,8 +35,8 @@ public class ProjectPreviewAssembler {
 
 		pages.add(new ProjectViews.Page(
 			"official-intro",
-			asString(edition.snapshot().officialIntro().get("title"), "Official Intro"),
-			asString(edition.snapshot().officialIntro().get("message"), ""),
+			asCopyText(edition.snapshot().officialIntro(), "title", "heading", "Official Intro"),
+			asCopyText(edition.snapshot().officialIntro(), "message", "body", ""),
 			firstAssetImage(edition.snapshot().curatedAssets(), edition.coverImageUrl()),
 			edition.snapshot().officialIntro()
 		));
@@ -95,8 +95,8 @@ public class ProjectPreviewAssembler {
 
 		pages.add(new ProjectViews.Page(
 			"official-closing",
-			asString(edition.snapshot().officialClosing().get("title"), "Official Closing"),
-			asString(edition.snapshot().officialClosing().get("message"), ""),
+			asCopyText(edition.snapshot().officialClosing(), "title", "heading", "Official Closing"),
+			asCopyText(edition.snapshot().officialClosing(), "message", "body", ""),
 			firstAssetImage(edition.snapshot().curatedAssets(), edition.coverImageUrl()),
 			edition.snapshot().officialClosing()
 		));
@@ -178,5 +178,14 @@ public class ProjectPreviewAssembler {
 			}
 		}
 		return fallback;
+	}
+
+	private String asCopyText(Map<String, Object> source, String primaryKey, String aliasKey, String fallback) {
+		String primary = asString(source.get(primaryKey), "");
+		if (!primary.isBlank()) {
+			return primary;
+		}
+		String alias = asString(source.get(aliasKey), "");
+		return alias.isBlank() ? fallback : alias;
 	}
 }

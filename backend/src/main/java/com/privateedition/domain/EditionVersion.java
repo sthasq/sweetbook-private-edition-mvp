@@ -48,6 +48,15 @@ public class EditionVersion {
 	@Column(name = "book_spec_uid", nullable = false, length = 80)
 	private String bookSpecUid;
 
+	@Column(name = "sweetbook_cover_template_uid", length = 120)
+	private String sweetbookCoverTemplateUid;
+
+	@Column(name = "sweetbook_publish_template_uid", length = 120)
+	private String sweetbookPublishTemplateUid;
+
+	@Column(name = "sweetbook_content_template_uid", length = 120)
+	private String sweetbookContentTemplateUid;
+
 	@Column(name = "approved_at")
 	private Instant approvedAt;
 

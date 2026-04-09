@@ -28,7 +28,8 @@ Private Edition is a creator-certified fan merch service built for the Sweetbook
 - Frontend: React 19 + Vite + TypeScript + Tailwind CSS
 - Backend: Spring Boot 3.5 + Java 17 + Spring Data JPA + Flyway + Swagger
 - Database:
-  - Local development: H2 in-memory profile
+  - Local development: MySQL 8 by default
+  - Test / fallback: H2 in-memory profile
   - Docker: MySQL 8
 - Infra: Docker Compose + nginx
 - External APIs:
@@ -83,7 +84,7 @@ Private Edition is a creator-certified fan merch service built for the Sweetbook
 ### 1. Copy environment variables
 
 ```powershell
-Copy-Item .env.example .env
+.\init_env.ps1
 ```
 
 Fill in at least:
@@ -97,7 +98,7 @@ If Google values are omitted, the app still works in Demo mode.
 
 ### 2. Run backend locally
 
-The local profile uses H2 so you do not need MySQL during development.
+Local backend runs against Docker MySQL on `localhost:3306` by default so data persists across restarts.
 
 ```powershell
 cd backend
@@ -111,6 +112,18 @@ $env:YOUTUBE_API_KEY="your_youtube_api_key"
 ```
 
 If `SWEETBOOK_API_KEY` is missing, the backend automatically stays in demo/simulated mode.
+If port `3306` is already occupied by a local MySQL service, stop that service first so Docker can bind the port.
+
+### 2-1. Run backend locally with H2 instead
+
+If you want a temporary in-memory database instead of persisted MySQL storage, switch the script to H2 explicitly.
+
+```powershell
+cd backend
+.\run_local.ps1 -Database h2
+```
+
+For MySQL mode, the script starts `docker compose up -d mysql` automatically, then reads `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USERNAME`, and `MYSQL_PASSWORD` from `.env`. By default it connects to `localhost:3306/private_edition`.
 
 ### 3. Run frontend locally
 
@@ -142,7 +155,7 @@ Landing and edition detail pages are public, but project creation, My Projects, 
 ### 1. Copy environment variables
 
 ```powershell
-Copy-Item .env.example .env
+.\init_env.ps1
 ```
 
 ### 2. Run the full stack
@@ -165,6 +178,11 @@ docker compose up --build
 | `SWEETBOOK_API_KEY` | For live mode | Sweetbook sandbox API key |
 | `SWEETBOOK_BASE_URL` | Optional | Defaults to Sweetbook sandbox base URL |
 | `MYSQL_ROOT_PASSWORD` | Docker only | MySQL root password for Compose |
+| `MYSQL_HOST` | Local MySQL mode | Host for `.\run_local.ps1 -Database mysql` |
+| `MYSQL_PORT` | Local MySQL mode | Port for `.\run_local.ps1 -Database mysql` |
+| `MYSQL_DATABASE` | Local MySQL mode | Database name for `.\run_local.ps1 -Database mysql` |
+| `MYSQL_USERNAME` | Local MySQL mode | Username for `.\run_local.ps1 -Database mysql` |
+| `MYSQL_PASSWORD` | Local MySQL mode | Password for `.\run_local.ps1 -Database mysql` |
 | `GOOGLE_CLIENT_ID` | YouTube mode | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | YouTube mode | Google OAuth client secret |
 | `GOOGLE_REDIRECT_URI` | YouTube mode | Must match the Google OAuth redirect URI |
@@ -189,7 +207,7 @@ docker compose up --build
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
-| `POST` | `/api/auth/signup` | Register a fan account and start a session |
+| `POST` | `/api/auth/signup` | Register a fan or creator account and start a session |
 | `POST` | `/api/auth/login` | Log in with email/password |
 | `POST` | `/api/auth/logout` | End the current session |
 | `GET` | `/api/auth/me` | Get the current authenticated user |
@@ -216,9 +234,12 @@ docker compose up --build
 The backend ships with Flyway seed data:
 
 - Fictional verified creator: `온도로그`
-- Published edition: `2nd Anniversary Private Edition`
-- Curated assets and personalization schema
-- Sample fan project payload for Demo mode
+- Published editions:
+  - `2nd Anniversary Private Edition`
+  - `Fan Letter Archive`
+  - `Milestone Recap Edition`
+- Curated assets and personalization schemas for each template
+- Sample fan projects in multiple states: `DRAFT`, `PERSONALIZED`, `ORDERED`
 - Local demo fan / creator accounts for auth + RBAC review
 
 ## Testing

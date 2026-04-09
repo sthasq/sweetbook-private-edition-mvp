@@ -60,9 +60,18 @@ public class SweetbookService {
 
 	public ProjectViews.BookGeneration generateBook(ProjectViews.Preview preview) {
 		List<SweetbookViews.Template> templates = resolveTemplates(preview.edition().snapshot().bookSpecUid());
-		SweetbookViews.Template coverTemplate = chooseCoverTemplate(templates);
-		SweetbookViews.Template publishTemplate = choosePublishTemplate(templates);
-		SweetbookViews.Template contentTemplate = chooseContentTemplate(templates);
+		SweetbookViews.Template coverTemplate = chooseCoverTemplate(
+			templates,
+			preview.edition().snapshot().sweetbookCoverTemplateUid()
+		);
+		SweetbookViews.Template publishTemplate = choosePublishTemplate(
+			templates,
+			preview.edition().snapshot().sweetbookPublishTemplateUid()
+		);
+		SweetbookViews.Template contentTemplate = chooseContentTemplate(
+			templates,
+			preview.edition().snapshot().sweetbookContentTemplateUid()
+		);
 
 		if (!isLiveEnabled()) {
 			return buildDemoBookGeneration(preview, coverTemplate, contentTemplate);
@@ -264,7 +273,18 @@ public class SweetbookService {
 		);
 	}
 
-	private SweetbookViews.Template chooseCoverTemplate(List<SweetbookViews.Template> templates) {
+	private SweetbookViews.Template chooseCoverTemplate(List<SweetbookViews.Template> templates, String preferredTemplateUid) {
+		if (preferredTemplateUid != null && !preferredTemplateUid.isBlank()) {
+			return templates.stream()
+				.filter(template -> preferredTemplateUid.equals(template.uid()))
+				.findFirst()
+				.orElse(new SweetbookViews.Template(
+					preferredTemplateUid,
+					"Selected Cover Template",
+					sweetbookProperties.getDefaultTemplateCategory(),
+					"cover"
+				));
+		}
 		if (!sweetbookProperties.getDefaultCoverTemplateUid().isBlank()) {
 			return templates.stream()
 				.filter(template -> sweetbookProperties.getDefaultCoverTemplateUid().equals(template.uid()))
@@ -285,7 +305,18 @@ public class SweetbookService {
 				.orElse(templates.get(0)));
 	}
 
-	private SweetbookViews.Template choosePublishTemplate(List<SweetbookViews.Template> templates) {
+	private SweetbookViews.Template choosePublishTemplate(List<SweetbookViews.Template> templates, String preferredTemplateUid) {
+		if (preferredTemplateUid != null && !preferredTemplateUid.isBlank()) {
+			return templates.stream()
+				.filter(template -> preferredTemplateUid.equals(template.uid()))
+				.findFirst()
+				.orElse(new SweetbookViews.Template(
+					preferredTemplateUid,
+					"Selected Publish Template",
+					sweetbookProperties.getDefaultTemplateCategory(),
+					"publish"
+				));
+		}
 		if (!sweetbookProperties.getDefaultPublishTemplateUid().isBlank()) {
 			return templates.stream()
 				.filter(template -> sweetbookProperties.getDefaultPublishTemplateUid().equals(template.uid()))
@@ -303,7 +334,18 @@ public class SweetbookService {
 			.orElse(templates.get(0));
 	}
 
-	private SweetbookViews.Template chooseContentTemplate(List<SweetbookViews.Template> templates) {
+	private SweetbookViews.Template chooseContentTemplate(List<SweetbookViews.Template> templates, String preferredTemplateUid) {
+		if (preferredTemplateUid != null && !preferredTemplateUid.isBlank()) {
+			return templates.stream()
+				.filter(template -> preferredTemplateUid.equals(template.uid()))
+				.findFirst()
+				.orElse(new SweetbookViews.Template(
+					preferredTemplateUid,
+					"Selected Content Template",
+					sweetbookProperties.getDefaultTemplateCategory(),
+					"content"
+				));
+		}
 		if (!sweetbookProperties.getDefaultContentTemplateUid().isBlank()) {
 			return templates.stream()
 				.filter(template -> sweetbookProperties.getDefaultContentTemplateUid().equals(template.uid()))

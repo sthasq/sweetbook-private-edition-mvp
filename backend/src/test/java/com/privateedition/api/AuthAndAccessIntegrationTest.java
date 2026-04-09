@@ -42,7 +42,8 @@ class AuthAndAccessIntegrationTest {
 					{
 					  "email": "%s",
 					  "password": "Fan12345!",
-					  "displayName": "Member One"
+					  "displayName": "Member One",
+					  "role": "FAN"
 					}
 					""".formatted(email)))
 			.andExpect(status().isOk())
@@ -95,7 +96,8 @@ class AuthAndAccessIntegrationTest {
 					{
 					  "email": "%s",
 					  "password": "Fan12345!",
-					  "displayName": "Member One"
+					  "displayName": "Member One",
+					  "role": "FAN"
 					}
 					""".formatted(email)))
 			.andExpect(status().isOk());
@@ -106,7 +108,8 @@ class AuthAndAccessIntegrationTest {
 					{
 					  "email": "%s",
 					  "password": "Fan12345!",
-					  "displayName": "Member Two"
+					  "displayName": "Member Two",
+					  "role": "FAN"
 					}
 					""".formatted(email)))
 			.andExpect(status().isConflict())
@@ -115,7 +118,7 @@ class AuthAndAccessIntegrationTest {
 
 	@Test
 	void creatorCanManageStudioWhileFanCannot() throws Exception {
-		MockHttpSession creatorSession = login("creator@privateedition.local", "Creator123!");
+		MockHttpSession creatorSession = signUpCreator(uniqueEmail("creator-studio"), "Studio Creator", "@studio_creator");
 		MockHttpSession fanSession = signUp(uniqueEmail("fan-studio"), "Fan Studio");
 
 		mockMvc.perform(post("/api/studio/editions")
@@ -146,6 +149,48 @@ class AuthAndAccessIntegrationTest {
 				.session(creatorSession))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.status").value("PUBLISHED"));
+
+		long fanProjectId = createProject(fanSession, editionId, "demo");
+
+		mockMvc.perform(get("/api/projects/{projectId}/preview", fanProjectId).session(fanSession))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.edition.id").value(editionId))
+			.andExpect(jsonPath("$.pages[1].title").value("Welcome"))
+			.andExpect(jsonPath("$.pages[1].description").value("Creator intro"))
+			.andExpect(jsonPath("$.pages[6].title").value("Goodbye"))
+			.andExpect(jsonPath("$.pages[6].description").value("Creator closing"));
+	}
+
+	@Test
+	void creatorSignupCreatesStudioReadyAccount() throws Exception {
+		String email = uniqueEmail("creator");
+
+		MvcResult signUpResult = mockMvc.perform(post("/api/auth/signup")
+				.contentType(APPLICATION_JSON)
+				.content("""
+					{
+					  "email": "%s",
+					  "password": "Creator123!",
+					  "displayName": "Fresh Creator",
+					  "role": "CREATOR",
+					  "channelHandle": "@fresh_creator"
+					}
+					""".formatted(email)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.email").value(email))
+			.andExpect(jsonPath("$.role").value("CREATOR"))
+			.andReturn();
+
+		MockHttpSession creatorSession = (MockHttpSession) signUpResult.getRequest().getSession(false);
+
+		mockMvc.perform(post("/api/studio/editions")
+				.session(creatorSession)
+				.contentType(APPLICATION_JSON)
+				.content(studioPayload("Fresh Creator Edition")))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.creator.displayName").value("Fresh Creator"))
+			.andExpect(jsonPath("$.creator.channelHandle").value("fresh_creator"))
+			.andExpect(jsonPath("$.creator.verified").value(false));
 	}
 
 	@Test
@@ -186,6 +231,45 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(jsonPath("$[0].mode").value("youtube"));
 	}
 
+	@Test
+	void orderedProjectResumesAtCompleteAndReturnsOrderSummary() throws Exception {
+		MockHttpSession session = signUp(uniqueEmail("ordered"), "Ordered Fan");
+		long projectId = createProject(session, 1L, "demo");
+
+		mockMvc.perform(post("/api/projects/{projectId}/generate-book", projectId).session(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("FINALIZED"));
+
+		mockMvc.perform(post("/api/projects/{projectId}/order", projectId)
+				.session(session)
+				.contentType(APPLICATION_JSON)
+				.content("""
+					{
+					  "recipientName": "천경신",
+					  "recipientPhone": "010-1234-5678",
+					  "postalCode": "06236",
+					  "address1": "서울특별시 강남구 테헤란로 123",
+					  "address2": "10층",
+					  "quantity": 1
+					}
+					"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.orderUid").isNotEmpty());
+
+		mockMvc.perform(get("/api/me/projects").session(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$[0].projectId").value(projectId))
+			.andExpect(jsonPath("$[0].status").value("ORDERED"))
+			.andExpect(jsonPath("$[0].continuePath").value("/projects/" + projectId + "/complete"));
+
+		mockMvc.perform(get("/api/projects/{projectId}/order-summary", projectId).session(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.projectId").value(projectId))
+			.andExpect(jsonPath("$.projectStatus").value("ORDERED"))
+			.andExpect(jsonPath("$.edition.title").value("2nd Anniversary Private Edition"))
+			.andExpect(jsonPath("$.shipping.recipientName").value("천경신"));
+	}
+
 	private MockHttpSession login(String email, String password) throws Exception {
 		MvcResult result = mockMvc.perform(post("/api/auth/login")
 				.contentType(APPLICATION_JSON)
@@ -208,9 +292,28 @@ class AuthAndAccessIntegrationTest {
 					{
 					  "email": "%s",
 					  "password": "Fan12345!",
-					  "displayName": "%s"
+					  "displayName": "%s",
+					  "role": "FAN"
 					}
 					""".formatted(email, displayName)))
+			.andExpect(status().isOk())
+			.andReturn();
+
+		return (MockHttpSession) result.getRequest().getSession(false);
+	}
+
+	private MockHttpSession signUpCreator(String email, String displayName, String channelHandle) throws Exception {
+		MvcResult result = mockMvc.perform(post("/api/auth/signup")
+				.contentType(APPLICATION_JSON)
+				.content("""
+					{
+					  "email": "%s",
+					  "password": "Creator123!",
+					  "displayName": "%s",
+					  "role": "CREATOR",
+					  "channelHandle": "%s"
+					}
+					""".formatted(email, displayName, channelHandle)))
 			.andExpect(status().isOk())
 			.andReturn();
 

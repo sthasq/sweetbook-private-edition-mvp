@@ -48,6 +48,12 @@ public class ProjectController {
 		return projectService.getPreview(projectId);
 	}
 
+	@Operation(summary = "Get order summary for a completed project")
+	@GetMapping("/{projectId}/order-summary")
+	public ProjectViews.OrderSummary getOrderSummary(@PathVariable Long projectId) {
+		return projectService.getOrderSummary(projectId);
+	}
+
 	@Operation(summary = "Generate a Sweetbook book")
 	@PostMapping("/{projectId}/generate-book")
 	public ProjectViews.BookGeneration generateBook(@PathVariable Long projectId) {

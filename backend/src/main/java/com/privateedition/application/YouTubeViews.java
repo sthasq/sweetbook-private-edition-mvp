@@ -16,6 +16,11 @@ public final class YouTubeViews {
 	) {
 	}
 
+	public record Availability(
+		boolean enabled
+	) {
+	}
+
 	public record Connection(
 		boolean connected,
 		String message
