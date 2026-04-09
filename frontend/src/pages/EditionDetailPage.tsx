@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { getEdition } from "../api/editions";
 import { createProject } from "../api/projects";
 import type { EditionDetail } from "../types/api";
+import { useAuth } from "../auth/AuthContext";
 import VerifiedBadge from "../components/VerifiedBadge";
 import Spinner from "../components/Spinner";
 import ErrorBox from "../components/ErrorBox";
@@ -10,10 +11,13 @@ import ErrorBox from "../components/ErrorBox";
 export default function EditionDetailPage() {
   const { editionId } = useParams<{ editionId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
   const [edition, setEdition] = useState<EditionDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
+  const autoStartTriggered = useRef(false);
 
   useEffect(() => {
     if (!editionId) return;
@@ -24,8 +28,22 @@ export default function EditionDetailPage() {
   }, [editionId]);
 
   async function startProject(mode: "demo" | "youtube") {
+    return startProjectInternal(mode, false);
+  }
+
+  async function startProjectInternal(
+    mode: "demo" | "youtube",
+    fromRedirect: boolean,
+  ) {
     if (!edition) return;
+    if (!user) {
+      navigate(
+        `/login?next=${encodeURIComponent(`/editions/${edition.id}?startMode=${mode}`)}`,
+      );
+      return;
+    }
     setCreating(true);
+    setError("");
     try {
       const res = await createProject({
         editionId: edition.id,
@@ -34,10 +52,30 @@ export default function EditionDetailPage() {
       navigate(`/projects/${res.projectId}/personalize`);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "프로젝트 생성 실패");
+      if (fromRedirect) {
+        navigate(`/editions/${edition.id}`, { replace: true });
+      }
     } finally {
       setCreating(false);
     }
   }
+
+  const handleAutoStart = useEffectEvent((mode: "demo" | "youtube") => {
+    void startProjectInternal(mode, true);
+  });
+
+  useEffect(() => {
+    const startMode = searchParams.get("startMode");
+    if (!edition || !user || autoStartTriggered.current) {
+      return;
+    }
+    if (startMode !== "demo" && startMode !== "youtube") {
+      return;
+    }
+
+    autoStartTriggered.current = true;
+    handleAutoStart(startMode);
+  }, [edition, user, searchParams]);
 
   if (loading) return <Spinner />;
   if (error) return <ErrorBox message={error} />;
@@ -51,7 +89,7 @@ export default function EditionDetailPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row gap-8">
         <div className="md:w-80 shrink-0">
-          <div className="rounded-xl overflow-hidden border border-neutral-800 shadow-lg shadow-brand-900/10">
+          <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-lg shadow-brand-100/40">
             <img
               src={edition.coverImageUrl || `https://picsum.photos/seed/ed${edition.id}/600/600`}
               alt={edition.title}
@@ -65,14 +103,14 @@ export default function EditionDetailPage() {
             <span className="text-xs font-semibold tracking-widest uppercase text-gold-400 border border-gold-400/40 rounded px-2 py-0.5">
               Official Drop
             </span>
-            <span className={`text-xs px-2 py-0.5 rounded ${edition.status === "PUBLISHED" ? "bg-green-600/20 text-green-400" : "bg-neutral-700 text-neutral-400"}`}>
+            <span className={`text-xs px-2 py-0.5 rounded ${edition.status === "PUBLISHED" ? "bg-emerald-100 text-emerald-700" : "bg-stone-100 text-stone-500"}`}>
               {edition.status}
             </span>
           </div>
 
-          <h1 className="text-3xl font-bold text-white">{edition.title}</h1>
+          <h1 className="text-3xl font-bold text-stone-900">{edition.title}</h1>
           {edition.subtitle && (
-            <p className="mt-2 text-neutral-400">{edition.subtitle}</p>
+            <p className="mt-2 text-stone-600">{edition.subtitle}</p>
           )}
 
           <div className="mt-4 flex items-center gap-3">
@@ -80,17 +118,17 @@ export default function EditionDetailPage() {
               <img
                 src={edition.creator.avatarUrl}
                 alt=""
-                className="w-10 h-10 rounded-full border border-neutral-700"
+                className="w-10 h-10 rounded-full border border-stone-200"
               />
             )}
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-medium text-white text-sm">
+                <span className="font-medium text-stone-900 text-sm">
                   {edition.creator.displayName}
                 </span>
                 {edition.creator.verified && <VerifiedBadge />}
               </div>
-              <span className="text-xs text-neutral-500">
+              <span className="text-xs text-stone-500">
                 @{edition.creator.channelHandle}
               </span>
             </div>
@@ -98,15 +136,15 @@ export default function EditionDetailPage() {
 
           {/* Official intro message */}
           {intro?.heading && (
-            <div className="mt-6 rounded-lg border border-neutral-800 bg-neutral-900/50 p-5">
-              <h3 className="text-sm font-semibold text-brand-400 mb-2">
+            <div className="mt-6 rounded-2xl border border-brand-100 bg-white/90 p-5 shadow-sm shadow-brand-100/40">
+              <h3 className="text-sm font-semibold text-brand-700 mb-2">
                 From the Creator
               </h3>
-              <p className="text-sm text-neutral-300 leading-relaxed">
+              <p className="text-sm text-stone-700 leading-relaxed">
                 {intro.heading}
               </p>
               {intro.body && (
-                <p className="mt-2 text-sm text-neutral-400">{intro.body}</p>
+                <p className="mt-2 text-sm text-stone-600">{intro.body}</p>
               )}
             </div>
           )}
@@ -114,23 +152,23 @@ export default function EditionDetailPage() {
           {/* Curated assets */}
           {snap && snap.curatedAssets.length > 0 && (
             <div className="mt-6">
-              <h3 className="text-sm font-semibold text-neutral-300 mb-3">
+              <h3 className="text-sm font-semibold text-stone-700 mb-3">
                 Curated Content
               </h3>
               <div className="space-y-2">
                 {snap.curatedAssets.map((a) => (
                   <div
                     key={a.id}
-                    className="rounded-lg border border-neutral-800 p-3 flex items-start gap-3"
+                    className="flex items-start gap-3 rounded-xl border border-stone-200 bg-white/80 p-3"
                   >
-                    <span className="text-xs font-mono text-brand-400 shrink-0 mt-0.5">
+                    <span className="text-xs font-mono text-brand-600 shrink-0 mt-0.5">
                       {a.assetType}
                     </span>
                     <div>
-                      <p className="text-sm font-medium text-white">
+                      <p className="text-sm font-medium text-stone-900">
                         {a.title}
                       </p>
-                      <p className="text-xs text-neutral-400 mt-0.5 line-clamp-2">
+                      <p className="text-xs text-stone-600 mt-0.5 line-clamp-2">
                         {a.content}
                       </p>
                     </div>
@@ -143,18 +181,18 @@ export default function EditionDetailPage() {
       </div>
 
       {/* CTA Section */}
-      <div className="mt-12 rounded-xl border border-neutral-800 bg-neutral-900/50 p-8 text-center">
-        <h2 className="text-xl font-bold text-white mb-2">
+      <div className="mt-12 rounded-3xl border border-stone-200 bg-white/88 p-8 text-center shadow-sm shadow-brand-100/40">
+        <h2 className="text-xl font-bold text-stone-900 mb-2">
           나만의 책 만들기
         </h2>
-        <p className="text-sm text-neutral-400 mb-6">
+        <p className="text-sm text-stone-600 mb-6">
           모드를 선택하고 개인화를 시작하세요
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <button
             disabled={creating}
             onClick={() => startProject("demo")}
-            className="w-full sm:w-auto rounded-full border border-neutral-700 px-8 py-3 text-sm font-semibold text-neutral-300 hover:border-brand-500 hover:text-brand-400 transition-colors disabled:opacity-50"
+            className="w-full sm:w-auto rounded-full border border-stone-300 bg-white px-8 py-3 text-sm font-semibold text-stone-700 hover:border-brand-400 hover:text-brand-700 transition-colors disabled:opacity-50"
           >
             Demo Mode
           </button>
@@ -169,7 +207,7 @@ export default function EditionDetailPage() {
             YouTube 연동
           </button>
         </div>
-        <p className="mt-4 text-xs text-neutral-600">
+        <p className="mt-4 text-xs text-stone-500">
           YouTube 연동 시 Google 계정 로그인이 필요합니다
         </p>
       </div>

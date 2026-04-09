@@ -71,4 +71,15 @@ public final class ProjectViews {
 		Map<String, Object> raw
 	) {
 	}
+
+	public record MyProjectSummary(
+		Long projectId,
+		Long editionId,
+		String editionTitle,
+		String status,
+		String mode,
+		Instant updatedAt,
+		String continuePath
+	) {
+	}
 }

@@ -1,5 +1,7 @@
 package com.privateedition.application;
 
+import com.privateedition.domain.AppUser;
+import com.privateedition.domain.AppUserRole;
 import com.privateedition.config.SweetbookProperties;
 import com.privateedition.domain.CreatorProfile;
 import com.privateedition.domain.CreatorProfileRepository;
@@ -12,6 +14,7 @@ import com.privateedition.domain.EditionVersion;
 import com.privateedition.domain.EditionVersionRepository;
 import com.privateedition.domain.PersonalizationSchema;
 import com.privateedition.domain.PersonalizationSchemaRepository;
+import com.privateedition.security.CurrentUserService;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -33,6 +36,7 @@ public class EditionService {
 	private final CuratedAssetRepository curatedAssetRepository;
 	private final PersonalizationSchemaRepository personalizationSchemaRepository;
 	private final SweetbookProperties sweetbookProperties;
+	private final CurrentUserService currentUserService;
 
 	public List<EditionViews.Summary> listPublishedEditions() {
 		return editionRepository.findByStatusOrderByUpdatedAtDesc(EditionStatus.PUBLISHED).stream()
@@ -64,7 +68,7 @@ public class EditionService {
 
 	@Transactional
 	public EditionViews.Detail createEdition(EditionCommands.StudioEdition command) {
-		CreatorProfile creator = resolveCreator(command.creatorId());
+		CreatorProfile creator = resolveCreator(currentUserService.requireCurrentAppUser(AppUserRole.CREATOR));
 
 		Edition edition = new Edition();
 		edition.setCreator(creator);
@@ -86,7 +90,7 @@ public class EditionService {
 
 	@Transactional
 	public EditionViews.Detail updateEdition(Long editionId, EditionCommands.StudioEdition command) {
-		Edition edition = requireEdition(editionId);
+		Edition edition = requireOwnedEdition(editionId);
 		EditionVersion draftVersion = loadOrCreateDraftVersion(edition);
 
 		edition.setTitle(command.title());
@@ -106,7 +110,7 @@ public class EditionService {
 
 	@Transactional
 	public EditionViews.Detail publishEdition(Long editionId) {
-		Edition edition = requireEdition(editionId);
+		Edition edition = requireOwnedEdition(editionId);
 		EditionVersion draftVersion = loadOrCreateDraftVersion(edition);
 		int nextVersionNumber = editionVersionRepository.findTopByEditionIdAndApprovedAtIsNotNullOrderByVersionNumberDesc(editionId)
 			.map(version -> version.getVersionNumber() + 1)
@@ -128,18 +132,24 @@ public class EditionService {
 		return toDetail(edition, publishedVersion);
 	}
 
-	private CreatorProfile resolveCreator(Long creatorId) {
-		if (creatorId != null) {
-			return creatorProfileRepository.findById(creatorId)
-				.orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Creator not found: " + creatorId));
-		}
-		return creatorProfileRepository.findFirstByVerifiedTrueOrderByIdAsc()
-			.orElseThrow(() -> new AppException(HttpStatus.BAD_REQUEST, "No verified creator available"));
+	private CreatorProfile resolveCreator(AppUser currentUser) {
+		return creatorProfileRepository.findByUserId(currentUser.getId())
+			.orElseThrow(() -> new AppException(HttpStatus.FORBIDDEN, "Creator profile not linked to the current user"));
 	}
 
 	private Edition requireEdition(Long editionId) {
 		return editionRepository.findById(editionId)
 			.orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Edition not found: " + editionId));
+	}
+
+	private Edition requireOwnedEdition(Long editionId) {
+		AppUser currentUser = currentUserService.requireCurrentAppUser(AppUserRole.CREATOR);
+		Edition edition = requireEdition(editionId);
+		CreatorProfile creator = edition.getCreator();
+		if (creator.getUser() == null || !creator.getUser().getId().equals(currentUser.getId())) {
+			throw new AppException(HttpStatus.FORBIDDEN, "You do not have access to this edition");
+		}
+		return edition;
 	}
 
 	private EditionVersion loadOrCreateDraftVersion(Edition edition) {

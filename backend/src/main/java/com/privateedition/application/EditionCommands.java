@@ -10,7 +10,6 @@ public final class EditionCommands {
 	}
 
 	public record StudioEdition(
-		Long creatorId,
 		String title,
 		String subtitle,
 		String coverImageUrl,

@@ -5,7 +5,6 @@ import type { StudioEditionInput } from "../api/studio";
 import type { EditionDetail } from "../types/api";
 
 const INITIAL_FORM: StudioEditionInput = {
-  creatorId: 1,
   title: "",
   subtitle: "",
   coverImageUrl: "https://picsum.photos/seed/studio/600/600",
@@ -78,7 +77,7 @@ export default function StudioPage() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-12">
       <div className="flex items-center gap-3 mb-8">
-        <h1 className="text-2xl font-bold text-white">Creator Studio</h1>
+        <h1 className="text-2xl font-bold text-stone-900">Creator Studio</h1>
         <span className="text-[10px] font-semibold tracking-widest uppercase text-gold-400 border border-gold-400/40 rounded px-1.5 py-0.5">
           Creator
         </span>
@@ -86,78 +85,78 @@ export default function StudioPage() {
 
       <div className="space-y-6">
         {/* Basic info */}
-        <fieldset className="rounded-xl border border-neutral-800 p-6 space-y-4">
-          <legend className="text-sm font-semibold text-neutral-300 px-2">기본 정보</legend>
+        <fieldset className="rounded-2xl border border-stone-200 bg-white/85 p-6 space-y-4 shadow-sm shadow-brand-100/20">
+          <legend className="text-sm font-semibold text-stone-700 px-2">기본 정보</legend>
           <div>
-            <label htmlFor="title" className="block text-sm font-medium text-neutral-300 mb-1.5">
+            <label htmlFor="title" className="block text-sm font-medium text-stone-700 mb-1.5">
               에디션 제목 <span className="text-red-400">*</span>
             </label>
             <input
               id="title"
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2.5 text-sm text-white placeholder-neutral-600 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none"
+              className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none"
               placeholder="2nd Anniversary Edition"
             />
           </div>
           <div>
-            <label htmlFor="subtitle" className="block text-sm font-medium text-neutral-300 mb-1.5">
+            <label htmlFor="subtitle" className="block text-sm font-medium text-stone-700 mb-1.5">
               부제목
             </label>
             <input
               id="subtitle"
               value={form.subtitle}
               onChange={(e) => setForm((f) => ({ ...f, subtitle: e.target.value }))}
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2.5 text-sm text-white placeholder-neutral-600 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none"
+              className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none"
               placeholder="함께한 2년의 기록"
             />
           </div>
           <div>
-            <label htmlFor="coverImageUrl" className="block text-sm font-medium text-neutral-300 mb-1.5">
+            <label htmlFor="coverImageUrl" className="block text-sm font-medium text-stone-700 mb-1.5">
               커버 이미지 URL <span className="text-red-400">*</span>
             </label>
             <input
               id="coverImageUrl"
               value={form.coverImageUrl}
               onChange={(e) => setForm((f) => ({ ...f, coverImageUrl: e.target.value }))}
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2.5 text-sm text-white placeholder-neutral-600 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none"
+              className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none"
               placeholder="https://..."
             />
           </div>
         </fieldset>
 
         {/* Official intro */}
-        <fieldset className="rounded-xl border border-neutral-800 p-6 space-y-4">
-          <legend className="text-sm font-semibold text-neutral-300 px-2">Official Intro (첫 페이지)</legend>
+        <fieldset className="rounded-2xl border border-stone-200 bg-white/85 p-6 space-y-4 shadow-sm shadow-brand-100/20">
+          <legend className="text-sm font-semibold text-stone-700 px-2">Official Intro (첫 페이지)</legend>
           <input
             value={introObj?.heading ?? ""}
             onChange={(e) => updateIntro("heading", e.target.value)}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2.5 text-sm text-white placeholder-neutral-600 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none"
+            className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none"
             placeholder="인사말 제목"
           />
           <textarea
             rows={3}
             value={introObj?.body ?? ""}
             onChange={(e) => updateIntro("body", e.target.value)}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2.5 text-sm text-white placeholder-neutral-600 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none"
+            className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none"
             placeholder="크리에이터 인사말 본문"
           />
         </fieldset>
 
         {/* Official closing */}
-        <fieldset className="rounded-xl border border-neutral-800 p-6 space-y-4">
-          <legend className="text-sm font-semibold text-neutral-300 px-2">Official Closing (마지막 페이지)</legend>
+        <fieldset className="rounded-2xl border border-stone-200 bg-white/85 p-6 space-y-4 shadow-sm shadow-brand-100/20">
+          <legend className="text-sm font-semibold text-stone-700 px-2">Official Closing (마지막 페이지)</legend>
           <input
             value={closingObj?.heading ?? ""}
             onChange={(e) => updateClosing("heading", e.target.value)}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2.5 text-sm text-white placeholder-neutral-600 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none"
+            className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none"
             placeholder="마무리 제목"
           />
           <textarea
             rows={3}
             value={closingObj?.body ?? ""}
             onChange={(e) => updateClosing("body", e.target.value)}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2.5 text-sm text-white placeholder-neutral-600 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none"
+            className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none"
             placeholder="마무리 메시지"
           />
         </fieldset>

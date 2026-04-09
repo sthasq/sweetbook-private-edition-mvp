@@ -21,6 +21,8 @@ public class SweetbookProperties {
 
 	private String defaultCoverTemplateUid = "";
 
+	private String defaultPublishTemplateUid = "";
+
 	private String defaultContentTemplateUid = "";
 
 	public boolean isLiveEnabled() {

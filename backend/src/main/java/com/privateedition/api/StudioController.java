@@ -48,7 +48,6 @@ public class StudioController {
 }
 
 record StudioEditionRequest(
-	Long creatorId,
 	@NotBlank @Size(max = 200) String title,
 	@Size(max = 255) String subtitle,
 	@NotBlank String coverImageUrl,
@@ -60,7 +59,6 @@ record StudioEditionRequest(
 ) {
 	EditionCommands.StudioEdition toCommand() {
 		return new EditionCommands.StudioEdition(
-			creatorId,
 			title,
 			subtitle,
 			coverImageUrl,

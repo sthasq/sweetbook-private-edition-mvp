@@ -13,7 +13,9 @@ public class AppProperties {
 
 	private List<String> corsAllowedOrigins = new ArrayList<>(List.of(
 		"http://localhost:3000",
-		"http://localhost:5173"
+		"http://127.0.0.1:3000",
+		"http://localhost:5173",
+		"http://127.0.0.1:5173"
 	));
 
 	private String frontendBaseUrl = "http://localhost:3000";

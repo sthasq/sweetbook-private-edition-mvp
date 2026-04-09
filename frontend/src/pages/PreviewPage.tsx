@@ -40,33 +40,34 @@ export default function PreviewPage() {
   if (!preview) return <ErrorBox message="미리보기 데이터가 없습니다." />;
 
   const pages = preview.pages;
+  const readOnly = preview.status === "ORDERED";
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
       {/* Step indicator */}
-      <div className="flex items-center gap-2 mb-8 text-xs text-neutral-500">
+      <div className="flex items-center gap-2 mb-8 text-xs text-stone-500">
         <span>1. 개인화</span>
-        <span className="text-neutral-700">/</span>
-        <span className="text-brand-400 font-medium">2. 미리보기</span>
-        <span className="text-neutral-700">/</span>
+        <span className="text-stone-300">/</span>
+        <span className="text-brand-700 font-medium">2. 미리보기</span>
+        <span className="text-stone-300">/</span>
         <span>3. 주문</span>
       </div>
 
-      <h1 className="text-2xl font-bold text-white mb-2">책 미리보기</h1>
-      <p className="text-sm text-neutral-400 mb-8">
-        <span className="text-brand-400">To. {String(preview.personalizationData?.fanNickname ?? "You")}</span>
+      <h1 className="text-2xl font-bold text-stone-900 mb-2">책 미리보기</h1>
+      <p className="text-sm text-stone-600 mb-8">
+        <span className="text-brand-700">To. {String(preview.personalizationData?.fanNickname ?? "You")}</span>
         &nbsp;&mdash;&nbsp;{preview.edition.title}
       </p>
 
       {/* Book spread viewer */}
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 overflow-hidden">
+      <div className="rounded-3xl border border-stone-200 bg-white/88 overflow-hidden shadow-lg shadow-brand-100/30">
         {pages.length > 0 ? (
           <>
             {/* Main spread */}
-            <div className="relative aspect-[16/10] bg-neutral-900 flex items-center justify-center">
+            <div className="relative aspect-[16/10] bg-[#f7f1e8] flex items-center justify-center">
               <div className="absolute inset-0 flex">
                 {/* Left page */}
-                <div className="flex-1 border-r border-neutral-800 p-8 flex flex-col justify-center">
+                <div className="flex-1 border-r border-stone-200 bg-[#fbf7f0] p-8 flex flex-col justify-center">
                   {pages[activeSpread]?.imageUrl ? (
                     <img
                       src={pages[activeSpread].imageUrl}
@@ -75,17 +76,17 @@ export default function PreviewPage() {
                     />
                   ) : (
                     <div className="text-center">
-                      <p className="text-lg font-semibold text-white">
+                      <p className="text-lg font-semibold text-stone-900">
                         {pages[activeSpread]?.title}
                       </p>
-                      <p className="mt-2 text-sm text-neutral-400 whitespace-pre-line">
+                      <p className="mt-2 text-sm text-stone-600 whitespace-pre-line">
                         {pages[activeSpread]?.description}
                       </p>
                     </div>
                   )}
                 </div>
                 {/* Right page */}
-                <div className="flex-1 p-8 flex flex-col justify-center">
+                <div className="flex-1 bg-[#fdfaf4] p-8 flex flex-col justify-center">
                   {activeSpread + 1 < pages.length ? (
                     pages[activeSpread + 1]?.imageUrl ? (
                       <img
@@ -95,37 +96,37 @@ export default function PreviewPage() {
                       />
                     ) : (
                       <div className="text-center">
-                        <p className="text-lg font-semibold text-white">
+                        <p className="text-lg font-semibold text-stone-900">
                           {pages[activeSpread + 1]?.title}
                         </p>
-                        <p className="mt-2 text-sm text-neutral-400 whitespace-pre-line">
+                        <p className="mt-2 text-sm text-stone-600 whitespace-pre-line">
                           {pages[activeSpread + 1]?.description}
                         </p>
                       </div>
                     )
                   ) : (
-                    <p className="text-center text-neutral-600 text-sm italic">
+                    <p className="text-center text-stone-400 text-sm italic">
                       End of book
                     </p>
                   )}
                 </div>
               </div>
               {/* Center spine */}
-              <div className="absolute top-0 bottom-0 left-1/2 w-px bg-neutral-700" />
+              <div className="absolute top-0 bottom-0 left-1/2 w-px bg-stone-300" />
             </div>
 
             {/* Navigation */}
-            <div className="flex items-center justify-between border-t border-neutral-800 px-6 py-3">
+            <div className="flex items-center justify-between border-t border-stone-200 bg-white/70 px-6 py-3">
               <button
                 disabled={activeSpread <= 0}
                 onClick={() =>
                   setActiveSpread((s) => Math.max(0, s - 2))
                 }
-                className="text-sm text-neutral-400 hover:text-brand-400 disabled:opacity-30 transition-colors"
+                className="text-sm text-stone-500 hover:text-brand-700 disabled:opacity-30 transition-colors"
               >
                 ← 이전
               </button>
-              <span className="text-xs text-neutral-500">
+              <span className="text-xs text-stone-500">
                 {activeSpread + 1}–
                 {Math.min(activeSpread + 2, pages.length)}{" "}
                 / {pages.length} pages
@@ -137,14 +138,14 @@ export default function PreviewPage() {
                     Math.min(pages.length - 1, s + 2),
                   )
                 }
-                className="text-sm text-neutral-400 hover:text-brand-400 disabled:opacity-30 transition-colors"
+                className="text-sm text-stone-500 hover:text-brand-700 disabled:opacity-30 transition-colors"
               >
                 다음 →
               </button>
             </div>
           </>
         ) : (
-          <div className="py-16 text-center text-neutral-500 text-sm">
+          <div className="py-16 text-center text-stone-500 text-sm">
             미리보기 페이지가 아직 생성되지 않았습니다.
           </div>
         )}
@@ -160,7 +161,7 @@ export default function PreviewPage() {
               className={`shrink-0 w-16 h-16 rounded border overflow-hidden transition-all ${
                 i >= activeSpread && i < activeSpread + 2
                   ? "border-brand-500 ring-1 ring-brand-500"
-                  : "border-neutral-700 opacity-60 hover:opacity-100"
+                  : "border-stone-300 bg-white opacity-70 hover:opacity-100"
               }`}
             >
               {p.imageUrl ? (
@@ -170,7 +171,7 @@ export default function PreviewPage() {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-neutral-800 text-[10px] text-neutral-400">
+                <div className="w-full h-full flex items-center justify-center bg-stone-100 text-[10px] text-stone-500">
                   {i + 1}
                 </div>
               )}
@@ -185,21 +186,37 @@ export default function PreviewPage() {
 
       {/* Actions */}
       <div className="mt-8 flex items-center justify-between">
-        <button
-          onClick={() =>
-            navigate(`/projects/${projectId}/personalize`)
-          }
-          className="text-sm text-neutral-400 hover:text-brand-400 transition-colors"
-        >
-          ← 개인화 수정
-        </button>
-        <button
-          disabled={generating}
-          onClick={handleGenerate}
-          className="rounded-full bg-brand-600 px-8 py-3 text-sm font-semibold text-white hover:bg-brand-500 transition-colors disabled:opacity-50"
-        >
-          {generating ? "생성 중..." : "책 제작 & 주문하기 →"}
-        </button>
+        {readOnly ? (
+          <p className="text-sm text-stone-500">
+            주문이 완료된 프로젝트입니다. 미리보기만 확인할 수 있습니다.
+          </p>
+        ) : (
+          <button
+            onClick={() =>
+              navigate(`/projects/${projectId}/personalize`)
+            }
+            className="text-sm text-stone-500 hover:text-brand-700 transition-colors"
+          >
+            ← 개인화 수정
+          </button>
+        )}
+        {readOnly ? (
+          <button
+            type="button"
+            onClick={() => navigate("/me/projects")}
+            className="rounded-full border border-stone-300 bg-white px-8 py-3 text-sm font-semibold text-stone-700 hover:border-brand-400 hover:text-brand-700 transition-colors"
+          >
+            내 프로젝트로
+          </button>
+        ) : (
+          <button
+            disabled={generating}
+            onClick={handleGenerate}
+            className="rounded-full bg-brand-600 px-8 py-3 text-sm font-semibold text-white hover:bg-brand-500 transition-colors disabled:opacity-50"
+          >
+            {generating ? "생성 중..." : "책 제작 & 주문하기 →"}
+          </button>
+        )}
       </div>
     </div>
   );

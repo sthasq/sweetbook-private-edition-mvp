@@ -101,12 +101,33 @@ export interface BookGeneration {
 export interface EstimateResponse {
   totalAmount: number;
   shippingFee: number;
+  simulated: boolean;
 }
 
 export interface OrderResponse {
   orderUid: string;
   orderStatus: string;
   totalAmount: number;
+  simulated: boolean;
+}
+
+/* ── Auth ── */
+
+export interface AuthUser {
+  id: number;
+  email: string;
+  displayName: string;
+  role: "FAN" | "CREATOR";
+}
+
+export interface MyProjectSummary {
+  projectId: number;
+  editionId: number;
+  editionTitle: string;
+  status: string;
+  mode: string;
+  updatedAt: string;
+  continuePath: string;
 }
 
 /* ── YouTube ── */

@@ -98,10 +98,11 @@ record CreateProjectResponse(
 
 record EstimateResponse(
 	BigDecimal totalAmount,
-	BigDecimal shippingFee
+	BigDecimal shippingFee,
+	boolean simulated
 ) {
 	static EstimateResponse from(ProjectViews.Estimate estimate) {
-		return new EstimateResponse(estimate.totalAmount(), estimate.shippingFee());
+		return new EstimateResponse(estimate.totalAmount(), estimate.shippingFee(), estimate.simulated());
 	}
 }
 
@@ -121,9 +122,15 @@ record ShippingRequest(
 record OrderResponse(
 	String orderUid,
 	String orderStatus,
-	BigDecimal totalAmount
+	BigDecimal totalAmount,
+	boolean simulated
 ) {
 	static OrderResponse from(ProjectViews.OrderResult orderResult) {
-		return new OrderResponse(orderResult.orderUid(), orderResult.status(), orderResult.totalAmount());
+		return new OrderResponse(
+			orderResult.orderUid(),
+			orderResult.status(),
+			orderResult.totalAmount(),
+			orderResult.simulated()
+		);
 	}
 }

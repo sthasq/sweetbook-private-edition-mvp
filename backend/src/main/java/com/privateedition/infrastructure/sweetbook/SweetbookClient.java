@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.privateedition.application.AppException;
 import com.privateedition.application.SweetbookViews;
 import com.privateedition.config.SweetbookProperties;
+import io.netty.handler.ssl.SslContextBuilder;
+import java.io.InputStream;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -13,13 +15,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.netty.http.client.HttpClient;
 
 @Component
 @RequiredArgsConstructor
@@ -50,16 +55,16 @@ public class SweetbookClient {
 		for (JsonNode item : extractArray(getJson("/templates?bookSpecUid=" + bookSpecUid))) {
 			result.add(new SweetbookViews.Template(
 				field(item, "uid", "templateUid"),
-				field(item, "name", "displayName", "title"),
-				field(item, "category", "group"),
-				field(item, "role", "type", "kind")
+				field(item, "name", "templateName", "displayName", "title"),
+				field(item, "category", "group", "theme"),
+				field(item, "role", "templateKind", "type", "kind")
 			));
 		}
 		return result;
 	}
 
 	public String createBook(Map<String, Object> payload) {
-		JsonNode response = postJson("/books", payload);
+		JsonNode response = unwrapEnvelope(postJson("/books", payload));
 		return field(response, "bookUid", "uid", "id");
 	}
 
@@ -76,7 +81,7 @@ public class SweetbookClient {
 	}
 
 	public Map<String, Object> estimateOrder(Map<String, Object> payload) {
-		JsonNode response = postJson("/orders/estimate", payload);
+		JsonNode response = unwrapEnvelope(postJson("/orders/estimate", payload));
 		Map<String, Object> result = toMap(response);
 		result.putIfAbsent("currency", field(response, "currency", "currencyCode"));
 		result.putIfAbsent("totalAmount", field(response, "totalAmount", "amount", "totalPrice"));
@@ -85,7 +90,7 @@ public class SweetbookClient {
 	}
 
 	public Map<String, Object> createOrder(Map<String, Object> payload, String idempotencyKey) {
-		JsonNode response = postJson("/orders", payload, headers -> headers.add("Idempotency-Key", idempotencyKey));
+		JsonNode response = unwrapEnvelope(postJson("/orders", payload, headers -> headers.add("Idempotency-Key", idempotencyKey)));
 		Map<String, Object> result = toMap(response);
 		result.putIfAbsent("orderUid", field(response, "orderUid", "uid", "id"));
 		result.putIfAbsent("status", field(response, "status", "orderStatus"));
@@ -125,7 +130,7 @@ public class SweetbookClient {
 		MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
 		multipartBodyBuilder.part("templateUid", templateUid);
 		try {
-			multipartBodyBuilder.part("params", objectMapper.writeValueAsString(params));
+			multipartBodyBuilder.part("parameters", objectMapper.writeValueAsString(params));
 		} catch (Exception exception) {
 			throw new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to serialize Sweetbook params", exception);
 		}
@@ -146,29 +151,63 @@ public class SweetbookClient {
 
 	private WebClient baseClient() {
 		return webClientBuilder.clone()
+			.clientConnector(sweetbookClientConnector())
 			.baseUrl(sweetbookProperties.getBaseUrl())
 			.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + sweetbookProperties.getApiKey())
 			.defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
 			.build();
 	}
 
+	private ReactorClientHttpConnector sweetbookClientConnector() {
+		try (InputStream certificateStream = new ClassPathResource(
+			"certs/sectigo-public-server-authentication-root-r46.pem"
+		).getInputStream()) {
+			var sslContext = SslContextBuilder.forClient()
+				.trustManager(certificateStream)
+				.build();
+			HttpClient httpClient = HttpClient.create()
+				.secure(sslSpec -> sslSpec.sslContext(sslContext));
+			return new ReactorClientHttpConnector(httpClient);
+		} catch (Exception exception) {
+			throw new AppException(
+				HttpStatus.INTERNAL_SERVER_ERROR,
+				"Failed to initialize Sweetbook SSL trust configuration",
+				exception
+			);
+		}
+	}
+
 	private Iterable<JsonNode> extractArray(JsonNode node) {
-		if (node == null || node.isNull()) {
+		JsonNode payload = unwrapEnvelope(node);
+		if (payload == null || payload.isNull()) {
 			return List.of();
 		}
-		if (node.isArray()) {
-			return node;
+		if (payload.isArray()) {
+			return payload;
 		}
-		if (node.has("items")) {
-			return node.path("items");
+		if (payload.has("templates")) {
+			return payload.path("templates");
 		}
-		if (node.has("data")) {
-			return node.path("data");
+		if (payload.has("items")) {
+			return payload.path("items");
 		}
-		if (node.has("content")) {
-			return node.path("content");
+		if (payload.has("content")) {
+			return payload.path("content");
+		}
+		if (payload.has("data")) {
+			return extractArray(payload.path("data"));
 		}
 		return List.of();
+	}
+
+	private JsonNode unwrapEnvelope(JsonNode node) {
+		if (node == null || node.isNull()) {
+			return node;
+		}
+		if (node.has("data") && !node.path("data").isMissingNode()) {
+			return node.path("data");
+		}
+		return node;
 	}
 
 	private String field(JsonNode node, String... names) {

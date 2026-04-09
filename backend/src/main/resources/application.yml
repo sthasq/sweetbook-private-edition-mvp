@@ -24,7 +24,7 @@ server:
   port: ${SERVER_PORT:8080}
 
 app:
-  cors-allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+  cors-allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173}
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:3000}
   demo-image-base-url: ${DEMO_IMAGE_BASE_URL:https://picsum.photos}
 
@@ -34,8 +34,9 @@ sweetbook:
   enabled: ${SWEETBOOK_ENABLED:false}
   default-book-spec-uid: ${SWEETBOOK_BOOK_SPEC_UID:SQUAREBOOK_HC}
   default-template-category: ${SWEETBOOK_TEMPLATE_CATEGORY:album}
-  default-cover-template-uid: ${SWEETBOOK_COVER_TEMPLATE_UID:}
-  default-content-template-uid: ${SWEETBOOK_CONTENT_TEMPLATE_UID:}
+  default-cover-template-uid: ${SWEETBOOK_COVER_TEMPLATE_UID:4MY2fokVjkeY}
+  default-publish-template-uid: ${SWEETBOOK_PUBLISH_TEMPLATE_UID:75vMl9IeyPMI}
+  default-content-template-uid: ${SWEETBOOK_CONTENT_TEMPLATE_UID:46VqZhVNOfAp}
 
 google:
   client-id: ${GOOGLE_CLIENT_ID:}

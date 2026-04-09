@@ -36,6 +36,10 @@ public class FanProject {
 	@JoinColumn(name = "edition_version_id", nullable = false)
 	private EditionVersion editionVersion;
 
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "owner_user_id", nullable = false)
+	private AppUser ownerUser;
+
 	@Convert(converter = JsonMapConverter.class)
 	@Column(name = "personalization_data", nullable = false, columnDefinition = "json")
 	private Map<String, Object> personalizationData = new LinkedHashMap<>();

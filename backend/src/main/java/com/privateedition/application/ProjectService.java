@@ -1,13 +1,16 @@
 package com.privateedition.application;
 
+import com.privateedition.domain.AppUser;
 import com.privateedition.domain.FanProject;
 import com.privateedition.domain.FanProjectRepository;
 import com.privateedition.domain.FanProjectStatus;
 import com.privateedition.domain.OrderRecord;
 import com.privateedition.domain.OrderRecordRepository;
 import com.privateedition.domain.OrderStatus;
+import com.privateedition.security.CurrentUserService;
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,14 +27,21 @@ public class ProjectService {
 	private final OrderRecordRepository orderRecordRepository;
 	private final ProjectPreviewAssembler projectPreviewAssembler;
 	private final SweetbookService sweetbookService;
+	private final CurrentUserService currentUserService;
 
 	@Transactional
 	public ProjectViews.Snapshot createProject(ProjectCommands.CreateProject command) {
+		AppUser currentUser = currentUserService.requireCurrentAppUser();
 		Long editionId = command.editionId() == null ? editionService.getDefaultPublishedEditionId() : command.editionId();
 		FanProject project = new FanProject();
 		project.setEditionVersion(editionService.requirePublishedVersion(editionId));
+		project.setOwnerUser(currentUser);
 
 		Map<String, Object> personalizationData = new LinkedHashMap<>();
+		if ("demo".equalsIgnoreCase(command.mode()) || command.mode() == null || command.mode().isBlank()) {
+			personalizationData.putAll(createDemoPersonalization());
+		}
+
 		if (command.personalizationData() != null) {
 			personalizationData.putAll(command.personalizationData());
 		}
@@ -43,9 +53,50 @@ public class ProjectService {
 		return toSnapshot(project);
 	}
 
+	private Map<String, Object> createDemoPersonalization() {
+		Map<String, Object> data = new LinkedHashMap<>();
+		data.put("mode", "demo");
+		data.put("fanNickname", "Fan");
+		data.put("subscribedSince", "2024-01-01T00:00:00Z");
+		data.put("daysTogether", 365);
+		data.put("favoriteVideoId", "demo-video-1");
+		data.put("fanNote", "");
+		data.put("channel", Map.of(
+			"channelId", "UC_DEMO_CREATOR",
+			"title", "Demo Creator",
+			"subscriberCount", "100000",
+			"thumbnailUrl", "https://picsum.photos/seed/demo-ch/600/600",
+			"bannerUrl", "https://picsum.photos/seed/demo-banner/1600/500"
+		));
+		data.put("topVideos", List.of(
+			Map.of(
+				"videoId", "demo-video-1",
+				"title", "Top Highlights Vol. 1",
+				"thumbnailUrl", "https://picsum.photos/seed/demo-v1/1280/720",
+				"viewCount", 100000,
+				"publishedAt", "2023-06-01T00:00:00Z"
+			),
+			Map.of(
+				"videoId", "demo-video-2",
+				"title", "Anniversary Live Recap",
+				"thumbnailUrl", "https://picsum.photos/seed/demo-v2/1280/720",
+				"viewCount", 85000,
+				"publishedAt", "2024-01-01T00:00:00Z"
+			),
+			Map.of(
+				"videoId", "demo-video-3",
+				"title", "Behind the Scenes",
+				"thumbnailUrl", "https://picsum.photos/seed/demo-v3/1280/720",
+				"viewCount", 45000,
+				"publishedAt", "2024-03-01T00:00:00Z"
+			)
+		));
+		return data;
+	}
+
 	@Transactional
 	public ProjectViews.Snapshot updateProject(Long projectId, ProjectCommands.UpdateProject command) {
-		FanProject project = requireProject(projectId);
+		FanProject project = requireOwnedProject(projectId);
 		Map<String, Object> personalizationData = new LinkedHashMap<>(project.getPersonalizationData());
 		if (command.personalizationData() != null) {
 			personalizationData.putAll(command.personalizationData());
@@ -56,14 +107,14 @@ public class ProjectService {
 	}
 
 	public ProjectViews.Preview getPreview(Long projectId) {
-		FanProject project = requireProject(projectId);
+		FanProject project = requireOwnedProject(projectId);
 		EditionViews.Detail edition = editionService.getEdition(project.getEditionVersion().getEdition().getId());
 		return projectPreviewAssembler.assemble(toSnapshot(project), edition);
 	}
 
 	@Transactional
 	public ProjectViews.BookGeneration generateBook(Long projectId) {
-		FanProject project = requireProject(projectId);
+		FanProject project = requireOwnedProject(projectId);
 		ProjectViews.Preview preview = getPreview(projectId);
 		ProjectViews.BookGeneration generation = sweetbookService.generateBook(preview);
 		project.setSweetbookBookUid(generation.bookUid());
@@ -73,7 +124,7 @@ public class ProjectService {
 	}
 
 	public ProjectViews.Estimate estimate(Long projectId, ProjectCommands.Shipping shipping) {
-		FanProject project = requireProject(projectId);
+		FanProject project = requireOwnedProject(projectId);
 		if (project.getSweetbookBookUid() == null || project.getSweetbookBookUid().isBlank()) {
 			throw new AppException(HttpStatus.BAD_REQUEST, "Generate the Sweetbook book before requesting an estimate");
 		}
@@ -82,7 +133,7 @@ public class ProjectService {
 
 	@Transactional
 	public ProjectViews.OrderResult order(Long projectId, ProjectCommands.Shipping shipping) {
-		FanProject project = requireProject(projectId);
+		FanProject project = requireOwnedProject(projectId);
 		if (project.getSweetbookBookUid() == null || project.getSweetbookBookUid().isBlank()) {
 			throw new AppException(HttpStatus.BAD_REQUEST, "Generate the Sweetbook book before ordering");
 		}
@@ -119,9 +170,25 @@ public class ProjectService {
 		return result;
 	}
 
+	public List<ProjectViews.MyProjectSummary> listMyProjects() {
+		AppUser currentUser = currentUserService.requireCurrentAppUser();
+		return fanProjectRepository.findByOwnerUserIdOrderByUpdatedAtDesc(currentUser.getId()).stream()
+			.map(this::toMyProjectSummary)
+			.toList();
+	}
+
 	private FanProject requireProject(Long projectId) {
 		return fanProjectRepository.findById(projectId)
 			.orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Project not found: " + projectId));
+	}
+
+	private FanProject requireOwnedProject(Long projectId) {
+		AppUser currentUser = currentUserService.requireCurrentAppUser();
+		FanProject project = requireProject(projectId);
+		if (!project.getOwnerUser().getId().equals(currentUser.getId())) {
+			throw new AppException(HttpStatus.FORBIDDEN, "You do not have access to this project");
+		}
+		return project;
 	}
 
 	private ProjectViews.Snapshot toSnapshot(FanProject project) {
@@ -135,5 +202,33 @@ public class ProjectService {
 			project.getCreatedAt(),
 			project.getUpdatedAt()
 		);
+	}
+
+	private ProjectViews.MyProjectSummary toMyProjectSummary(FanProject project) {
+		return new ProjectViews.MyProjectSummary(
+			project.getId(),
+			project.getEditionVersion().getEdition().getId(),
+			project.getEditionVersion().getEdition().getTitle(),
+			project.getStatus().name(),
+			resolveMode(project),
+			project.getUpdatedAt(),
+			resolveContinuePath(project)
+		);
+	}
+
+	private String resolveMode(FanProject project) {
+		Object mode = project.getPersonalizationData().get("mode");
+		if (mode instanceof String text && !text.isBlank()) {
+			return text;
+		}
+		return "demo";
+	}
+
+	private String resolveContinuePath(FanProject project) {
+		return switch (project.getStatus()) {
+			case DRAFT -> "/projects/" + project.getId() + "/personalize";
+			case PERSONALIZED, ORDERED -> "/projects/" + project.getId() + "/preview";
+			case BOOK_CREATED, FINALIZED -> "/projects/" + project.getId() + "/shipping";
+		};
 	}
 }

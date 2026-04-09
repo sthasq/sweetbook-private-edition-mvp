@@ -3,4 +3,4 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/private_edition?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul}
 
 app:
-  cors-allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  cors-allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173}

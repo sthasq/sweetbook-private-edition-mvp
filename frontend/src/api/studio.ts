@@ -2,7 +2,6 @@ import { post, patch } from "./client";
 import type { EditionDetail } from "../types/api";
 
 export interface StudioEditionInput {
-  creatorId: number;
   title: string;
   subtitle?: string;
   coverImageUrl: string;
