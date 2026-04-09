@@ -1,5 +1,5 @@
 import { post, patch } from "./client";
-import type { EditionDetail } from "../types/api";
+import type { EditionDetail, YouTubeStudioRecapResult } from "../types/api";
 
 export interface StudioCopyBlock {
   title: string;
@@ -46,4 +46,8 @@ export function updateEdition(id: number, body: StudioEditionInput) {
 
 export function publishEdition(id: number) {
   return post<EditionDetail>(`/studio/editions/${id}/publish`);
+}
+
+export function importStudioYouTubeRecap(source: string) {
+  return post<YouTubeStudioRecapResult>("/studio/youtube-recap", { source });
 }

@@ -40,9 +40,14 @@ public class SweetbookClient {
 	public List<SweetbookViews.BookSpec> getBookSpecs() {
 		List<SweetbookViews.BookSpec> result = new ArrayList<>();
 		for (JsonNode item : extractArray(getJson("/book-specs"))) {
+			String uid = field(item, "uid", "bookSpecUid");
+			String name = field(item, "name", "displayName", "title");
+			if (uid.isBlank() || name.isBlank()) {
+				continue;
+			}
 			result.add(new SweetbookViews.BookSpec(
-				field(item, "uid", "bookSpecUid"),
-				field(item, "name", "displayName", "title"),
+				uid,
+				name,
 				intField(item, "minPages", "minimumPages"),
 				intField(item, "maxPages", "maximumPages")
 			));
@@ -57,7 +62,13 @@ public class SweetbookClient {
 				field(item, "uid", "templateUid"),
 				field(item, "name", "templateName", "displayName", "title"),
 				field(item, "category", "group", "theme"),
-				field(item, "role", "templateKind", "type", "kind")
+				field(item, "role", "templateKind", "type", "kind"),
+				nestedField(item, new String[][] {
+					{"thumbnails", "layout"},
+					{"thumbnail", "layout"},
+					{"thumbnail"},
+					{"thumbnailUrl"}
+				})
 			));
 		}
 		return result;
@@ -228,6 +239,19 @@ public class SweetbookClient {
 			}
 		}
 		return null;
+	}
+
+	private String nestedField(JsonNode node, String[][] paths) {
+		for (String[] path : paths) {
+			JsonNode candidate = node;
+			for (String segment : path) {
+				candidate = candidate.path(segment);
+			}
+			if (!candidate.isMissingNode() && !candidate.isNull() && !candidate.asText().isBlank()) {
+				return candidate.asText();
+			}
+		}
+		return "";
 	}
 
 	private Map<String, Object> toMap(JsonNode node) {

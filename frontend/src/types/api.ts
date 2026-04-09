@@ -209,6 +209,34 @@ export interface YouTubeAnalyzeResult {
   personalizationData: Record<string, unknown>;
 }
 
+export interface YouTubeStudioMonthlyStat {
+  month: string;
+  uploadCount: number;
+  totalViews: number;
+}
+
+export interface YouTubeStudioYearlySummary {
+  uploadCount: number;
+  totalViews: number;
+  averageViewsPerVideo: number;
+  periodLabel: string;
+  monthlyStats: YouTubeStudioMonthlyStat[];
+}
+
+export interface StudioCuratedAssetSuggestion {
+  assetType: "IMAGE" | "VIDEO" | "MESSAGE";
+  title: string;
+  content: string;
+  sortOrder: number;
+}
+
+export interface YouTubeStudioRecapResult {
+  channel: YouTubeChannelDetail;
+  topVideos: YouTubeVideo[];
+  yearlySummary: YouTubeStudioYearlySummary;
+  curatedAssets: StudioCuratedAssetSuggestion[];
+}
+
 /* ── Shipping ── */
 
 export interface ShippingInput {
@@ -234,4 +262,5 @@ export interface SweetbookTemplate {
   name: string;
   category: string;
   role: string;
+  thumbnailUrl: string;
 }

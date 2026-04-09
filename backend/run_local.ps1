@@ -122,10 +122,13 @@ $rootEnvExamplePath = Join-Path $rootDir ".env.example"
 Import-DotEnv -Path $rootEnvPath
 
 if ((Test-Path $rootEnvPath) -and (Test-Path $rootEnvExamplePath)) {
-  $envHash = (Get-FileHash -Path $rootEnvPath -Algorithm SHA256).Hash
-  $exampleHash = (Get-FileHash -Path $rootEnvExamplePath -Algorithm SHA256).Hash
-  if ($envHash -eq $exampleHash) {
-    Write-Host ".env currently matches .env.example. If you expected real secrets, refill .env before running." -ForegroundColor Yellow
+  $getFileHash = Get-Command Get-FileHash -ErrorAction SilentlyContinue
+  if ($getFileHash) {
+    $envHash = (Get-FileHash -Path $rootEnvPath -Algorithm SHA256).Hash
+    $exampleHash = (Get-FileHash -Path $rootEnvExamplePath -Algorithm SHA256).Hash
+    if ($envHash -eq $exampleHash) {
+      Write-Host ".env currently matches .env.example. If you expected real secrets, refill .env before running." -ForegroundColor Yellow
+    }
   }
 }
 
@@ -192,24 +195,25 @@ if ($Database -eq "mysql") {
     $mysqlPort = if ($env:MYSQL_PORT) { $env:MYSQL_PORT } else { "3306" }
     $mysqlDatabase = if ($env:MYSQL_DATABASE) { $env:MYSQL_DATABASE } else { "private_edition" }
     $env:SPRING_DATASOURCE_URL = "jdbc:mysql://${mysqlHost}:${mysqlPort}/${mysqlDatabase}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul"
+  } else {
+    $mysqlHost = if ($env:MYSQL_HOST) { $env:MYSQL_HOST } else { "localhost" }
+    $mysqlPort = if ($env:MYSQL_PORT) { $env:MYSQL_PORT } else { "3306" }
+    $mysqlDatabase = if ($env:MYSQL_DATABASE) { $env:MYSQL_DATABASE } else { "private_edition" }
+    $env:SPRING_DATASOURCE_URL = "jdbc:mysql://${mysqlHost}:${mysqlPort}/${mysqlDatabase}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul"
   }
 
-  if (-not $env:SPRING_DATASOURCE_USERNAME) {
-    if ($env:MYSQL_USERNAME) {
-      $env:SPRING_DATASOURCE_USERNAME = $env:MYSQL_USERNAME
-    } else {
-      $env:SPRING_DATASOURCE_USERNAME = "root"
-    }
+  if ($env:MYSQL_USERNAME) {
+    $env:SPRING_DATASOURCE_USERNAME = $env:MYSQL_USERNAME
+  } else {
+    $env:SPRING_DATASOURCE_USERNAME = "privateedition"
   }
 
-  if (-not $env:SPRING_DATASOURCE_PASSWORD) {
-    if ($env:MYSQL_PASSWORD) {
-      $env:SPRING_DATASOURCE_PASSWORD = $env:MYSQL_PASSWORD
-    } elseif ($env:MYSQL_ROOT_PASSWORD) {
-      $env:SPRING_DATASOURCE_PASSWORD = $env:MYSQL_ROOT_PASSWORD
-    } else {
-      $env:SPRING_DATASOURCE_PASSWORD = "privateedition"
-    }
+  if ($env:MYSQL_PASSWORD) {
+    $env:SPRING_DATASOURCE_PASSWORD = $env:MYSQL_PASSWORD
+  } elseif ($env:MYSQL_ROOT_PASSWORD) {
+    $env:SPRING_DATASOURCE_PASSWORD = $env:MYSQL_ROOT_PASSWORD
+  } else {
+    $env:SPRING_DATASOURCE_PASSWORD = "privateedition"
   }
 
   Write-Host "Running backend with MySQL datasource: $($env:SPRING_DATASOURCE_URL)" -ForegroundColor Cyan

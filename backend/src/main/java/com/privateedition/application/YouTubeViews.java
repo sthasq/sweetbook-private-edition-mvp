@@ -64,4 +64,36 @@ public final class YouTubeViews {
 		Map<String, Object> personalizationData
 	) {
 	}
+
+	public record StudioMonthlyStat(
+		String month,
+		long uploadCount,
+		long totalViews
+	) {
+	}
+
+	public record StudioYearlySummary(
+		long uploadCount,
+		long totalViews,
+		long averageViewsPerVideo,
+		String periodLabel,
+		List<StudioMonthlyStat> monthlyStats
+	) {
+	}
+
+	public record StudioCuratedAssetSuggestion(
+		String assetType,
+		String title,
+		String content,
+		int sortOrder
+	) {
+	}
+
+	public record StudioRecapResult(
+		ChannelDetail channel,
+		List<VideoDetail> topVideos,
+		StudioYearlySummary yearlySummary,
+		List<StudioCuratedAssetSuggestion> curatedAssets
+	) {
+	}
 }
