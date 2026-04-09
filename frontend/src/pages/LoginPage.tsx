@@ -37,13 +37,13 @@ export default function LoginPage() {
     <div className="mx-auto max-w-md px-6 py-16">
       <div className="rounded-3xl border border-stone-200 bg-white/88 p-8 shadow-xl shadow-brand-100/40">
         <p className="text-sm font-semibold uppercase tracking-[0.3em] text-gold-400">
-          Login
+          로그인
         </p>
         <h1 className="mt-4 text-3xl font-bold text-stone-900">
           다시 이어서 만들기
         </h1>
         <p className="mt-3 text-sm text-stone-600">
-          로그인하면 내 프로젝트와 Creator Studio 접근 권한이 복원됩니다.
+          로그인하면 내 프로젝트와 크리에이터 스튜디오 접근 권한이 복원됩니다.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">

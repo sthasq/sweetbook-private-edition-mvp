@@ -315,9 +315,9 @@ export default function StudioPage() {
     <div className="mx-auto max-w-5xl px-6 py-12">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold text-stone-900">Creator Studio</h1>
+          <h1 className="text-2xl font-bold text-stone-900">크리에이터 스튜디오</h1>
           <span className="text-[10px] font-semibold tracking-widest uppercase text-gold-400 border border-gold-400/40 rounded px-1.5 py-0.5">
-            Creator
+            크리에이터
           </span>
           {created && (
             <span className="rounded-full border border-stone-300 bg-stone-50 px-3 py-1 text-[11px] font-medium text-stone-600">
@@ -379,7 +379,7 @@ export default function StudioPage() {
                     <div className="space-y-3 p-4">
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-400">
-                          Internal Template
+                          시작 템플릿
                         </p>
                         <h3 className="mt-2 text-base font-semibold text-stone-900">
                           {template.title}
@@ -388,9 +388,8 @@ export default function StudioPage() {
                           {template.subtitle || "미리 준비된 구조로 새 에디션 초안을 시작합니다."}
                         </p>
                       </div>
-                      <div className="flex items-center justify-between gap-3 text-xs text-stone-500">
-                        <span>원본 에디션</span>
-                        <span>@{normalizeHandle(template.creatorHandle)}</span>
+                      <div className="rounded-xl border border-stone-200 bg-white/80 px-3 py-2 text-xs text-stone-500">
+                        스위트북에서 바로 시작할 수 있도록 준비한 기본 템플릿
                       </div>
                       <button
                         type="button"
@@ -510,12 +509,12 @@ export default function StudioPage() {
             <h2 className="text-lg font-semibold text-stone-900">공식 메시지</h2>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <div className="space-y-3 rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
-                <p className="text-sm font-semibold text-stone-900">Official Intro</p>
+                <p className="text-sm font-semibold text-stone-900">인트로 메시지</p>
                 <input value={intro.title} onChange={(e) => updateCopy("officialIntro", "title", e.target.value)} className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="인트로 제목" />
                 <textarea rows={4} value={intro.message} onChange={(e) => updateCopy("officialIntro", "message", e.target.value)} className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="인트로 메시지" />
               </div>
               <div className="space-y-3 rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
-                <p className="text-sm font-semibold text-stone-900">Official Closing</p>
+                <p className="text-sm font-semibold text-stone-900">클로징 메시지</p>
                 <input value={closing.title} onChange={(e) => updateCopy("officialClosing", "title", e.target.value)} className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="클로징 제목" />
                 <textarea rows={4} value={closing.message} onChange={(e) => updateCopy("officialClosing", "message", e.target.value)} className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="클로징 메시지" />
               </div>
@@ -550,7 +549,7 @@ export default function StudioPage() {
                       </div>
                       <div className="min-w-0 rounded-2xl border border-stone-200 bg-white/80 p-3">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-stone-500">
-                          Live Preview
+                          미리보기
                         </p>
                         <div className="mt-3">
                           <AssetPreview asset={asset} />
@@ -600,7 +599,7 @@ export default function StudioPage() {
                 <img src={form.coverImageUrl || "https://picsum.photos/seed/studio-empty/900/900"} alt="" className="h-full w-full object-cover" />
               </div>
               <div className="p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-400">Official Edition</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-400">에디션 미리보기</p>
                 <h3 className="mt-2 text-lg font-semibold text-stone-900">{form.title || "에디션 제목"}</h3>
                 <p className="mt-1 text-sm text-stone-600">{form.subtitle || "부제목이 여기에 표시됩니다."}</p>
               </div>
@@ -608,29 +607,29 @@ export default function StudioPage() {
 
             <div className="mt-5 rounded-2xl border border-stone-200 bg-stone-50/80 p-4 space-y-3">
               <div>
-                <p className="text-sm font-medium text-stone-900">{intro.title || "Official Intro 제목"}</p>
+                <p className="text-sm font-medium text-stone-900">{intro.title || "인트로 제목"}</p>
                 <p className="mt-1 text-sm text-stone-600">{intro.message || "인트로 메시지를 입력해 주세요."}</p>
               </div>
               <div className="border-t border-stone-200 pt-3">
-                <p className="text-sm font-medium text-stone-900">{closing.title || "Official Closing 제목"}</p>
+                <p className="text-sm font-medium text-stone-900">{closing.title || "클로징 제목"}</p>
                 <p className="mt-1 text-sm text-stone-600">{closing.message || "클로징 메시지를 입력해 주세요."}</p>
               </div>
             </div>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">Curated Assets</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">큐레이션 자산</p>
                 <p className="mt-2 text-2xl font-bold text-stone-900">{assets.length}</p>
               </div>
               <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">Fan Fields</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">팬 입력 항목</p>
                 <p className="mt-2 text-2xl font-bold text-stone-900">{fields.length}</p>
               </div>
             </div>
 
             <div className="mt-5 rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
-                Sweetbook Layout
+                선택한 레이아웃
               </p>
               <div className="mt-3 space-y-2 text-sm text-stone-600">
                 <p>
@@ -764,8 +763,8 @@ function validateForm(form: StudioEditionInput) {
   const messages: string[] = [];
   if (!payload.title) messages.push("에디션 제목을 입력해 주세요.");
   if (!payload.coverImageUrl) messages.push("커버 이미지 URL을 입력해 주세요.");
-  if (!payload.officialIntro?.title || !payload.officialIntro.message) messages.push("Official Intro의 제목과 메시지를 모두 입력해 주세요.");
-  if (!payload.officialClosing?.title || !payload.officialClosing.message) messages.push("Official Closing의 제목과 메시지를 모두 입력해 주세요.");
+  if (!payload.officialIntro?.title || !payload.officialIntro.message) messages.push("인트로 메시지의 제목과 내용을 모두 입력해 주세요.");
+  if (!payload.officialClosing?.title || !payload.officialClosing.message) messages.push("클로징 메시지의 제목과 내용을 모두 입력해 주세요.");
   if ((payload.personalizationFields ?? []).length === 0) messages.push("팬 입력 항목을 최소 1개 이상 추가해 주세요.");
 
   const fieldKeys = new Set<string>();
@@ -792,10 +791,6 @@ function validateForm(form: StudioEditionInput) {
 
 function serializeForm(form: StudioEditionInput) {
   return JSON.stringify(buildSubmitPayload(form));
-}
-
-function normalizeHandle(handle: string) {
-  return handle.replace(/^@+/, "");
 }
 
 function groupTemplatesByRole(templates: SweetbookTemplate[], role: "cover" | "publish" | "content") {
@@ -866,9 +861,6 @@ function SweetbookTemplateSection({
                 </p>
                 <p className="mt-2 text-sm font-semibold text-current">
                   {template.name}
-                </p>
-                <p className="mt-2 text-xs text-stone-500 break-all">
-                  {template.uid}
                 </p>
               </button>
             );

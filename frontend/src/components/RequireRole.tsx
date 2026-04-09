@@ -25,13 +25,13 @@ export default function RequireRole({
       <div className="mx-auto max-w-lg px-6 py-20 text-center">
         <div className="rounded-3xl border border-stone-200 bg-white/90 px-8 py-12 shadow-sm shadow-brand-100/30">
         <p className="text-sm font-semibold uppercase tracking-[0.3em] text-gold-400">
-          Access Denied
+          접근 제한
         </p>
         <h1 className="mt-4 text-3xl font-bold text-stone-900">
           이 화면은 크리에이터 전용입니다
         </h1>
         <p className="mt-3 text-sm text-stone-600">
-          현재 계정으로는 Creator Studio에 접근할 수 없습니다.
+          현재 계정으로는 크리에이터 스튜디오에 접근할 수 없습니다.
         </p>
         <Link
           to="/"

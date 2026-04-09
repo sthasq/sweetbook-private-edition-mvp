@@ -18,12 +18,12 @@ export default function Layout() {
     }
   }
 
-  const navItems = [{ to: "/", label: "Home" }];
+  const navItems = [{ to: "/", label: "홈" }];
 
   if (user) {
-    navItems.push({ to: "/me/projects", label: "My Projects" });
+    navItems.push({ to: "/me/projects", label: "내 프로젝트" });
     if (user.role === "CREATOR") {
-      navItems.push({ to: "/studio", label: "Creator Studio" });
+      navItems.push({ to: "/studio", label: "크리에이터 스튜디오" });
     }
   }
 
@@ -57,13 +57,13 @@ export default function Layout() {
                   to="/login"
                   className={`transition-colors hover:text-brand-600 ${pathname === "/login" ? "text-brand-700 font-medium" : "text-stone-500"}`}
                 >
-                  Login
+                  로그인
                 </Link>
                 <Link
                   to="/signup"
                   className={`transition-colors hover:text-brand-600 ${pathname === "/signup" ? "text-brand-700 font-medium" : "text-stone-500"}`}
                 >
-                  Signup
+                  회원가입
                 </Link>
               </>
             )}
@@ -77,7 +77,7 @@ export default function Layout() {
                   onClick={handleLogout}
                   className="text-stone-500 transition-colors hover:text-brand-600"
                 >
-                  Logout
+                  로그아웃
                 </button>
               </>
             )}
@@ -123,26 +123,26 @@ export default function Layout() {
                     onClick={() => setMenuOpen(false)}
                     className="text-sm text-stone-500 hover:text-brand-600"
                   >
-                    Login
+                    로그인
                   </Link>
                   <Link
                     to="/signup"
                     onClick={() => setMenuOpen(false)}
                     className="text-sm text-stone-500 hover:text-brand-600"
                   >
-                    Signup
+                    회원가입
                   </Link>
                 </>
               )}
               {!loading && user && (
                 <>
-                  <div className="text-xs text-stone-400">Signed in as {user.displayName}</div>
+                  <div className="text-xs text-stone-400">{user.displayName} 계정으로 로그인됨</div>
                   <button
                     type="button"
                     onClick={handleLogout}
                     className="text-left text-sm text-stone-500 hover:text-brand-600"
                   >
-                    Logout
+                    로그아웃
                   </button>
                 </>
               )}
