@@ -6,6 +6,36 @@ import Spinner from "../components/Spinner";
 import ErrorBox from "../components/ErrorBox";
 import ProjectStepper from "../components/ProjectStepper";
 
+function siteOrderLabel(status: string) {
+  switch (status) {
+    case "CREATED":
+      return "주문 생성됨";
+    case "PAID":
+      return "주문 확정";
+    case "CANCELLED":
+      return "취소됨";
+    default:
+      return status;
+  }
+}
+
+function fulfillmentLabel(status: string) {
+  switch (status) {
+    case "PENDING_SUBMISSION":
+      return "발주 대기";
+    case "SUBMITTED":
+      return "Sweetbook 발주 완료";
+    case "SIMULATED":
+      return "데모 발주";
+    case "FAILED":
+      return "발주 실패";
+    case "CANCELLED":
+      return "발주 취소";
+    default:
+      return status;
+  }
+}
+
 export default function OrderCompletePage() {
   const { projectId } = useParams<{ projectId: string }>();
   const missingProjectId = !projectId;
@@ -71,16 +101,16 @@ export default function OrderCompletePage() {
 
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border border-stone-200 bg-white/88 p-6 shadow-sm shadow-brand-100/30">
-          <h2 className="text-sm font-semibold text-stone-900">주문 정보</h2>
+          <h2 className="text-sm font-semibold text-stone-900">사이트 주문 정보</h2>
           <div className="mt-4 space-y-3 text-sm">
             <div className="flex justify-between gap-4">
-              <span className="text-stone-500">주문번호</span>
-              <span className="font-mono text-stone-900">{summary.orderUid}</span>
+              <span className="text-stone-500">사이트 주문번호</span>
+              <span className="font-mono text-stone-900">{summary.siteOrderUid}</span>
             </div>
             <div className="flex justify-between gap-4">
-              <span className="text-stone-500">주문 상태</span>
+              <span className="text-stone-500">사이트 주문 상태</span>
               <span className="font-medium text-stone-900">
-                {summary.orderStatus}
+                {siteOrderLabel(summary.siteOrderStatus)}
               </span>
             </div>
             <div className="flex justify-between gap-4">
@@ -97,6 +127,24 @@ export default function OrderCompletePage() {
         </section>
 
         <section className="rounded-2xl border border-stone-200 bg-white/88 p-6 shadow-sm shadow-brand-100/30">
+          <h2 className="text-sm font-semibold text-stone-900">Sweetbook 제작/출고 연동</h2>
+          <div className="mt-4 space-y-3 text-sm">
+            <div className="flex justify-between gap-4">
+              <span className="text-stone-500">발주 상태</span>
+              <span className="font-medium text-stone-900">
+                {fulfillmentLabel(summary.fulfillmentStatus)}
+              </span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-stone-500">Sweetbook 주문번호</span>
+              <span className="max-w-[14rem] break-all text-right font-mono text-stone-900">
+                {summary.fulfillmentOrderUid ?? "아직 발급되지 않음"}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-stone-200 bg-white/88 p-6 shadow-sm shadow-brand-100/30 lg:col-span-2">
           <h2 className="text-sm font-semibold text-stone-900">배송 정보</h2>
           <div className="mt-4 space-y-3 text-sm">
             <div className="flex justify-between gap-4">
@@ -124,10 +172,10 @@ export default function OrderCompletePage() {
       {summary.simulated && (
         <div className="mt-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
           <p className="text-sm font-semibold text-amber-800">
-            현재 주문은 데모 모드로 저장되었습니다.
+            현재 사이트 주문은 저장되었고, Sweetbook 연동은 데모 모드로 처리되었습니다.
           </p>
           <p className="mt-1 text-xs text-amber-700">
-            Sweetbook 실주문 연동이 비활성화되어 있어 실제 주문 시스템에는 반영되지 않았습니다.
+            실제 제작 발주는 발생하지 않았으며, 내부 주문 흐름만 검증할 수 있는 상태입니다.
           </p>
         </div>
       )}

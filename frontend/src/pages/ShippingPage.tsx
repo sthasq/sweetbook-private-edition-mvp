@@ -76,7 +76,7 @@ export default function ShippingPage() {
 
       <h1 className="text-2xl font-bold text-stone-900 mb-2">배송 정보</h1>
       <p className="text-sm text-stone-600 mb-8">
-        실물 책 배송을 위한 정보를 입력하세요
+        사이트 주문을 확정하기 전에 실물 책 배송 정보를 입력하세요
       </p>
 
       <div className="space-y-5">
@@ -175,9 +175,12 @@ export default function ShippingPage() {
               {estimate.totalAmount.toLocaleString()}원
             </span>
           </div>
+          <p className="mt-3 text-xs text-stone-500">
+            다음 단계에서 먼저 사이트 주문이 저장되고, 그 뒤 Sweetbook 제작/출고 연동이 진행됩니다.
+          </p>
           {estimate.simulated && (
             <p className="mt-3 text-xs text-amber-300">
-              실제 Sweetbook 견적 호출이 실패해 데모 금액으로 표시 중입니다.
+              실제 Sweetbook 견적 호출이 실패해 데모 금액으로 표시 중입니다. 사이트 주문 흐름 자체는 계속 진행할 수 있습니다.
             </p>
           )}
         </div>
@@ -210,7 +213,7 @@ export default function ShippingPage() {
               onClick={handleOrder}
               className="rounded-full bg-brand-600 px-8 py-3 text-sm font-semibold text-white hover:bg-brand-500 transition-colors disabled:opacity-50"
             >
-              {ordering ? "주문 처리 중..." : "주문하기"}
+              {ordering ? "사이트 주문 확정 중..." : "사이트 주문 확정"}
             </button>
           )}
         </div>

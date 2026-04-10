@@ -21,6 +21,36 @@ function statusLabel(status: string) {
   }
 }
 
+function siteOrderLabel(status: string | null) {
+  switch (status) {
+    case "CREATED":
+      return "사이트 주문 생성됨";
+    case "PAID":
+      return "사이트 주문 확정";
+    case "CANCELLED":
+      return "사이트 주문 취소";
+    default:
+      return status;
+  }
+}
+
+function fulfillmentLabel(status: string | null) {
+  switch (status) {
+    case "PENDING_SUBMISSION":
+      return "Sweetbook 발주 대기";
+    case "SUBMITTED":
+      return "Sweetbook 발주 완료";
+    case "SIMULATED":
+      return "Sweetbook 데모 발주";
+    case "FAILED":
+      return "Sweetbook 발주 실패";
+    case "CANCELLED":
+      return "Sweetbook 발주 취소";
+    default:
+      return status;
+  }
+}
+
 export default function MyProjectsPage() {
   const [projects, setProjects] = useState<MyProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,6 +121,16 @@ export default function MyProjectsPage() {
                     마지막 업데이트:{" "}
                     {new Date(project.updatedAt).toLocaleString("ko-KR")}
                   </p>
+                  {project.status === "ORDERED" && (
+                    <div className="mt-3 flex flex-col gap-2 text-xs text-stone-600">
+                      <span className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 w-fit">
+                        {siteOrderLabel(project.siteOrderStatus) ?? "사이트 주문 상태 확인 필요"}
+                      </span>
+                      <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 w-fit">
+                        {fulfillmentLabel(project.fulfillmentStatus) ?? "Sweetbook 연동 상태 확인 필요"}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-3">

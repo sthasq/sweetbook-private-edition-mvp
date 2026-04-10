@@ -166,7 +166,7 @@ public class SweetbookService {
 		}
 	}
 
-	public ProjectViews.OrderResult createOrder(Long projectId, String bookUid, ProjectCommands.Shipping shipping) {
+	public ProjectViews.FulfillmentResult createOrder(Long projectId, String bookUid, ProjectCommands.Shipping shipping) {
 		if (!isLiveEnabled()) {
 			return buildDemoOrder(projectId, "Sweetbook API key not configured, returning demo order");
 		}
@@ -174,7 +174,7 @@ public class SweetbookService {
 		try {
 			Map<String, Object> payload = buildOrderPayload(bookUid, normalizeShipping(shipping));
 			Map<String, Object> result = sweetbookClient.createOrder(payload, UUID.randomUUID().toString());
-			return new ProjectViews.OrderResult(
+			return new ProjectViews.FulfillmentResult(
 				projectId,
 				asString(result.get("orderUid"), ""),
 				normalizeOrderStatus(result),
@@ -247,8 +247,8 @@ public class SweetbookService {
 		);
 	}
 
-	private ProjectViews.OrderResult buildDemoOrder(Long projectId, String message) {
-		return new ProjectViews.OrderResult(
+	private ProjectViews.FulfillmentResult buildDemoOrder(Long projectId, String message) {
+		return new ProjectViews.FulfillmentResult(
 			projectId,
 			"demo-order-" + UUID.randomUUID(),
 			"PAID",

@@ -98,7 +98,7 @@ If Google values are omitted, the app still works in Demo mode.
 
 ### 2. Run backend locally
 
-Local backend runs against Docker MySQL on `localhost:3306` by default so data persists across restarts.
+Local backend runs against Docker MySQL on `localhost:3307` by default so data persists across restarts.
 
 ```powershell
 cd backend
@@ -112,7 +112,7 @@ $env:YOUTUBE_API_KEY="your_youtube_api_key"
 ```
 
 If `SWEETBOOK_API_KEY` is missing, the backend automatically stays in demo/simulated mode.
-If port `3306` is already occupied by a local MySQL service, stop that service first so Docker can bind the port.
+If port `3307` is already occupied by another service, stop that service first so Docker can bind the port.
 
 ### 2-1. Run backend locally with H2 instead
 
@@ -123,7 +123,7 @@ cd backend
 .\run_local.ps1 -Database h2
 ```
 
-For MySQL mode, the script starts `docker compose up -d mysql` automatically, then reads `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USERNAME`, and `MYSQL_PASSWORD` from `.env`. By default it connects to `localhost:3306/private_edition`.
+For MySQL mode, the script starts `docker compose up -d mysql` automatically, then reads `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USERNAME`, and `MYSQL_PASSWORD` from `.env`. By default it connects to `localhost:3307/private_edition`.
 
 ### 3. Run frontend locally
 
