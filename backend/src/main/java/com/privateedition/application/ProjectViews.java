@@ -62,7 +62,7 @@ public final class ProjectViews {
 	) {
 	}
 
-	public record OrderResult(
+	public record FulfillmentResult(
 		Long projectId,
 		String orderUid,
 		String status,
@@ -72,11 +72,25 @@ public final class ProjectViews {
 	) {
 	}
 
+	public record OrderResult(
+		Long projectId,
+		String siteOrderUid,
+		String siteOrderStatus,
+		String fulfillmentOrderUid,
+		String fulfillmentStatus,
+		BigDecimal totalAmount,
+		boolean simulated,
+		Map<String, Object> raw
+	) {
+	}
+
 	public record OrderSummary(
 		Long projectId,
 		String projectStatus,
-		String orderStatus,
-		String orderUid,
+		String siteOrderStatus,
+		String siteOrderUid,
+		String fulfillmentStatus,
+		String fulfillmentOrderUid,
 		BigDecimal totalAmount,
 		boolean simulated,
 		Instant orderedAt,
@@ -107,6 +121,8 @@ public final class ProjectViews {
 		String editionTitle,
 		String status,
 		String mode,
+		String siteOrderStatus,
+		String fulfillmentStatus,
 		Instant updatedAt,
 		String continuePath
 	) {

@@ -254,7 +254,9 @@ class AuthAndAccessIntegrationTest {
 					}
 					"""))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.orderUid").isNotEmpty());
+			.andExpect(jsonPath("$.siteOrderUid").isNotEmpty())
+			.andExpect(jsonPath("$.siteOrderStatus").value("PAID"))
+			.andExpect(jsonPath("$.fulfillmentStatus").isNotEmpty());
 
 		mockMvc.perform(get("/api/me/projects").session(session))
 			.andExpect(status().isOk())
@@ -266,6 +268,9 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.projectId").value(projectId))
 			.andExpect(jsonPath("$.projectStatus").value("ORDERED"))
+			.andExpect(jsonPath("$.siteOrderUid").isNotEmpty())
+			.andExpect(jsonPath("$.siteOrderStatus").value("PAID"))
+			.andExpect(jsonPath("$.fulfillmentStatus").isNotEmpty())
 			.andExpect(jsonPath("$.edition.title").value("2nd Anniversary Private Edition"))
 			.andExpect(jsonPath("$.shipping.recipientName").value("천경신"));
 	}

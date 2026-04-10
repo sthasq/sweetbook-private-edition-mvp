@@ -19,11 +19,11 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
-@Table(name = "order_record")
+@Table(name = "customer_order")
 @Getter
 @Setter
 @NoArgsConstructor
-public class OrderRecord {
+public class CustomerOrder {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,15 +33,18 @@ public class OrderRecord {
 	@JoinColumn(name = "fan_project_id", nullable = false)
 	private FanProject fanProject;
 
-	@Column(name = "sweetbook_order_uid", nullable = false, length = 120)
-	private String sweetbookOrderUid;
+	@Column(name = "order_uid", nullable = false, length = 120)
+	private String orderUid;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 32)
-	private FulfillmentStatus status;
+	private OrderStatus status = OrderStatus.CREATED;
 
 	@Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
 	private BigDecimal totalAmount;
+
+	@Column(nullable = false)
+	private boolean simulated;
 
 	@Column(name = "recipient_name", nullable = false, length = 100)
 	private String recipientName;

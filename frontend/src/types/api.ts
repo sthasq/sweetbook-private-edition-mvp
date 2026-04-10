@@ -108,8 +108,10 @@ export interface EstimateResponse {
 }
 
 export interface OrderResponse {
-  orderUid: string;
-  orderStatus: string;
+  siteOrderUid: string;
+  siteOrderStatus: string;
+  fulfillmentOrderUid: string | null;
+  fulfillmentStatus: string;
   totalAmount: number;
   simulated: boolean;
 }
@@ -131,8 +133,10 @@ export interface OrderSummaryEdition {
 export interface ProjectOrderSummary {
   projectId: number;
   projectStatus: string;
-  orderStatus: string;
-  orderUid: string;
+  siteOrderStatus: string;
+  siteOrderUid: string;
+  fulfillmentStatus: string;
+  fulfillmentOrderUid: string | null;
   totalAmount: number;
   simulated: boolean;
   orderedAt: string;
@@ -155,6 +159,8 @@ export interface MyProjectSummary {
   editionTitle: string;
   status: string;
   mode: string;
+  siteOrderStatus: string | null;
+  fulfillmentStatus: string | null;
   updatedAt: string;
   continuePath: string;
 }

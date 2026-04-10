@@ -126,15 +126,19 @@ record ShippingRequest(
 }
 
 record OrderResponse(
-	String orderUid,
-	String orderStatus,
+	String siteOrderUid,
+	String siteOrderStatus,
+	String fulfillmentOrderUid,
+	String fulfillmentStatus,
 	BigDecimal totalAmount,
 	boolean simulated
 ) {
 	static OrderResponse from(ProjectViews.OrderResult orderResult) {
 		return new OrderResponse(
-			orderResult.orderUid(),
-			orderResult.status(),
+			orderResult.siteOrderUid(),
+			orderResult.siteOrderStatus(),
+			orderResult.fulfillmentOrderUid(),
+			orderResult.fulfillmentStatus(),
 			orderResult.totalAmount(),
 			orderResult.simulated()
 		);

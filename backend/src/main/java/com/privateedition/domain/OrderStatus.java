@@ -1,7 +1,7 @@
 package com.privateedition.domain;
 
 public enum OrderStatus {
-	ESTIMATED,
+	CREATED,
 	PAID,
 	CANCELLED
 }

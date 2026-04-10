@@ -157,10 +157,14 @@ if ((Test-BlankEnv "GOOGLE_CLIENT_ID") -or (Test-BlankEnv "GOOGLE_CLIENT_SECRET"
 }
 
 if ($Database -eq "mysql") {
-  $portOwner = Get-PortOwnerProcessName -Port 3306
+  $mysqlHost = if ($env:MYSQL_HOST) { $env:MYSQL_HOST } else { "localhost" }
+  $mysqlPort = if ($env:MYSQL_PORT) { $env:MYSQL_PORT } else { "3307" }
+  $mysqlDatabase = if ($env:MYSQL_DATABASE) { $env:MYSQL_DATABASE } else { "private_edition" }
+
+  $portOwner = Get-PortOwnerProcessName -Port ([int]$mysqlPort)
   if ($portOwner -and -not (Test-DockerOwnedPort -ProcessName $portOwner)) {
-    Write-Host "Port 3306 is already in use by '$portOwner'." -ForegroundColor Red
-    Write-Host "Docker MySQL needs localhost:3306. Stop that service first, then run .\\run_local.ps1 again." -ForegroundColor Yellow
+    Write-Host "Port $mysqlPort is already in use by '$portOwner'." -ForegroundColor Red
+    Write-Host "Docker MySQL needs ${mysqlHost}:$mysqlPort. Stop that service first, then run .\\run_local.ps1 again." -ForegroundColor Yellow
     exit 1
   }
 
@@ -185,20 +189,14 @@ if ($Database -eq "mysql") {
     if ($containerRootPassword -and $env:MYSQL_ROOT_PASSWORD -and $containerRootPassword -ne $env:MYSQL_ROOT_PASSWORD) {
       Write-Host "Docker MySQL container credentials do not match this project's .env." -ForegroundColor Red
       Write-Host "This usually means the container or volume was created with older credentials." -ForegroundColor Yellow
-      Write-Host "Run 'docker compose down -v' in the project root, then run .\\run_local.ps1 again to recreate MySQL on localhost:3306." -ForegroundColor Yellow
+      Write-Host "Run 'docker compose down -v' in the project root, then run .\\run_local.ps1 again to recreate MySQL on ${mysqlHost}:$mysqlPort." -ForegroundColor Yellow
       exit 1
     }
   }
 
   if (-not $env:SPRING_DATASOURCE_URL) {
-    $mysqlHost = if ($env:MYSQL_HOST) { $env:MYSQL_HOST } else { "localhost" }
-    $mysqlPort = if ($env:MYSQL_PORT) { $env:MYSQL_PORT } else { "3306" }
-    $mysqlDatabase = if ($env:MYSQL_DATABASE) { $env:MYSQL_DATABASE } else { "private_edition" }
     $env:SPRING_DATASOURCE_URL = "jdbc:mysql://${mysqlHost}:${mysqlPort}/${mysqlDatabase}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul"
   } else {
-    $mysqlHost = if ($env:MYSQL_HOST) { $env:MYSQL_HOST } else { "localhost" }
-    $mysqlPort = if ($env:MYSQL_PORT) { $env:MYSQL_PORT } else { "3306" }
-    $mysqlDatabase = if ($env:MYSQL_DATABASE) { $env:MYSQL_DATABASE } else { "private_edition" }
     $env:SPRING_DATASOURCE_URL = "jdbc:mysql://${mysqlHost}:${mysqlPort}/${mysqlDatabase}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul"
   }
 

@@ -1,9 +1,12 @@
 package com.privateedition.application;
 
 import com.privateedition.domain.AppUser;
+import com.privateedition.domain.CustomerOrder;
+import com.privateedition.domain.CustomerOrderRepository;
 import com.privateedition.domain.FanProject;
 import com.privateedition.domain.FanProjectRepository;
 import com.privateedition.domain.FanProjectStatus;
+import com.privateedition.domain.FulfillmentStatus;
 import com.privateedition.domain.OrderRecord;
 import com.privateedition.domain.OrderRecordRepository;
 import com.privateedition.domain.OrderStatus;
@@ -12,6 +15,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -24,6 +28,7 @@ public class ProjectService {
 
 	private final EditionService editionService;
 	private final FanProjectRepository fanProjectRepository;
+	private final CustomerOrderRepository customerOrderRepository;
 	private final OrderRecordRepository orderRecordRepository;
 	private final ProjectPreviewAssembler projectPreviewAssembler;
 	private final SweetbookService sweetbookService;
@@ -138,58 +143,67 @@ public class ProjectService {
 			throw new AppException(HttpStatus.BAD_REQUEST, "Generate the Sweetbook book before ordering");
 		}
 
-		OrderRecord existing = orderRecordRepository.findByFanProjectId(projectId).orElse(null);
-		if (existing != null) {
-			return new ProjectViews.OrderResult(
+		CustomerOrder existingOrder = customerOrderRepository.findByFanProjectId(projectId).orElse(null);
+		if (existingOrder != null) {
+			return toOrderResult(
 				projectId,
-				existing.getSweetbookOrderUid(),
-				existing.getStatus().name(),
-				existing.getTotalAmount(),
-				!sweetbookService.isLiveEnabled(),
+				existingOrder,
+				orderRecordRepository.findByFanProjectId(projectId).orElse(null),
 				Map.of("reused", true)
 			);
 		}
 
-		ProjectViews.OrderResult result = sweetbookService.createOrder(projectId, project.getSweetbookBookUid(), shipping);
+		ProjectViews.Estimate estimate = sweetbookService.estimateOrder(projectId, project.getSweetbookBookUid(), shipping);
+		Instant orderedAt = Instant.now();
 
-		OrderRecord orderRecord = new OrderRecord();
-		orderRecord.setFanProject(project);
-		orderRecord.setSweetbookOrderUid(result.orderUid());
-		orderRecord.setStatus(OrderStatus.valueOf(result.status()));
-		orderRecord.setTotalAmount(result.totalAmount());
-		orderRecord.setRecipientName(shipping.recipientName());
-		orderRecord.setRecipientPhone(shipping.recipientPhone());
-		orderRecord.setPostalCode(shipping.postalCode());
-		orderRecord.setAddress1(shipping.address1());
-		orderRecord.setAddress2(shipping.address2());
-		orderRecord.setOrderedAt(Instant.now());
-		orderRecordRepository.save(orderRecord);
+		CustomerOrder customerOrder = new CustomerOrder();
+		customerOrder.setFanProject(project);
+		customerOrder.setOrderUid("site-order-" + UUID.randomUUID());
+		customerOrder.setStatus(OrderStatus.PAID);
+		customerOrder.setTotalAmount(estimate.totalAmount());
+		customerOrder.setSimulated(estimate.simulated());
+		customerOrder.setRecipientName(shipping.recipientName());
+		customerOrder.setRecipientPhone(shipping.recipientPhone());
+		customerOrder.setPostalCode(shipping.postalCode());
+		customerOrder.setAddress1(shipping.address1());
+		customerOrder.setAddress2(shipping.address2());
+		customerOrder.setOrderedAt(orderedAt);
+		customerOrder = customerOrderRepository.save(customerOrder);
+
+		OrderRecord fulfillmentOrder = submitFulfillmentOrder(project, shipping, customerOrder, orderedAt);
+		if (fulfillmentOrder != null && fulfillmentOrder.getStatus() == FulfillmentStatus.SIMULATED && !customerOrder.isSimulated()) {
+			customerOrder.setSimulated(true);
+			customerOrder = customerOrderRepository.save(customerOrder);
+		}
 
 		project.setStatus(FanProjectStatus.ORDERED);
 		fanProjectRepository.save(project);
-		return result;
+		return toOrderResult(projectId, customerOrder, fulfillmentOrder, Map.of());
 	}
 
 	public ProjectViews.OrderSummary getOrderSummary(Long projectId) {
 		FanProject project = requireOwnedProject(projectId);
-		OrderRecord orderRecord = orderRecordRepository.findByFanProjectId(projectId)
+		CustomerOrder customerOrder = customerOrderRepository.findByFanProjectId(projectId)
 			.orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Order not found for project: " + projectId));
+		OrderRecord orderRecord = orderRecordRepository.findByFanProjectId(projectId).orElse(null);
 		EditionViews.Detail edition = editionService.getEdition(project.getEditionVersion().getEdition().getId());
 
 		return new ProjectViews.OrderSummary(
 			projectId,
 			project.getStatus().name(),
-			orderRecord.getStatus().name(),
-			orderRecord.getSweetbookOrderUid(),
-			orderRecord.getTotalAmount(),
-			!sweetbookService.isLiveEnabled(),
-			orderRecord.getOrderedAt(),
+			customerOrder.getStatus().name(),
+			customerOrder.getOrderUid(),
+			resolveFulfillmentStatus(orderRecord),
+			orderRecord == null ? null : orderRecord.getSweetbookOrderUid(),
+			customerOrder.getTotalAmount(),
+			customerOrder.isSimulated(),
+			customerOrder.getOrderedAt(),
 			new ProjectViews.OrderShipping(
-				orderRecord.getRecipientName(),
-				orderRecord.getRecipientPhone(),
-				orderRecord.getPostalCode(),
-				orderRecord.getAddress1(),
-				orderRecord.getAddress2()
+				customerOrder.getRecipientName(),
+				customerOrder.getRecipientPhone(),
+				customerOrder.getPostalCode(),
+				customerOrder.getAddress1(),
+				customerOrder.getAddress2()
 			),
 			new ProjectViews.OrderEdition(
 				edition.id(),
@@ -234,12 +248,17 @@ public class ProjectService {
 	}
 
 	private ProjectViews.MyProjectSummary toMyProjectSummary(FanProject project) {
+		CustomerOrder customerOrder = customerOrderRepository.findByFanProjectId(project.getId()).orElse(null);
+		OrderRecord fulfillmentOrder = orderRecordRepository.findByFanProjectId(project.getId()).orElse(null);
+
 		return new ProjectViews.MyProjectSummary(
 			project.getId(),
 			project.getEditionVersion().getEdition().getId(),
 			project.getEditionVersion().getEdition().getTitle(),
 			project.getStatus().name(),
 			resolveMode(project),
+			customerOrder == null ? null : customerOrder.getStatus().name(),
+			resolveFulfillmentStatus(fulfillmentOrder),
 			project.getUpdatedAt(),
 			resolveContinuePath(project)
 		);
@@ -260,5 +279,64 @@ public class ProjectService {
 			case BOOK_CREATED, FINALIZED -> "/projects/" + project.getId() + "/shipping";
 			case ORDERED -> "/projects/" + project.getId() + "/complete";
 		};
+	}
+
+	private OrderRecord submitFulfillmentOrder(
+		FanProject project,
+		ProjectCommands.Shipping shipping,
+		CustomerOrder customerOrder,
+		Instant orderedAt
+	) {
+		try {
+			ProjectViews.FulfillmentResult result = sweetbookService.createOrder(project.getId(), project.getSweetbookBookUid(), shipping);
+
+			OrderRecord orderRecord = new OrderRecord();
+			orderRecord.setFanProject(project);
+			orderRecord.setSweetbookOrderUid(result.orderUid());
+			orderRecord.setStatus(toFulfillmentStatus(result));
+			orderRecord.setTotalAmount(customerOrder.getTotalAmount());
+			orderRecord.setRecipientName(customerOrder.getRecipientName());
+			orderRecord.setRecipientPhone(customerOrder.getRecipientPhone());
+			orderRecord.setPostalCode(customerOrder.getPostalCode());
+			orderRecord.setAddress1(customerOrder.getAddress1());
+			orderRecord.setAddress2(customerOrder.getAddress2());
+			orderRecord.setOrderedAt(orderedAt);
+			return orderRecordRepository.save(orderRecord);
+		} catch (RuntimeException exception) {
+			return null;
+		}
+	}
+
+	private FulfillmentStatus toFulfillmentStatus(ProjectViews.FulfillmentResult result) {
+		if (result.simulated()) {
+			return FulfillmentStatus.SIMULATED;
+		}
+		return switch (result.status()) {
+			case "CANCELLED" -> FulfillmentStatus.CANCELLED;
+			case "FAILED" -> FulfillmentStatus.FAILED;
+			default -> FulfillmentStatus.SUBMITTED;
+		};
+	}
+
+	private String resolveFulfillmentStatus(OrderRecord orderRecord) {
+		return orderRecord == null ? FulfillmentStatus.PENDING_SUBMISSION.name() : orderRecord.getStatus().name();
+	}
+
+	private ProjectViews.OrderResult toOrderResult(
+		Long projectId,
+		CustomerOrder customerOrder,
+		OrderRecord fulfillmentOrder,
+		Map<String, Object> raw
+	) {
+		return new ProjectViews.OrderResult(
+			projectId,
+			customerOrder.getOrderUid(),
+			customerOrder.getStatus().name(),
+			fulfillmentOrder == null ? null : fulfillmentOrder.getSweetbookOrderUid(),
+			resolveFulfillmentStatus(fulfillmentOrder),
+			customerOrder.getTotalAmount(),
+			customerOrder.isSimulated(),
+			raw
+		);
 	}
 }
