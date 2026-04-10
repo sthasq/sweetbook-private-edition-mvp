@@ -78,14 +78,14 @@ export default function Layout() {
           <Link to="/" className="flex items-center gap-3 group" onClick={() => setMenuOpen(false)}>
             <div>
               <span className="font-headline text-2xl font-bold italic tracking-tight text-brand-700">
-                Private Edition
+                PlayPick
               </span>
               <p className="mt-1 hidden text-[10px] font-semibold uppercase tracking-[0.22em] text-warm-500 md:block">
-                Creator-certified private archive
+                좋아하는 장면
               </p>
             </div>
             <span className="hidden rounded-sm bg-gold-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-500 lg:inline-flex">
-              Official
+              픽
             </span>
           </Link>
 
@@ -129,7 +129,7 @@ export default function Layout() {
             type="button"
             className="rounded bg-white/80 p-2 text-warm-500 transition hover:text-brand-700 md:hidden"
             onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Toggle menu"
+            aria-label={menuOpen ? "메뉴 닫기" : "메뉴 열기"}
           >
             {menuOpen ? (
               <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -211,18 +211,18 @@ export default function Layout() {
         <div className="mx-auto flex max-w-screen-2xl flex-col gap-8 px-6 md:flex-row md:items-end md:justify-between md:px-8">
           <div>
             <p className="font-headline text-lg font-bold italic text-brand-700">
-              Private Edition
+              PlayPick
             </p>
             <p className="mt-2 max-w-md text-sm leading-relaxed text-warm-500">
-              공식 에디션과 개인의 기억을 한 권의 인쇄물로 남기는 프라이빗 팬북 서비스.
+              좋아했던 장면을 내 취향대로 남기는 굿즈 서비스.
             </p>
           </div>
           <div className="flex flex-wrap gap-8 text-xs font-semibold uppercase tracking-[0.2em] text-warm-500">
             <Link to="/" className="transition hover:text-brand-700">
-              Browse Editions
+              드롭 둘러보기
             </Link>
             <Link to="/studio" className="transition hover:text-brand-700">
-              Creator Studio
+              크리에이터 스튜디오
             </Link>
           </div>
         </div>

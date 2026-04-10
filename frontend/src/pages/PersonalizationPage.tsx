@@ -165,7 +165,7 @@ export default function PersonalizationPage() {
   const previewTitle = summaryEntries[0]?.value ?? preview.edition.title;
   const previewSubtitle =
     summaryEntries[1]?.value ??
-    "당신의 기억과 문장이 이 책의 개인화 레이어로 인쇄됩니다.";
+    "당신의 기억과 문장이 이 굿즈의 마지막 분위기를 완성합니다.";
 
   return (
     <div className="page-shell">
@@ -175,13 +175,13 @@ export default function PersonalizationPage() {
         <div className="grid gap-10 lg:grid-cols-2 lg:items-start">
           <section className="min-w-0">
             <div className="mb-10">
-              <p className="editorial-label">Step 02 of 04</p>
+              <p className="editorial-label">이제 내 얘기 넣기</p>
               <h1 className="mt-4 text-4xl font-bold leading-tight text-brand-700 md:text-5xl">
-                당신만의 페이지를 채워 넣는 단계
+                이제 내 이야기를 넣을 차례
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-warm-500">
-                공식 에디션 위에 들어갈 개인의 기억을 정리해 주세요. 입력 내용은 미리보기
-                단계에서 인쇄용 구성으로 합쳐집니다.
+                좋아하는 장면에 내 이야기를 더해 주세요. 입력 내용은 미리보기 단계에서 한 권의
+                구성으로 합쳐집니다.
               </p>
             </div>
 
@@ -189,23 +189,23 @@ export default function PersonalizationPage() {
               <div className="editorial-card mb-8 p-6">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <p className="editorial-label text-brand-700">YouTube Assisted Draft</p>
+                    <p className="editorial-label text-brand-700">YouTube로 먼저 채우기</p>
                     <p className="mt-3 text-lg font-semibold text-stone-900">
-                      구독 채널과 대표 영상을 바탕으로 개인화 초안을 만들 수 있습니다.
+                      구독 채널과 대표 영상을 바탕으로 초안을 먼저 채울 수 있어요.
                     </p>
                     <p className="mt-2 text-sm leading-relaxed text-warm-500">
                       {youtubeConnected
-                        ? "채널을 고른 뒤 자동 채우기를 누르면 관련 데이터가 현재 폼에 반영됩니다."
-                        : "먼저 Google 계정을 연결하면 YouTube 데이터를 활용할 수 있습니다."}
+                        ? "채널을 고르고 채워보기를 누르면 지금 폼에 바로 들어와요."
+                        : "Google 계정을 연결하면 YouTube 데이터를 가져올 수 있어요."}
                     </p>
                   </div>
                   <button onClick={handleYouTubeConnect} className="editorial-button-secondary">
-                    {youtubeConnected ? "Google 다시 연결" : "Google 로그인"}
+                    {youtubeConnected ? "Google 다시 연결하기" : "Google 연결하기"}
                   </button>
                 </div>
 
                 {youtubeSyncing && (
-                  <p className="mt-4 text-sm text-warm-500">YouTube 연결 상태를 확인하는 중입니다.</p>
+                  <p className="mt-4 text-sm text-warm-500">YouTube 연결 상태 확인 중이에요.</p>
                 )}
 
                 {youtubeConnected && (
@@ -213,7 +213,7 @@ export default function PersonalizationPage() {
                     <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
                       <div>
                         <label htmlFor="youtube-channel" className="editorial-label text-warm-500">
-                          Subscribed channel
+                          구독 채널
                         </label>
                         <select
                           id="youtube-channel"
@@ -235,20 +235,20 @@ export default function PersonalizationPage() {
                         onClick={handleAnalyzeChannel}
                         className="editorial-button-primary disabled:opacity-50"
                       >
-                        {youtubeAnalyzing ? "불러오는 중..." : "자동 채우기"}
+                        {youtubeAnalyzing ? "불러오는 중..." : "채워보기"}
                       </button>
                     </div>
 
                     {subscriptions.length === 0 && !youtubeSyncing && (
                       <p className="mt-4 text-sm text-warm-500">
-                        읽어올 수 있는 구독 채널이 없습니다. 다른 계정으로 다시 연결하거나 직접
-                        입력해 주세요.
+                        불러올 구독 채널이 없어요. 다른 계정으로 다시 연결하거나 직접 입력해
+                        주세요.
                       </p>
                     )}
 
                     {topVideos.length > 0 && (
                       <div className="mt-5">
-                        <p className="editorial-label text-warm-500">Imported top videos</p>
+                        <p className="editorial-label text-warm-500">같이 불러온 영상</p>
                         <div className="mt-3 flex flex-wrap gap-2">
                           {topVideos.slice(0, 5).map((video) => (
                             <span
@@ -273,7 +273,7 @@ export default function PersonalizationPage() {
                     <label htmlFor={field.fieldKey} className="block">
                       <span className="font-headline text-xl text-brand-700">{field.label}</span>
                       <span className="ml-3 text-xs uppercase tracking-[0.18em] text-warm-500">
-                        {field.required ? "Required" : "Optional"}
+                        {field.required ? "필수" : "선택"}
                       </span>
                     </label>
                     <div className="mt-3">
@@ -342,7 +342,7 @@ export default function PersonalizationPage() {
                 onClick={handleSave}
                 className="editorial-button-primary min-w-[220px] disabled:opacity-50"
               >
-                {saving ? "저장 중..." : "미리보기로 이동"}
+                {saving ? "저장 중..." : "다음으로 넘어가기"}
               </button>
             </div>
           </section>
@@ -351,28 +351,30 @@ export default function PersonalizationPage() {
             <div className="editorial-panel overflow-hidden p-6 md:p-8">
               <div className="mb-6 flex items-center justify-between">
                 <div>
-                  <p className="editorial-label text-gold-500">Live Archival Preview</p>
+                  <p className="editorial-label text-gold-500">옆에서 바로 보기</p>
                   <p className="mt-2 text-sm text-warm-500">{preview.edition.title}</p>
                 </div>
                 <div className="rounded bg-white/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-700">
-                  Draft
+                  초안
                 </div>
               </div>
 
               <div className="editorial-card bg-[linear-gradient(180deg,#fffefb_0%,#f7f3ec_100%)] p-8">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-gold-500">
-                    Chapter Draft
+                    지금 초안
                   </span>
                   <span className="rounded bg-gold-400/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-gold-500">
-                    Official Archive
+                    기본 드롭
                   </span>
                 </div>
                 <h2 className="mt-8 text-3xl font-bold leading-tight text-brand-700">
                   {previewTitle}
                 </h2>
                 <p className="mt-3 text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">
-                  Personalized for {readStringValue(values.fanNickname) || "you"}
+                  {readStringValue(values.fanNickname)
+                    ? `${readStringValue(values.fanNickname)}님을 위한 미리보기`
+                    : "당신을 위한 미리보기"}
                 </p>
 
                 <div className="mt-8 overflow-hidden rounded">
@@ -409,7 +411,7 @@ export default function PersonalizationPage() {
 
               {topVideos.length > 0 && (
                 <div className="mt-6 rounded bg-white/80 p-5 shadow-sm">
-                  <p className="editorial-label text-brand-700">Referenced videos</p>
+                  <p className="editorial-label text-brand-700">가져온 영상</p>
                   <div className="mt-4 space-y-3">
                     {topVideos.slice(0, 3).map((video) => (
                       <div key={video.videoId} className="flex items-center gap-3">

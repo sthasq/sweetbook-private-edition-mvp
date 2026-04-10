@@ -9,11 +9,11 @@ import ProjectStepper from "../components/ProjectStepper";
 function siteOrderLabel(status: string) {
   switch (status) {
     case "CREATED":
-      return "주문 생성됨";
+      return "주문 접수됨";
     case "PAID":
       return "주문 확정";
     case "CANCELLED":
-      return "취소됨";
+      return "주문 취소";
     default:
       return status;
   }
@@ -22,15 +22,15 @@ function siteOrderLabel(status: string) {
 function fulfillmentLabel(status: string) {
   switch (status) {
     case "PENDING_SUBMISSION":
-      return "발주 대기";
+      return "제작 대기";
     case "SUBMITTED":
-      return "Sweetbook 발주 완료";
+      return "제작 접수 완료";
     case "SIMULATED":
-      return "데모 발주";
+      return "데모 처리";
     case "FAILED":
-      return "발주 실패";
+      return "제작 요청 실패";
     case "CANCELLED":
-      return "발주 취소";
+      return "제작 취소";
     default:
       return status;
   }
@@ -71,7 +71,7 @@ export default function OrderCompletePage() {
       <ProjectStepper current="complete" className="mb-10" />
 
       <div className="text-center">
-        <p className="editorial-label">Order Archive Complete</p>
+        <p className="editorial-label">주문 완료</p>
         <div className="mx-auto mb-8 mt-6 flex h-20 w-20 items-center justify-center rounded-full bg-brand-100/70">
           <svg
             className="h-10 w-10 text-brand-600"
@@ -102,15 +102,15 @@ export default function OrderCompletePage() {
 
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
         <section className="editorial-card p-6 md:p-8">
-          <p className="editorial-label">Site Order</p>
-          <h2 className="mt-3 text-2xl text-stone-900">사이트 주문 정보</h2>
+          <p className="editorial-label">주문 접수</p>
+          <h2 className="mt-3 text-2xl text-stone-900">주문 정보</h2>
           <div className="mt-4 space-y-3 text-sm">
             <div className="flex justify-between gap-4">
-              <span className="text-stone-500">사이트 주문번호</span>
+              <span className="text-stone-500">주문번호</span>
               <span className="font-mono text-stone-900">{summary.siteOrderUid}</span>
             </div>
             <div className="flex justify-between gap-4">
-              <span className="text-stone-500">사이트 주문 상태</span>
+              <span className="text-stone-500">주문 상태</span>
               <span className="font-medium text-stone-900">
                 {siteOrderLabel(summary.siteOrderStatus)}
               </span>
@@ -129,17 +129,17 @@ export default function OrderCompletePage() {
         </section>
 
         <section className="editorial-card p-6 md:p-8">
-          <p className="editorial-label">Fulfillment</p>
-          <h2 className="mt-3 text-2xl text-stone-900">Sweetbook 제작/출고 연동</h2>
+          <p className="editorial-label">제작 진행</p>
+          <h2 className="mt-3 text-2xl text-stone-900">제작 진행 정보</h2>
           <div className="mt-4 space-y-3 text-sm">
             <div className="flex justify-between gap-4">
-              <span className="text-stone-500">발주 상태</span>
+              <span className="text-stone-500">진행 상태</span>
               <span className="font-medium text-stone-900">
                 {fulfillmentLabel(summary.fulfillmentStatus)}
               </span>
             </div>
             <div className="flex justify-between gap-4">
-              <span className="text-stone-500">Sweetbook 주문번호</span>
+              <span className="text-stone-500">제작 번호</span>
               <span className="max-w-[14rem] break-all text-right font-mono text-stone-900">
                 {summary.fulfillmentOrderUid ?? "아직 발급되지 않음"}
               </span>
@@ -148,8 +148,8 @@ export default function OrderCompletePage() {
         </section>
 
         <section className="editorial-panel p-6 md:p-8 lg:col-span-2">
-          <p className="editorial-label">Shipping Record</p>
-          <h2 className="mt-3 text-2xl text-stone-900">배송 정보</h2>
+          <p className="editorial-label">받는 곳</p>
+          <h2 className="mt-3 text-2xl text-stone-900">받는 곳 정보</h2>
           <div className="mt-4 space-y-3 text-sm">
             <div className="flex justify-between gap-4">
               <span className="text-stone-500">받는 분</span>
@@ -176,10 +176,10 @@ export default function OrderCompletePage() {
       {summary.simulated && (
         <div className="mt-6 rounded-sm border border-amber-300/80 bg-amber-50/70 p-5">
           <p className="text-sm font-semibold text-amber-800">
-            현재 사이트 주문은 저장되었고, Sweetbook 연동은 데모 모드로 처리되었습니다.
+            주문은 저장됐고, 제작 연결은 데모로 처리됐습니다.
           </p>
           <p className="mt-1 text-xs text-amber-700">
-            실제 제작 발주는 발생하지 않았으며, 내부 주문 흐름만 검증할 수 있는 상태입니다.
+            실제 제작은 아직 들어가지 않았고, 주문 흐름만 미리 확인할 수 있는 상태예요.
           </p>
         </div>
       )}

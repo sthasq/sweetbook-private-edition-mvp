@@ -28,7 +28,7 @@ const STUDIO_STEPS = [
     id: "details",
     badge: "2",
     title: "기본 정보",
-    description: "에디션 제목, 커버, 공식 메시지를 채웁니다.",
+    description: "드롭 제목, 커버, 메시지를 채웁니다.",
   },
   {
     id: "assets",
@@ -416,7 +416,7 @@ export default function StudioPage() {
       <div className="flex flex-col gap-4 border-b border-stone-200/70 pb-8 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           <div>
-            <p className="editorial-label">Creator Workspace</p>
+            <p className="editorial-label">스튜디오</p>
             <h1 className="mt-3 text-4xl font-bold text-brand-700 md:text-5xl">크리에이터 스튜디오</h1>
           </div>
           <span className="rounded bg-gold-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-500">
@@ -605,7 +605,7 @@ export default function StudioPage() {
           </section>
 
           <section className="editorial-card p-6 md:p-8">
-            <h2 className="text-lg font-semibold text-stone-900">공식 메시지</h2>
+            <h2 className="text-lg font-semibold text-stone-900">크리에이터 메시지</h2>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <div className="space-y-3 rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
                 <p className="text-sm font-semibold text-stone-900">인트로 메시지</p>
@@ -781,7 +781,7 @@ export default function StudioPage() {
                     <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(240px,0.85fr)]">
                       <div className="min-w-0">
                         {asset.assetType === "MESSAGE" ? (
-                          <textarea rows={5} value={asset.content} onChange={(e) => updateAsset(index, "content", e.target.value)} className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="공식 메시지 내용" />
+                          <textarea rows={5} value={asset.content} onChange={(e) => updateAsset(index, "content", e.target.value)} className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="메시지를 입력해 주세요" />
                         ) : (
                           <input value={asset.content} onChange={(e) => updateAsset(index, "content", e.target.value)} className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder={asset.assetType === "VIDEO" ? "영상 링크" : "이미지 URL"} />
                         )}
@@ -867,7 +867,7 @@ export default function StudioPage() {
 
               <div className="mt-4 grid gap-4 md:grid-cols-3">
                 <div className="rounded-2xl border border-stone-200 bg-white/80 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">공식 메시지</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">크리에이터 메시지</p>
                   <p className="mt-2 text-2xl font-bold text-stone-900">
                     {[intro.title, intro.message, closing.title, closing.message].filter(Boolean).length}/4
                   </p>

@@ -10,8 +10,8 @@ CREATE TABLE app_user (
 
 INSERT INTO app_user (id, email, password_hash, display_name, role, created_at)
 VALUES
-    (1, 'creator@privateedition.local', '$2b$12$iq2R3nssDoLY58uOVpMBgukwN63bDRP/kivjwivZzD4h0/aOOhU8m', 'Private Edition Creator', 'CREATOR', CURRENT_TIMESTAMP(6)),
-    (2, 'fan@privateedition.local', '$2b$12$RTWje6cvlSs6qn0iCzfsteGpQXoBrqEXB4uWuNFHm2FgQs1Vr17W2', 'Demo Fan', 'FAN', CURRENT_TIMESTAMP(6));
+    (1, 'creator@playpick.local', '$2b$12$iq2R3nssDoLY58uOVpMBgukwN63bDRP/kivjwivZzD4h0/aOOhU8m', 'PlayPick Creator', 'CREATOR', CURRENT_TIMESTAMP(6)),
+    (2, 'fan@playpick.local', '$2b$12$RTWje6cvlSs6qn0iCzfsteGpQXoBrqEXB4uWuNFHm2FgQs1Vr17W2', 'Demo Fan', 'FAN', CURRENT_TIMESTAMP(6));
 
 ALTER TABLE creator_profile ADD COLUMN user_id BIGINT;
 UPDATE creator_profile SET user_id = 1 WHERE id = 1;

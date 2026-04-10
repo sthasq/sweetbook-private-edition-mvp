@@ -9,28 +9,28 @@ import ErrorBox from "../components/ErrorBox";
 const HOW_IT_WORKS = [
   {
     step: "01",
-    title: "크리에이터가 공식 에디션을 발행합니다",
+    title: "크리에이터가 드롭을 올립니다",
     description:
-      "한 번 승인된 공식 레이아웃과 메시지를 기반으로 팬북의 기준이 되는 아카이브를 만듭니다.",
+      "좋아하는 장면과 이야기를 담아, 고를 수 있는 굿즈를 준비합니다.",
   },
   {
     step: "02",
-    title: "팬이 자신의 기억으로 개인화합니다",
+    title: "팬이 자기 취향대로 채웁니다",
     description:
-      "닉네임, 관계의 시간, 인상 깊었던 장면, 팬 메시지를 더해 각자만의 책으로 바꿉니다.",
+      "닉네임, 추억, 좋아한 장면, 한마디를 넣어 내 버전으로 바꿉니다.",
   },
   {
     step: "03",
-    title: "실물 기념책으로 주문합니다",
+    title: "실물 굿즈로 받아봅니다",
     description:
-      "미리보기로 확인한 결과물을 그대로 인쇄 주문해 오래 남는 소장품으로 완성합니다.",
+      "미리보기로 확인한 뒤 그대로 주문해서 오래 간직할 수 있습니다.",
   },
 ] as const;
 
 const TRUST_POINTS = [
-  "Creator-certified official drop",
-  "한정된 에디션 기반 개인화",
-  "Sweetbook 실물 제작/주문 연동",
+  "직접 준비한 구성",
+  "내 문장과 사진 추가",
+  "실물 제작까지 연결",
 ] as const;
 
 export default function LandingPage() {
@@ -51,29 +51,23 @@ export default function LandingPage() {
       <section className="overflow-hidden">
         <div className="page-shell grid items-center gap-14 lg:grid-cols-12 lg:py-20">
           <div className="lg:col-span-6">
-            <p className="editorial-label">Official Creator-Certified Fan Book</p>
-            <h1 className="mt-6 max-w-3xl text-5xl font-bold leading-[1.08] tracking-tight text-brand-700 md:text-7xl">
-              공식 에디션 위에
-              <br />
-              <span className="italic font-normal">나만의 기억을 인쇄하는 책.</span>
-            </h1>
-            <p className="mt-8 max-w-2xl text-lg leading-relaxed text-warm-500">
-              Private Edition은 크리에이터가 발행한 공식 팬북을 팬 각자의 추억과 메시지로
-              개인화해 실물 책으로 주문하는 아카이브형 굿즈 서비스입니다.
+            <p className="editorial-label">좋아하는 장면을 굿즈로</p>
+            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-warm-500">
+              좋아했던 장면에 내 추억 한 줄을 더해, 오래 두고 볼 굿즈로 남겨요.
             </p>
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
               <a href="#editions" className="editorial-button-primary">
-                공식 드롭 보기
+                드롭 보러가기
               </a>
               <a href="#how-it-works" className="editorial-button-secondary">
-                작동 방식 보기
+                어떻게 만드는지 보기
               </a>
             </div>
             <div className="mt-10 grid gap-4 sm:grid-cols-3">
               {TRUST_POINTS.map((item) => (
                 <div key={item} className="rounded bg-white/70 px-4 py-4 shadow-sm">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-warm-500">
-                    Archive
+                    포인트
                   </p>
                   <p className="mt-2 text-sm leading-relaxed text-stone-800">{item}</p>
                 </div>
@@ -85,27 +79,26 @@ export default function LandingPage() {
             <div className="paper-stack relative mx-auto max-w-xl">
               <div className="relative overflow-hidden rounded bg-white p-3 shadow-editorial">
                 <div className="absolute right-6 top-6 z-10 rounded bg-gold-400/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-900">
-                  Official drop
+                  새 드롭
                 </div>
                 <img
                   src={
                     featuredEdition
                       ? `https://picsum.photos/seed/edition-hero-${featuredEdition.id}/900/1200`
-                      : "https://picsum.photos/seed/private-edition-hero/900/1200"
+                      : "https://picsum.photos/seed/playpick-hero/900/1200"
                   }
-                  alt={featuredEdition?.title ?? "Private Edition cover preview"}
+                  alt={featuredEdition?.title ?? "PlayPick 커버 미리보기"}
                   className="aspect-[4/5] w-full rounded object-cover"
                 />
               </div>
             </div>
             <div className="editorial-glass absolute -bottom-10 left-0 max-w-sm rounded-lg border border-stone-200/60 p-6 shadow-editorial">
-              <p className="editorial-label">Current Release</p>
+              <p className="editorial-label">지금 눈여겨볼 드롭</p>
               <p className="mt-3 font-headline text-2xl text-brand-700">
-                {featuredEdition?.title ?? "Creator-certified private archive"}
+                {featuredEdition?.title ?? "새로 올라온 굿즈"}
               </p>
               <p className="mt-3 text-sm leading-relaxed text-warm-500">
-                공식적으로 큐레이션된 에디션을 시작점으로, 팬 한 명 한 명이 서로 다른
-                기억의 레이어를 추가합니다.
+                마음에 드는 드롭을 고른 뒤, 내 이야기 한 줄을 더해 나만의 굿즈로 완성해 보세요.
               </p>
             </div>
           </div>
@@ -116,13 +109,13 @@ export default function LandingPage() {
         <div className="page-shell">
           <div className="mb-14 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="editorial-label text-gold-500">Archival Release</p>
+              <p className="editorial-label text-gold-500">지금 막 올라온 드롭</p>
               <h2 className="mt-4 text-4xl font-bold text-brand-700 md:text-5xl">
-                Current Official Drops
+                지금 올라온 굿즈
               </h2>
             </div>
             <Link to="/studio" className="editorial-button-link">
-              Creator Studio 열기
+              스튜디오 열기
             </Link>
           </div>
 
@@ -131,10 +124,10 @@ export default function LandingPage() {
           {!loading && !error && editions.length === 0 && (
             <div className="editorial-card px-8 py-16 text-center">
               <p className="font-headline text-2xl text-brand-700">
-                아직 등록된 공식 에디션이 없습니다.
+                아직 올라온 드롭이 없어요.
               </p>
               <p className="mt-3 editorial-muted">
-                크리에이터 스튜디오에서 첫 드롭을 발행하면 이 공간이 아카이브처럼 채워집니다.
+                크리에이터 스튜디오에서 첫 드롭을 올리면 이 공간이 채워집니다.
               </p>
             </div>
           )}
@@ -164,7 +157,7 @@ export default function LandingPage() {
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="rounded bg-gold-400/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-500">
-                              Official Edition
+                              드롭
                             </span>
                             {edition.isVerified && <VerifiedBadge />}
                           </div>
@@ -179,7 +172,7 @@ export default function LandingPage() {
                         </div>
                         <div className="mt-8">
                           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-warm-500">
-                            Curated by
+                            만든 사람
                           </p>
                           <p className="mt-2 text-lg text-brand-700">{edition.creatorName}</p>
                           <p className="mt-1 text-sm text-warm-500">@{edition.creatorHandle}</p>
@@ -197,13 +190,12 @@ export default function LandingPage() {
       <section id="how-it-works" className="py-24">
         <div className="page-shell">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="editorial-label">Crafted For Posterity</p>
+            <p className="editorial-label">만드는 흐름</p>
             <h2 className="mt-4 text-4xl font-bold text-brand-700 md:text-5xl">
-              디지털 팬 경험을 인쇄물로 보존하는 흐름
+              장면 하나가 굿즈가 되기까지
             </h2>
             <p className="mt-5 text-lg leading-relaxed text-warm-500">
-              서비스의 중심은 기능 나열이 아니라, 공식성과 개인화가 함께 살아 있는 한 권의
-              결과물입니다.
+              복잡한 제작 툴보다, 고르고 채우고 받아보는 흐름에 집중했습니다.
             </p>
           </div>
 
@@ -227,16 +219,15 @@ export default function LandingPage() {
         <div className="page-shell">
           <div className="editorial-card grid items-center gap-10 overflow-hidden p-8 md:grid-cols-[1.1fr_0.9fr] md:p-14">
             <div>
-              <p className="editorial-label text-gold-500">Verification Standard</p>
+              <p className="editorial-label text-gold-500">이런 점이 좋아요</p>
               <h2 className="mt-4 text-4xl font-bold text-brand-700 md:text-5xl">
-                공식 굿즈와 개인 기록의 중간지점
+                좋아하는 장면을 더 내 취향으로
               </h2>
               <p className="mt-5 max-w-xl text-lg leading-relaxed text-warm-500">
-                Private Edition은 모두에게 동일한 굿즈가 아니라, 크리에이터가 승인한 기반 위에
-                각자의 기억을 얹어 완성하는 한정형 소장품을 지향합니다.
+                이미 올라온 장면에 내 추억 한 줄만 더해도, 그대로 소장하고 싶은 굿즈가 됩니다.
               </p>
               <div className="mt-8 flex flex-wrap gap-4">
-                {["Creator verified", "Limited drop", "Print-ready flow"].map((label) => (
+                {["직접 고른 구성", "내 문장 더하기", "주문까지 한 번에"].map((label) => (
                   <span
                     key={label}
                     className="rounded bg-surface-low px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-warm-500"
@@ -251,7 +242,7 @@ export default function LandingPage() {
               <div className="rounded border border-gold-400/25 bg-white p-6 shadow-sm">
                 <div className="flex items-center justify-between border-b border-stone-200/70 pb-4">
                   <span className="font-headline italic text-brand-700">
-                    Certificate of Authenticity
+                    이 드롭 한눈에
                   </span>
                   <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-500">
                     No. 402
@@ -266,7 +257,7 @@ export default function LandingPage() {
                   <div>
                     <div className="h-px w-24 bg-stone-900" />
                     <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-500">
-                      Authorized signature
+                      크리에이터 코멘트
                     </p>
                   </div>
                   <div className="rounded-full bg-gold-400/15 p-3 text-gold-500">
@@ -283,13 +274,12 @@ export default function LandingPage() {
 
       <section className="bg-brand-700 py-24 text-center text-white">
         <div className="page-shell max-w-3xl">
-          <h2 className="text-4xl font-bold italic md:text-5xl">Are you a creator?</h2>
+          <h2 className="text-4xl font-bold italic md:text-5xl">크리에이터라면?</h2>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-brand-100">
-            팬과 함께 보존하고 싶은 장면을 공식 에디션으로 발행하고, 개인화 가능한 드롭을
-            직접 설계해보세요.
+            오래 남기고 싶은 장면을 올리면, 팬이 자기 취향대로 채워가는 굿즈가 됩니다.
           </p>
           <Link to="/studio" className="mt-10 inline-flex rounded bg-white px-8 py-4 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 transition hover:bg-surface-low">
-            Open Creator Studio
+            크리에이터 스튜디오
           </Link>
         </div>
       </section>

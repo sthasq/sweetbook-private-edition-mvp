@@ -11,7 +11,7 @@ VALUES
         1,
         JSON_OBJECT(
             'title', 'Every page starts with a message',
-            'message', '한 사람씩 남긴 문장을 모아 팬의 온도를 기록하는 메시지형 Private Edition입니다.'
+            'message', '한 사람씩 남긴 문장을 모아 팬의 온도를 기록하는 메시지형 PlayPick입니다.'
         ),
         JSON_OBJECT(
             'title', 'Letters we keep',

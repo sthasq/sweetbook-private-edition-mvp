@@ -76,7 +76,7 @@ export default function ShippingPage() {
         <ProjectStepper current="shipping" className="mb-10" />
 
         <div className="mb-12">
-          <p className="editorial-label">Shipping & Order</p>
+          <p className="editorial-label">이제 받는 곳 적기</p>
           <h1 className="mt-4 text-5xl font-bold leading-tight tracking-tight text-brand-700 md:text-6xl">
             주문 전에 배송 정보를
             <br />
@@ -90,7 +90,7 @@ export default function ShippingPage() {
               <div className="mb-6 flex items-end justify-between border-b border-stone-200/70 pb-4">
                 <h2 className="text-3xl font-bold text-brand-700">배송 정보</h2>
                 <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-warm-500">
-                  Required
+                  필수
                 </span>
               </div>
 
@@ -144,7 +144,7 @@ export default function ShippingPage() {
             </div>
 
             <div className="rounded bg-surface-low px-6 py-6">
-              <p className="editorial-label text-brand-700">Archive Note</p>
+              <p className="editorial-label text-brand-700">이렇게 진행돼요</p>
               <p className="mt-3 text-sm leading-relaxed text-warm-500">
                 견적을 먼저 확인하면 배송비와 총 금액을 계산하고, 그 다음 최종 주문을 확정할 수
                 있습니다. 실제 Sweetbook 호출이 되지 않는 환경에서는 데모 금액이 표시될 수
@@ -190,7 +190,7 @@ export default function ShippingPage() {
           <aside className="lg:col-span-5 lg:sticky lg:top-28">
             <div className="editorial-panel p-8 md:p-10">
               <h2 className="border-b border-stone-200/70 pb-5 text-2xl font-bold text-brand-700">
-                Your Artifact
+                주문할 굿즈
               </h2>
 
               <div className="mt-6 flex gap-5">
@@ -206,21 +206,21 @@ export default function ShippingPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-warm-500">
-                    {preview.mode.toUpperCase()}
+                    {projectModeLabel(preview.mode)}
                   </p>
                   <h3 className="mt-2 text-2xl font-bold leading-tight text-brand-700">
                     {preview.edition.title}
-                  </h3>
-                  <p className="mt-2 text-sm text-warm-500">
-                    개인화 후 실물 제작되는 Private Edition 아카이브
-                  </p>
+                    </h3>
+                    <p className="mt-2 text-sm text-warm-500">
+                      내가 채운 내용으로 제작되는 실물 굿즈
+                    </p>
+                  </div>
                 </div>
-              </div>
 
               <div className="mt-8 space-y-4 border-t border-stone-200/70 pt-6">
-                <SummaryRow label="Recipient" value={form.recipientName || "입력 전"} />
-                <SummaryRow label="Address" value={form.address1 || "입력 전"} />
-                <SummaryRow label="Quantity" value={`${form.quantity ?? 1}권`} />
+                <SummaryRow label="받는 분" value={form.recipientName || "입력 전"} />
+                <SummaryRow label="배송지" value={form.address1 || "입력 전"} />
+                <SummaryRow label="수량" value={`${form.quantity ?? 1}권`} />
               </div>
 
               <div className="mt-8 space-y-3 border-t border-stone-200/70 pt-6">
@@ -231,10 +231,9 @@ export default function ShippingPage() {
 
               {estimate ? (
                 <div className="mt-8 rounded bg-white/85 px-5 py-5 shadow-sm">
-                  <p className="editorial-label text-brand-700">Estimate ready</p>
+                  <p className="editorial-label text-brand-700">가격 확인 완료</p>
                   <p className="mt-3 text-sm leading-relaxed text-warm-500">
-                    다음 단계에서 사이트 주문이 먼저 저장되고, 이후 Sweetbook 제작/출고 연동이
-                    이어집니다.
+                    다음으로 넘어가면 주문이 먼저 저장되고, 이어서 제작 쪽으로 연결됩니다.
                   </p>
                   {estimate.simulated && (
                     <p className="mt-3 text-sm leading-relaxed text-gold-500">
@@ -245,7 +244,7 @@ export default function ShippingPage() {
               ) : (
                 <div className="mt-8 rounded bg-white/85 px-5 py-5 shadow-sm">
                   <p className="text-sm leading-relaxed text-warm-500">
-                    필수 배송 정보를 입력한 뒤 견적 보기를 누르면 오른쪽 카드에 총액이 채워집니다.
+                    필수 정보만 입력하고 견적 보기를 누르면 오른쪽에 예상 금액이 바로 채워집니다.
                   </p>
                 </div>
               )}
@@ -276,7 +275,7 @@ function Field({
     <div>
       <label className="block font-headline text-xl text-brand-700">
         {label}
-        {required && <span className="ml-2 text-xs uppercase tracking-[0.18em] text-warm-500">Required</span>}
+        {required && <span className="ml-2 text-xs uppercase tracking-[0.18em] text-warm-500">필수</span>}
       </label>
       <input
         type={type}
@@ -317,4 +316,15 @@ function PriceRow({
       </span>
     </div>
   );
+}
+
+function projectModeLabel(mode: string) {
+  switch (mode.toUpperCase()) {
+    case "DEMO":
+      return "데모";
+    case "YOUTUBE":
+      return "YouTube 연동";
+    default:
+      return mode;
+  }
 }

@@ -39,7 +39,7 @@ function copyProjectForTempBuild(sourceDir, targetDir) {
 }
 
 if (isWindows && hasNonAsciiPath) {
-  const tempDir = path.join(os.tmpdir(), "private-edition-frontend-build");
+  const tempDir = path.join(os.tmpdir(), "playpick-frontend-build");
 
   console.log(
     `[build] Non-ASCII path detected. Building in ${tempDir} and copying dist back.`,

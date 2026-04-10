@@ -115,7 +115,7 @@ export default function EditionDetailPage() {
             <div className="paper-stack relative">
               <div className="relative overflow-hidden rounded bg-white p-3 shadow-editorial">
                 <div className="absolute right-6 top-6 z-10 rounded bg-gold-400/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-900">
-                  Official edition
+                  지금 공개 중
                 </div>
                 <img
                   src={
@@ -132,7 +132,7 @@ export default function EditionDetailPage() {
           <div className="lg:col-span-7">
             <div className="flex flex-wrap items-center gap-3">
               <span className="rounded bg-gold-400/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-500">
-                {edition.status === "PUBLISHED" ? "Published Drop" : edition.status}
+                {editionStatusLabel(edition.status)}
               </span>
               {edition.creator.verified && <VerifiedBadge />}
             </div>
@@ -147,7 +147,7 @@ export default function EditionDetailPage() {
               )}
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-warm-500">
-                  Curated by
+                  만든 사람
                 </p>
                 <p className="mt-1 text-lg text-stone-900">{edition.creator.displayName}</p>
                 <p className="text-sm text-warm-500">@{edition.creator.channelHandle}</p>
@@ -165,7 +165,7 @@ export default function EditionDetailPage() {
 
             {(introTitle || introBody) && (
               <div className="mt-8 rounded bg-surface-low px-6 py-6">
-                <p className="editorial-label">From The Creator</p>
+                <p className="editorial-label">먼저 읽어보기</p>
                 {introTitle && (
                   <p className="mt-4 font-headline text-2xl text-brand-700">{introTitle}</p>
                 )}
@@ -181,22 +181,22 @@ export default function EditionDetailPage() {
                 onClick={() => startProject("demo")}
                 className="editorial-button-primary min-w-[220px]"
               >
-                데모로 개인화 시작
+                내 버전 만들기
               </button>
               <button
                 disabled={creating || youtubeAvailabilityLoading || !youtubeEnabled}
                 onClick={() => startProject("youtube")}
                 className="editorial-button-secondary min-w-[220px] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                YouTube 자동 채우기
+                YouTube로 채워보기
               </button>
             </div>
             <p className="mt-4 text-sm leading-relaxed text-warm-500">
               {youtubeAvailabilityLoading
-                ? "YouTube 확장 모드 사용 가능 여부를 확인하는 중입니다."
+                ? "YouTube로 채울 수 있는지 확인 중이에요."
                 : youtubeEnabled
-                  ? "Google 계정이 연결되면 구독 채널 기반 개인화 데이터를 자동으로 채울 수 있습니다."
-                  : "현재 환경에서는 Google 자격 증명이 없어 YouTube 확장 모드를 사용할 수 없습니다."}
+                  ? "Google 계정을 연결하면 구독 채널 기준으로 초안을 바로 채울 수 있어요."
+                  : "지금은 Google 설정이 없어 YouTube로 채워보기를 쓸 수 없어요."}
             </p>
             {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
           </div>
@@ -204,10 +204,9 @@ export default function EditionDetailPage() {
 
         <section className="mt-20 grid gap-10 lg:grid-cols-12">
           <div className="editorial-panel p-8 lg:col-span-5">
-            <p className="font-headline text-2xl italic text-brand-700">Official Artifacts</p>
+            <p className="font-headline text-2xl italic text-brand-700">먼저 담긴 장면</p>
             <p className="mt-3 text-sm leading-relaxed text-warm-500">
-              크리에이터가 직접 큐레이션한 공식 메시지, 이미지, 기록이 모든 개인화 사본의
-              공통 뼈대가 됩니다.
+              처음부터 담겨 있는 메시지와 이미지가 이 드롭의 분위기를 먼저 잡아줍니다.
             </p>
 
             {officialAssets.length > 0 ? (
@@ -218,8 +217,8 @@ export default function EditionDetailPage() {
               </div>
             ) : (
               <p className="mt-8 text-sm text-warm-500">
-                아직 등록된 공식 자산이 없습니다. 스튜디오에서 메시지와 미디어를 채우면 이
-                영역이 에디션의 고유한 아카이브가 됩니다.
+                아직 채워진 콘텐츠가 없어요. 스튜디오에서 메시지와 미디어를 추가하면 여기가
+                채워집니다.
               </p>
             )}
           </div>
@@ -228,14 +227,14 @@ export default function EditionDetailPage() {
             <div className="max-w-2xl">
               <div className="flex items-center gap-3">
                 <div className="h-px w-10 bg-brand-700" />
-                <p className="editorial-label text-brand-700">Your Unique Blueprint</p>
+                <p className="editorial-label text-brand-700">여기서부터 내 버전</p>
               </div>
               <h2 className="mt-5 text-4xl font-bold leading-tight text-stone-900">
-                Personalized by you
+                내 취향으로 채우기
               </h2>
               <p className="mt-4 text-sm leading-relaxed text-warm-500">
-                팬은 정해진 입력 항목을 통해 자신만의 관계의 시간, 기억, 메시지를 에디션 속에
-                각인합니다.
+                몇 가지 질문에 답하면서 내 기억과 문장을 더하면, 같은 드롭도 완전히 다른 책이
+                됩니다.
               </p>
             </div>
 
@@ -244,11 +243,11 @@ export default function EditionDetailPage() {
                 {fanFields.map((field) => (
                   <div key={field.id} className="rounded bg-surface-low px-5 py-5">
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-warm-500">
-                      {field.required ? "Required field" : "Optional field"}
+                      {field.required ? "필수 입력" : "선택 입력"}
                     </p>
                     <p className="mt-3 text-xl text-brand-700">{field.label}</p>
                     <p className="mt-2 text-sm leading-relaxed text-warm-500">
-                      입력 타입: {field.inputType}
+                      입력 타입: {inputTypeLabel(field.inputType)}
                       {field.maxLength ? ` · 최대 ${field.maxLength}자` : ""}
                     </p>
                   </div>
@@ -264,7 +263,7 @@ export default function EditionDetailPage() {
                 ].map((label) => (
                   <div key={label} className="rounded bg-surface-low px-5 py-5">
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-warm-500">
-                      Personal field
+                      개인화 항목
                     </p>
                     <p className="mt-3 text-xl text-brand-700">{label}</p>
                   </div>
@@ -278,10 +277,9 @@ export default function EditionDetailPage() {
           <section className="mt-20 bg-surface-low py-16">
             <div className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-12">
               <div className="lg:col-span-7">
-                <h2 className="text-3xl font-bold text-brand-700">Inside the Edition</h2>
+                <h2 className="text-3xl font-bold text-brand-700">미리 담긴 장면들</h2>
                 <p className="mt-4 text-sm leading-relaxed text-warm-500">
-                  공식 자산은 본문과 분위기를 만들고, 팬의 입력은 그 안에서 개인만의 문장을
-                  남깁니다.
+                  기본으로 담긴 장면 위에 팬의 입력이 더해져 한 권의 분위기가 완성됩니다.
                 </p>
                 {imageAssets.length > 0 && (
                   <div className="mt-8 grid gap-4 md:grid-cols-2">
@@ -300,20 +298,20 @@ export default function EditionDetailPage() {
               </div>
 
               <div className="editorial-card p-8 lg:col-span-5">
-                <p className="editorial-label text-gold-500">Print Spec</p>
+                <p className="editorial-label text-gold-500">한눈에 보기</p>
                 <div className="mt-5 space-y-5">
-                  <SpecRow label="Book spec" value={snap?.bookSpecUid ?? "설정 전"} />
+                  <SpecRow label="사이즈" value={snap?.bookSpecUid ?? "설정 전"} />
                   <SpecRow
-                    label="Cover template"
+                    label="표지 스타일"
                     value={snap?.sweetbookCoverTemplateUid ?? "설정 전"}
                   />
                   <SpecRow
-                    label="Content template"
+                    label="내지 스타일"
                     value={snap?.sweetbookContentTemplateUid ?? "설정 전"}
                   />
                   <SpecRow
-                    label="Curated assets"
-                    value={`${officialAssets.length} items`}
+                    label="기본 구성"
+                    value={`${officialAssets.length}개`}
                   />
                 </div>
               </div>
@@ -330,7 +328,7 @@ function AssetRow({ asset }: { asset: CuratedAsset }) {
     <div className="rounded bg-white/80 px-5 py-5 shadow-sm">
       <div className="flex items-center gap-3">
         <span className="rounded bg-gold-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-gold-500">
-          {asset.assetType}
+          {assetTypeLabel(asset.assetType)}
         </span>
         <p className="text-base font-semibold text-stone-900">{asset.title}</p>
       </div>
@@ -346,4 +344,45 @@ function SpecRow({ label, value }: { label: string; value: string }) {
       <p className="mt-2 break-all text-sm text-stone-900">{value}</p>
     </div>
   );
+}
+
+function editionStatusLabel(status: string) {
+  switch (status) {
+    case "PUBLISHED":
+      return "공개중";
+    case "DRAFT":
+      return "초안";
+    default:
+      return status;
+  }
+}
+
+function assetTypeLabel(assetType: string) {
+  switch (assetType) {
+    case "IMAGE":
+      return "이미지";
+    case "VIDEO":
+      return "영상";
+    case "MESSAGE":
+      return "메시지";
+    default:
+      return assetType;
+  }
+}
+
+function inputTypeLabel(inputType: string) {
+  switch (inputType) {
+    case "TEXT":
+      return "한 줄 입력";
+    case "TEXTAREA":
+      return "긴 글 입력";
+    case "DATE":
+      return "날짜";
+    case "VIDEO_PICKER":
+      return "영상 선택";
+    case "IMAGE_URL":
+      return "이미지 링크";
+    default:
+      return inputType;
+  }
 }
