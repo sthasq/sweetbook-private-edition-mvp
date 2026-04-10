@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Private Edition | Personalize Your Archive</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400;1,700&amp;family=Manrope:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#775276",
+                        "inverse-on-surface": "#f2f1ec",
+                        "on-error": "#ffffff",
+                        "surface-dim": "#dbdad5",
+                        "on-primary-fixed-variant": "#5e3b5e",
+                        "surface-variant": "#e4e2dd",
+                        "on-primary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed": "#ffd6fa",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#e9c176",
+                        "tertiary-container": "#5d4200",
+                        "inverse-primary": "#e6b8e2",
+                        "secondary-container": "#e6ded9",
+                        "on-surface": "#1b1c19",
+                        "primary": "#442445",
+                        "secondary-fixed-dim": "#cdc5c0",
+                        "tertiary-fixed": "#ffdea5",
+                        "tertiary": "#402d00",
+                        "inverse-surface": "#30312e",
+                        "on-tertiary-fixed-variant": "#5d4201",
+                        "on-secondary-container": "#67625e",
+                        "on-primary-fixed": "#2e0f30",
+                        "primary-fixed-dim": "#e6b8e2",
+                        "on-tertiary-fixed": "#261900",
+                        "surface-container-low": "#f5f3ee",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#4d444b",
+                        "on-tertiary-container": "#d5af66",
+                        "secondary-fixed": "#e9e1dc",
+                        "on-secondary": "#ffffff",
+                        "primary-container": "#5d3a5d",
+                        "background": "#fbf9f4",
+                        "on-background": "#1b1c19",
+                        "outline": "#7f747c",
+                        "on-primary-container": "#d3a6d0",
+                        "surface": "#fbf9f4",
+                        "on-secondary-fixed-variant": "#4b4642",
+                        "error": "#ba1a1a",
+                        "on-error-container": "#93000a",
+                        "surface-container-high": "#eae8e3",
+                        "on-secondary-fixed": "#1e1b18",
+                        "surface-container": "#f0eee9",
+                        "surface-container-highest": "#e4e2dd",
+                        "secondary": "#635d5a",
+                        "outline-variant": "#d0c3cc",
+                        "surface-bright": "#fbf9f4"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Noto Serif"],
+                        "body": ["Manrope"],
+                        "label": ["Manrope"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>.material-symbols-outlined {
+    font-variation-settings: "FILL" 0, "wght" 300, "GRAD" 0, "opsz" 24;
+    vertical-align: middle
+    }
+.paper-texture {
+    background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuDosFKqQksQjR00TE9IM11kcYuT-RxbfBnCyxI3edocDZ2FQfdIhpEK8yWoSopesESQlaQmE14qCKWCS0CE7BWbsIl9xWnMwfzpSSZTZKPbipNeFQDgX4-dWGAzA6UaZOlnAft9ivt4FOKYaSlBeIfNKm20OBhYtYuNw-HTlmbTpvjH1Vh9f0gOVJByVGpQoRozwY4VQrQ6IqNVkP5Xo6cpmyRnP3aAKgPsEbuhHbe9xFgSJBsQJ-ySvXDxptuM2L4bqQl5P0GdLhqU)
+    }</style>
+</head>
+<body class="bg-background text-on-background font-body antialiased">
+<!-- TopNavBar (Shared Component) -->
+<header class="bg-[#fbf9f4] dark:bg-stone-950 docked full-width top-0 z-50">
+<div class="flex justify-between items-center px-8 py-6 w-full max-w-screen-2xl mx-auto">
+<div class="text-2xl font-bold font-noto-serif italic text-[#442445] dark:text-[#f5f3ee]">
+                Private Edition
+            </div>
+<nav class="hidden md:flex space-x-8">
+<a class="font-noto-serif text-base tracking-tight text-[#442445] dark:text-[#f5f3ee] border-b-2 border-[#442445] pb-1 hover:text-[#442445] transition-colors duration-300" href="#">Browse Editions</a>
+</nav>
+<div class="flex items-center space-x-4">
+<button class="material-symbols-outlined text-[#442445] dark:text-[#f5f3ee]">person</button>
+</div>
+</div>
+<div class="bg-[#f5f3ee] dark:bg-stone-900 h-[1px] w-full"></div>
+</header>
+<main class="min-h-screen flex flex-col md:flex-row">
+<!-- Left Side: Customization Form -->
+<section class="w-full md:w-1/2 px-8 py-12 md:px-16 md:py-20 bg-surface">
+<!-- Elegant Progress Indicator -->
+<div class="mb-16">
+<div class="flex justify-between items-center mb-4">
+<span class="font-label text-xs uppercase tracking-widest text-secondary font-semibold">Step 03 of 04</span>
+<span class="font-headline italic text-primary">Favorite Memory</span>
+</div>
+<div class="w-full h-[2px] bg-surface-container-high flex">
+<div class="w-3/4 h-full bg-primary transition-all duration-500"></div>
+</div>
+<div class="flex justify-between mt-4">
+<div class="flex flex-col items-center opacity-40">
+<span class="font-label text-[10px] uppercase">Details</span>
+</div>
+<div class="flex flex-col items-center opacity-40">
+<span class="font-label text-[10px] uppercase">Timeline</span>
+</div>
+<div class="flex flex-col items-center text-primary">
+<span class="font-label text-[10px] uppercase font-bold">Memory</span>
+</div>
+<div class="flex flex-col items-center opacity-40">
+<span class="font-label text-[10px] uppercase">Letter</span>
+</div>
+</div>
+</div>
+<!-- Form Content -->
+<div class="max-w-md mx-auto">
+<header class="mb-12">
+<h1 class="font-headline text-4xl text-primary mb-4 leading-tight">Preserving the Unforgettable.</h1>
+<p class="text-secondary text-sm leading-relaxed">Describe the moment that defines your bond. We will typeset this memory with archival ink on the signature centerfold.</p>
+</header>
+<form class="space-y-10">
+<div class="space-y-2">
+<label class="block font-headline text-lg text-primary" for="memory-title">Title of the Memory</label>
+<input class="w-full border-none bg-surface-container-lowest px-4 py-3 rounded-sm shadow-sm focus:ring-1 focus:ring-primary/50 text-on-surface font-body outline outline-variant/15" id="memory-title" placeholder="e.g. The Night in Florence" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="block font-headline text-lg text-primary" for="memory-date">Approximate Date</label>
+<input class="w-full border-none bg-surface-container-lowest px-4 py-3 rounded-sm shadow-sm focus:ring-1 focus:ring-primary/50 text-on-surface font-body outline outline-variant/15" id="memory-date" placeholder="Summer 2018" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="block font-headline text-lg text-primary" for="memory-body">The Story</label>
+<textarea class="w-full border-none bg-surface-container-lowest px-4 py-3 rounded-sm shadow-sm focus:ring-1 focus:ring-primary/50 text-on-surface font-body outline outline-variant/15 resize-none" id="memory-body" placeholder="It began with a missed train and ended with..." rows="6"></textarea>
+<p class="text-[10px] text-outline text-right uppercase tracking-tighter">Words remaining: 450</p>
+</div>
+<div class="pt-8 flex items-center justify-between">
+<button class="text-primary font-label text-sm uppercase tracking-widest hover:underline underline-offset-8 transition-all" type="button">
+                            Back
+                        </button>
+<button class="bg-gradient-to-br from-primary to-primary-container text-white px-10 py-4 rounded-sm font-label text-sm uppercase tracking-[0.2em] shadow-xl hover:opacity-90 transition-all flex items-center group" type="submit">
+                            Save &amp; Continue
+                            <span class="material-symbols-outlined ml-2 text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</div>
+</form>
+</div>
+</section>
+<!-- Right Side: Live Preview -->
+<section class="w-full md:w-1/2 bg-surface-container-low flex items-center justify-center p-8 md:p-12 relative overflow-hidden">
+<!-- Background Decoration -->
+<div class="absolute inset-0 opacity-30 pointer-events-none">
+<div class="absolute top-[-10%] right-[-10%] w-[400px] h-[400px] rounded-full bg-primary-container/20 blur-[120px]"></div>
+<div class="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] rounded-full bg-tertiary-container/10 blur-[100px]"></div>
+</div>
+<!-- The Book Page Preview -->
+<div class="relative w-full max-w-[500px] aspect-[3/4] bg-surface-container-lowest shadow-2xl paper-texture p-12 md:p-16 flex flex-col items-center text-center transform hover:scale-[1.01] transition-transform duration-700">
+<!-- Archival Badge -->
+<div class="absolute top-8 right-8">
+<div class="bg-tertiary-container text-on-tertiary-container px-3 py-1 rounded-sm">
+<span class="font-headline italic text-[10px]">Official Archive No. 842</span>
+</div>
+</div>
+<!-- Page Content -->
+<div class="mt-12 mb-8">
+<span class="font-label text-[10px] text-tertiary uppercase tracking-[0.3em] block mb-6">Chapter Three</span>
+<h2 class="font-headline text-3xl text-primary leading-tight mb-4">The Night in Florence</h2>
+<p class="font-label text-xs text-secondary italic uppercase tracking-widest mb-12">August 2018</p>
+</div>
+<div class="w-full h-48 overflow-hidden mb-10 group cursor-zoom-in">
+<img class="w-full h-full object-cover filter grayscale sepia-[0.2] brightness-90 group-hover:scale-105 transition-transform duration-[2000ms]" data-alt="moody black and white photograph of a narrow cobblestone street in Florence at night with soft lamp lighting and deep shadows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDGb6juphwJfRgQeIAJTumpFl2kWmf_pdIPYT8h1P6RhowaLjE_V0O-wjHYffOwAuvHmiSi2ddFYsnl42siYiF2ZDvNBF-yMb8H8dFRz0AcWKNRxiZ-4g0aEA4QJ1QDkGov6Khors6fSK4bThhcFayTGciJSqP8GbZT6-NO_MHdmdAsmgdMZGTs_8kJQ42PtfTH_LR-eB6x4yQ6Fn6FSJH0cg95UDnMhyrcsPpvmksUODRjV43cI9Aai9AHY-Trc4tWSN1QsgPqDwL0"/>
+</div>
+<div class="flex-1 space-y-4">
+<p class="font-headline text-sm leading-relaxed text-on-surface text-justify first-letter:text-4xl first-letter:float-left first-letter:mr-2 first-letter:font-bold first-letter:text-primary">
+                        It began with a missed train and ended with a bottle of wine shared on the steps of the Santa Maria del Fiore. The air was thick with the scent of jasmine and old stone. You told me then that some things are worth waiting for, and as the clock struck midnight, I knew you weren't just talking about the ride home...
+                    </p>
+</div>
+<div class="mt-auto pt-8 w-full">
+<div class="w-full h-[1px] bg-outline-variant/20 mb-4"></div>
+<span class="font-headline italic text-xs text-secondary">Private Edition © MMXXIV</span>
+</div>
+</div>
+<!-- Floating Preview Label -->
+<div class="absolute bottom-10 flex items-center bg-white/80 backdrop-blur-md px-6 py-2 rounded-full shadow-lg border border-outline-variant/10">
+<span class="material-symbols-outlined text-primary text-sm mr-2" style="font-variation-settings: 'FILL' 1;">visibility</span>
+<span class="font-label text-[10px] uppercase tracking-widest text-secondary font-bold">Live Archival Preview</span>
+</div>
+</section>
+</main>
+<!-- Footer (Shared Component) -->
+<footer class="bg-[#f5f3ee] dark:bg-stone-900 full-width py-12">
+<div class="flex flex-col md:flex-row justify-between items-center px-12 w-full max-w-screen-2xl mx-auto">
+<div class="mb-8 md:mb-0">
+<div class="text-lg font-bold font-noto-serif text-[#442445] mb-2">Private Edition</div>
+<p class="font-manrope text-sm tracking-wide uppercase text-[#635d5a] dark:text-stone-400">© 2024 Private Edition. All rights reserved.</p>
+</div>
+<div class="flex space-x-12">
+<div class="flex flex-col items-center md:items-start">
+<span class="font-manrope text-sm tracking-wide uppercase text-[#442445] dark:text-white mb-4">Studio</span>
+<a class="font-manrope text-sm tracking-wide uppercase text-[#635d5a] dark:text-stone-500 hover:underline underline-offset-4 mb-2" href="#">Creator Studio</a>
+</div>
+<div class="flex flex-col items-center md:items-start">
+<span class="font-manrope text-sm tracking-wide uppercase text-[#442445] dark:text-white mb-4">Help</span>
+<a class="font-manrope text-sm tracking-wide uppercase text-[#635d5a] dark:text-stone-500 hover:underline underline-offset-4 mb-2" href="#">Support</a>
+</div>
+</div>
+</div>
+</footer>
+</body></html>

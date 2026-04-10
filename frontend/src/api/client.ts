@@ -1,4 +1,10 @@
 const BASE = "/api";
+const responseCache = new Map<string, { expiresAt: number; data: unknown }>();
+const inflightRequests = new Map<string, Promise<unknown>>();
+
+type CacheOptions = {
+  ttlMs?: number;
+};
 
 export class ApiError extends Error {
   status: number;
@@ -50,8 +56,87 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export function get<T>(path: string) {
-  return request<T>(path);
+function getCacheKey(path: string) {
+  return `GET:${path}`;
+}
+
+function readCached<T>(path: string) {
+  const entry = responseCache.get(getCacheKey(path));
+  if (!entry) {
+    return null;
+  }
+
+  if (entry.expiresAt <= Date.now()) {
+    responseCache.delete(getCacheKey(path));
+    return null;
+  }
+
+  return entry.data as T;
+}
+
+function writeCached<T>(path: string, data: T, ttlMs: number) {
+  responseCache.set(getCacheKey(path), {
+    expiresAt: Date.now() + ttlMs,
+    data,
+  });
+}
+
+export function invalidateApiCache(matcher?: string | RegExp | ((path: string) => boolean)) {
+  if (!matcher) {
+    responseCache.clear();
+    inflightRequests.clear();
+    return;
+  }
+
+  const keys = new Set([
+    ...responseCache.keys(),
+    ...inflightRequests.keys(),
+  ]);
+
+  for (const key of keys) {
+    const path = key.replace(/^GET:/, "");
+    const matched =
+      typeof matcher === "string"
+        ? path.startsWith(matcher)
+        : matcher instanceof RegExp
+          ? matcher.test(path)
+          : matcher(path);
+
+    if (matched) {
+      responseCache.delete(key);
+      inflightRequests.delete(key);
+    }
+  }
+}
+
+export function get<T>(path: string, options?: CacheOptions) {
+  const ttlMs = options?.ttlMs ?? 0;
+  if (ttlMs <= 0) {
+    return request<T>(path);
+  }
+
+  const cached = readCached<T>(path);
+  if (cached != null) {
+    return Promise.resolve(cached);
+  }
+
+  const cacheKey = getCacheKey(path);
+  const existingRequest = inflightRequests.get(cacheKey);
+  if (existingRequest) {
+    return existingRequest as Promise<T>;
+  }
+
+  const pendingRequest = request<T>(path)
+    .then((data) => {
+      writeCached(path, data, ttlMs);
+      return data;
+    })
+    .finally(() => {
+      inflightRequests.delete(cacheKey);
+    });
+
+  inflightRequests.set(cacheKey, pendingRequest);
+  return pendingRequest;
 }
 
 export function post<T>(path: string, body?: unknown) {

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Private Edition | Book Preview</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400;1,700&amp;family=Manrope:wght@300;400;600;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-tint": "#775276",
+                    "inverse-on-surface": "#f2f1ec",
+                    "on-error": "#ffffff",
+                    "surface-dim": "#dbdad5",
+                    "on-primary-fixed-variant": "#5e3b5e",
+                    "surface-variant": "#e4e2dd",
+                    "on-primary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed": "#ffd6fa",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-fixed-dim": "#e9c176",
+                    "tertiary-container": "#5d4200",
+                    "inverse-primary": "#e6b8e2",
+                    "secondary-container": "#e6ded9",
+                    "on-surface": "#1b1c19",
+                    "primary": "#442445",
+                    "secondary-fixed-dim": "#cdc5c0",
+                    "tertiary-fixed": "#ffdea5",
+                    "tertiary": "#402d00",
+                    "inverse-surface": "#30312e",
+                    "on-tertiary-fixed-variant": "#5d4201",
+                    "on-secondary-container": "#67625e",
+                    "on-primary-fixed": "#2e0f30",
+                    "primary-fixed-dim": "#e6b8e2",
+                    "on-tertiary-fixed": "#261900",
+                    "surface-container-low": "#f5f3ee",
+                    "error-container": "#ffdad6",
+                    "on-surface-variant": "#4d444b",
+                    "on-tertiary-container": "#d5af66",
+                    "secondary-fixed": "#e9e1dc",
+                    "on-secondary": "#ffffff",
+                    "primary-container": "#5d3a5d",
+                    "background": "#fbf9f4",
+                    "on-background": "#1b1c19",
+                    "outline": "#7f747c",
+                    "on-primary-container": "#d3a6d0",
+                    "surface": "#fbf9f4",
+                    "on-secondary-fixed-variant": "#4b4642",
+                    "error": "#ba1a1a",
+                    "on-error-container": "#93000a",
+                    "surface-container-high": "#eae8e3",
+                    "on-secondary-fixed": "#1e1b18",
+                    "surface-container": "#f0eee9",
+                    "surface-container-highest": "#e4e2dd",
+                    "secondary": "#635d5a",
+                    "outline-variant": "#d0c3cc",
+                    "surface-bright": "#fbf9f4"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Noto Serif"],
+                    "body": ["Manrope"],
+                    "label": ["Manrope"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .paper-shadow {
+            box-shadow: 0 10px 30px -10px rgba(27, 28, 25, 0.04), 0 4px 6px -2px rgba(27, 28, 25, 0.02);
+        }
+        .book-spine-gradient {
+            background: linear-gradient(90deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0) 10%, rgba(0,0,0,0) 90%, rgba(0,0,0,0.05) 100%);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary-fixed-dim">
+<!-- TopNavBar -->
+<header class="bg-[#fbf9f4] dark:bg-stone-950 sticky top-0 z-50">
+<nav class="flex justify-between items-center px-8 py-6 w-full max-w-screen-2xl mx-auto">
+<div class="text-2xl font-bold font-noto-serif italic text-[#442445] dark:text-[#f5f3ee]">
+                Private Edition
+            </div>
+<div class="hidden md:flex items-center gap-8">
+<a class="font-noto-serif text-base tracking-tight text-[#442445] dark:text-[#f5f3ee] border-b-2 border-[#442445] pb-1 hover:text-[#442445] transition-colors duration-300" href="#">Browse Editions</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-[#442445] dark:text-[#f5f3ee]">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+</button>
+</div>
+</nav>
+<div class="bg-[#f5f3ee] dark:bg-stone-900 h-[1px] w-full"></div>
+</header>
+<main class="max-w-screen-2xl mx-auto px-8 py-12 md:py-20">
+<!-- Header Section -->
+<div class="mb-16 max-w-3xl">
+<h1 class="font-headline text-5xl md:text-7xl text-primary font-bold leading-tight tracking-tight mb-6">
+                Your Legacy, <br/><span class="italic font-normal">Ink on Paper.</span>
+</h1>
+<p class="text-secondary text-lg md:text-xl font-light leading-relaxed">
+                Review your personalized volume. Every choice, from the linen cover to the chapter dedications, has been archived for your private collection.
+            </p>
+</div>
+<!-- Book Preview Area -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start mb-24">
+<!-- Left: Interactive Spread -->
+<div class="lg:col-span-8 group">
+<div class="relative bg-surface-container-low p-8 md:p-16 rounded-lg overflow-hidden flex justify-center">
+<!-- The Book Spread -->
+<div class="relative flex flex-col md:flex-row w-full max-w-4xl paper-shadow bg-white aspect-[1.4/1] rounded-sm overflow-hidden">
+<!-- Left Page (Official Content) -->
+<div class="flex-1 p-8 md:p-12 border-r border-outline-variant/10 relative">
+<div class="absolute top-8 left-8">
+<span class="bg-tertiary-container text-on-tertiary-fixed px-3 py-1 rounded-sm font-headline italic text-xs tracking-wider">Official Creator Content</span>
+</div>
+<div class="mt-16">
+<h3 class="font-headline text-2xl text-primary mb-4">Chapter IV: The Unseen Horizon</h3>
+<div class="space-y-4">
+<div class="h-4 bg-surface-container-highest w-full rounded-full opacity-40"></div>
+<div class="h-4 bg-surface-container-highest w-11/12 rounded-full opacity-40"></div>
+<div class="h-4 bg-surface-container-highest w-full rounded-full opacity-40"></div>
+<div class="h-4 bg-surface-container-highest w-10/12 rounded-full opacity-40"></div>
+</div>
+<div class="mt-8 rounded-sm overflow-hidden">
+<img class="w-full h-48 object-cover grayscale brightness-95 contrast-105" data-alt="high-end cinematic landscape photography of misty mountains at dawn with muted purple and grey tones editorial style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJAiBAPp_7PdwF4fU0qUbNkbJo0G_CwfDLsQ-VvMYPPIHeEK_l5IShkpe_2fNGUK03_R0IN-qgC7Fke4ZpPYp18Dnd2ihZ_zzNaoKGfsgvfz5BPQkWunE_t0hooN-Io-r7p109xkmIjozxDKTiNckFkzsKJOjtraPi1G1Ka7xRXNcFZscgMzbriavtIp8j-xTVce4CCVZ3QxhHFuKyCDB-2NgT9X4v6PosHLLB1ymxT8xM0W52paW4PqOLcKHujZfpOv-rJgmNM6_A"/>
+</div>
+</div>
+</div>
+<!-- Central Spine Shadow -->
+<div class="absolute inset-y-0 left-1/2 -ml-[2px] w-[4px] book-spine-gradient z-10 hidden md:block"></div>
+<!-- Right Page (Personalized) -->
+<div class="flex-1 p-8 md:p-12 bg-surface-container-lowest relative">
+<div class="absolute top-8 right-8">
+<span class="bg-primary/5 text-primary px-3 py-1 rounded-sm font-label uppercase text-[10px] font-bold tracking-widest border border-primary/10">Your Personal Story</span>
+</div>
+<div class="mt-16 font-headline italic text-primary/80 leading-relaxed text-xl">
+                                "This edition is dedicated to the moments we spent by the cliffs of Amalfi, where time seemed to fold into the sea."
+                            </div>
+<div class="mt-8 space-y-4">
+<div class="h-3 bg-surface-container-highest w-full rounded-full opacity-60"></div>
+<div class="h-3 bg-surface-container-highest w-11/12 rounded-full opacity-60"></div>
+<div class="h-3 bg-surface-container-highest w-4/5 rounded-full opacity-60"></div>
+</div>
+<div class="mt-12 flex justify-end">
+<div class="text-right">
+<p class="font-label text-[10px] uppercase tracking-tighter text-secondary">Personalized for</p>
+<p class="font-headline text-lg">Evelyn St. James</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Navigation Controls -->
+<div class="absolute bottom-4 flex gap-4">
+<button class="bg-white/80 backdrop-blur-md p-2 rounded-full hover:bg-white transition-all shadow-sm">
+<span class="material-symbols-outlined text-primary" data-icon="chevron_left">chevron_left</span>
+</button>
+<div class="bg-white/80 backdrop-blur-md px-4 py-2 rounded-full font-label text-xs font-bold tracking-widest flex items-center">
+                            PAGE 42 / 120
+                        </div>
+<button class="bg-white/80 backdrop-blur-md p-2 rounded-full hover:bg-white transition-all shadow-sm">
+<span class="material-symbols-outlined text-primary" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Right: Summary & CTA -->
+<div class="lg:col-span-4 sticky top-32">
+<div class="bg-surface-container-lowest p-8 border border-outline-variant/15 rounded-lg paper-shadow">
+<h2 class="font-headline text-2xl text-primary mb-8 border-b border-surface-container-low pb-4">Artifact Summary</h2>
+<ul class="space-y-6 mb-10">
+<li class="flex items-start gap-4">
+<span class="material-symbols-outlined text-tertiary mt-1" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<div>
+<p class="font-bold text-sm tracking-wide">Cover Material</p>
+<p class="text-secondary text-sm">Deep Plum Linen with Gold Foil Inlay</p>
+</div>
+</li>
+<li class="flex items-start gap-4">
+<span class="material-symbols-outlined text-tertiary mt-1" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<div>
+<p class="font-bold text-sm tracking-wide">Inner Paper Stock</p>
+<p class="text-secondary text-sm">120gsm Uncoated Archival Ivory</p>
+</div>
+</li>
+<li class="flex items-start gap-4">
+<span class="material-symbols-outlined text-tertiary mt-1" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<div>
+<p class="font-bold text-sm tracking-wide">Personal Dedication</p>
+<p class="text-secondary text-sm">Included on Title Page &amp; Chapter IV</p>
+</div>
+</li>
+<li class="flex items-start gap-4">
+<span class="material-symbols-outlined text-tertiary mt-1" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<div>
+<p class="font-bold text-sm tracking-wide">Limited Edition Numbering</p>
+<p class="text-secondary text-sm">Certified #042/500</p>
+</div>
+</li>
+</ul>
+<div class="space-y-4">
+<button class="w-full bg-gradient-to-br from-primary to-primary-container text-white py-5 px-6 rounded-md font-label font-bold tracking-widest text-sm hover:opacity-90 transition-opacity uppercase shadow-lg shadow-primary/10">
+                            Looks Perfect - Proceed to Order
+                        </button>
+<button class="w-full py-4 text-primary font-label text-xs uppercase tracking-widest hover:underline underline-offset-4 transition-all">
+                            Make further edits
+                        </button>
+</div>
+<div class="mt-8 p-4 bg-surface-container-low rounded-sm">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-tertiary" data-icon="verified">verified</span>
+<span class="font-headline italic text-sm text-tertiary">Official Creator Certified Archive</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Asymmetric Detail Section -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-20 py-20 border-t border-outline-variant/10">
+<div class="relative">
+<div class="aspect-square bg-surface-container-high rounded-lg overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="extreme close up of texture of purple linen book cover with metallic gold foil embossing of elegant logo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhmsq7TCJm7L2j8PuOUArlIH0lNVOh24Mfo8WxbYADBxSsxI72scvfOyWMllM1WV3MGn4UnBq-qb9MPR8wWNlZJn2jsyoFJm1dehWO6vpnffo_vHAtSC3lbaH9rHJgzXP5xy4b03PIjydMEk5PZF0UzysNsnWTJWYFifn-dGawgtnoB7p5zPSLVXixA0vXmXJu9BaeHNTLzTs5XDTq4QZ3UMDGaW2qGACM70Uc7OooB-jFv34MmBFkh_iSAzqbZobeFMnraaSuqz2N"/>
+</div>
+<div class="absolute -bottom-8 -right-8 bg-white p-6 max-w-xs paper-shadow rounded-sm hidden md:block">
+<h4 class="font-headline italic text-primary text-lg mb-2">Tactile Luxury</h4>
+<p class="text-secondary text-sm leading-relaxed">Our linen covers are sourced from a heritage mill, ensuring your private edition feels as significant as the stories within.</p>
+</div>
+</div>
+<div class="flex flex-col justify-center">
+<h3 class="font-headline text-3xl text-primary mb-6">Designed for Permanence</h3>
+<p class="text-secondary mb-8 leading-relaxed">This isn't just digital print-on-demand. Every Private Edition is hand-bound with smyth-sewn signatures, allowing the book to lay perfectly flat—a mark of true craftsmanship that ensures your stories outlast the pixels that built them.</p>
+<div class="grid grid-cols-2 gap-8">
+<div>
+<p class="text-3xl font-headline text-tertiary">Acid-Free</p>
+<p class="text-xs uppercase tracking-widest text-secondary font-bold mt-1">Archival Standards</p>
+</div>
+<div>
+<p class="text-3xl font-headline text-tertiary">Smyth-Sewn</p>
+<p class="text-xs uppercase tracking-widest text-secondary font-bold mt-1">Lay-Flat Binding</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-[#f5f3ee] dark:bg-stone-900 full-width py-12 border-t border-outline-variant/10">
+<div class="flex flex-col md:flex-row justify-between items-center px-12 w-full max-w-screen-2xl mx-auto">
+<div class="mb-8 md:mb-0">
+<div class="text-lg font-bold font-noto-serif text-[#442445] mb-2">Private Edition</div>
+<p class="font-manrope text-sm tracking-wide uppercase text-[#635d5a] dark:text-stone-400">© 2024 Private Edition. All rights reserved.</p>
+</div>
+<div class="flex gap-12">
+<a class="font-manrope text-sm tracking-wide uppercase text-[#635d5a] dark:text-stone-500 hover:underline underline-offset-4 transition-all duration-200" href="#">Creator Studio</a>
+<a class="font-manrope text-sm tracking-wide uppercase text-[#635d5a] dark:text-stone-500 hover:underline underline-offset-4 transition-all duration-200" href="#">Support</a>
+</div>
+</div>
+</footer>
+</body></html>

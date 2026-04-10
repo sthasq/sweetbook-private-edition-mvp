@@ -31,6 +31,7 @@ Private Edition is a creator-certified fan merch service built for the Sweetbook
   - Local development: MySQL 8 by default
   - Test / fallback: H2 in-memory profile
   - Docker: MySQL 8
+- Session store / shared cache foundation: Redis 7
 - Infra: Docker Compose + nginx
 - External APIs:
   - Sweetbook Books API
@@ -52,6 +53,7 @@ Private Edition is a creator-certified fan merch service built for the Sweetbook
 │       │   ├── application.yml
 │       │   ├── application-local.yml
 │       │   ├── application-docker.yml
+│       │   ├── application-session-redis.yml
 │       │   └── db/migration
 │       └── test/java/com/privateedition
 ├── frontend
@@ -98,7 +100,7 @@ If Google values are omitted, the app still works in Demo mode.
 
 ### 2. Run backend locally
 
-Local backend runs against Docker MySQL on `localhost:3307` by default so data persists across restarts.
+Local backend runs against Docker MySQL on `localhost:3307` by default and starts Redis on `localhost:6380` for shared HTTP sessions.
 
 ```powershell
 cd backend
@@ -123,7 +125,7 @@ cd backend
 .\run_local.ps1 -Database h2
 ```
 
-For MySQL mode, the script starts `docker compose up -d mysql` automatically, then reads `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USERNAME`, and `MYSQL_PASSWORD` from `.env`. By default it connects to `localhost:3307/private_edition`.
+For MySQL mode, the script starts `docker compose up -d mysql redis` automatically, then reads `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USERNAME`, `MYSQL_PASSWORD`, `REDIS_HOST`, and `REDIS_PORT` from `.env`. By default it connects to MySQL at `localhost:3307/private_edition` and Redis at `localhost:6380`.
 
 ### 3. Run frontend locally
 
@@ -183,10 +185,26 @@ docker compose up --build
 | `MYSQL_DATABASE` | Local MySQL mode | Database name for `.\run_local.ps1 -Database mysql` |
 | `MYSQL_USERNAME` | Local MySQL mode | App DB username for `.\run_local.ps1 -Database mysql` |
 | `MYSQL_PASSWORD` | Local MySQL mode | App DB password for `.\run_local.ps1 -Database mysql` |
+| `REDIS_HOST` | Local MySQL mode | Host for Redis-backed session storage |
+| `REDIS_PORT` | Local MySQL mode / Docker | Port for Redis-backed session storage |
 | `GOOGLE_CLIENT_ID` | YouTube mode | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | YouTube mode | Google OAuth client secret |
 | `GOOGLE_REDIRECT_URI` | YouTube mode | Must match the Google OAuth redirect URI |
 | `YOUTUBE_API_KEY` | Recommended | Public YouTube Data API access / fallback |
+
+## Session architecture
+
+- Email/password authentication remains server-side and cookie-based.
+- In MySQL local mode and Docker mode, Spring Session stores `HttpSession` data in Redis.
+- This keeps login state stable across backend restarts and prepares the app for multi-instance deployment behind a load balancer.
+
+## Redis-backed shared cache
+
+- Under the `session-redis` profile, Sweetbook `book-specs` and `templates` reads are cached in Redis.
+- This replaces per-instance in-memory template caching, so multiple backend instances can share the same external API cache.
+- Default TTLs:
+  - `sweetbook-book-specs`: 6 hours
+  - `sweetbook-templates`: 1 hour
 
 ## API usage
 
