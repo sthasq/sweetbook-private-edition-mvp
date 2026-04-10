@@ -47,16 +47,20 @@ export default function ProjectStepper({
 
   return (
     <section
-      className={`rounded-3xl border border-stone-200 bg-white/80 p-5 shadow-sm shadow-brand-100/30 ${className}`}
+      className={`editorial-card overflow-hidden p-6 ${className}`}
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-gold-400/30 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-gold-400">
-          Private Edition Flow
-        </span>
-        <span className="text-xs font-medium text-stone-500">{statusLabel}</span>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200/60 pb-4">
+        <div>
+          <p className="editorial-label">Private Edition Flow</p>
+          <p className="mt-2 text-sm text-warm-500">{statusLabel}</p>
+        </div>
+        <div className="h-px min-w-24 flex-1 bg-stone-200/70" />
+        <p className="font-headline text-lg italic text-brand-700">
+          {current === "complete" ? "Order archived" : STEPS[Math.max(activeIndex, 0)]?.label}
+        </p>
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-4">
+      <div className="mt-6 grid gap-4 lg:grid-cols-4">
         {STEPS.map((step, index) => {
           const isCompleted = index < activeIndex;
           const isActive = current !== "complete" && index === activeIndex;
@@ -64,22 +68,22 @@ export default function ProjectStepper({
           return (
             <div
               key={step.key}
-              className={`rounded-2xl border p-4 transition-colors ${
+              className={`rounded border p-4 transition-colors ${
                 isActive
-                  ? "border-brand-300 bg-brand-50/70"
+                  ? "border-brand-300 bg-brand-50/60"
                   : isCompleted
-                    ? "border-emerald-200 bg-emerald-50/80"
-                    : "border-stone-200 bg-stone-50/70"
+                    ? "border-success-200 bg-success-50/80"
+                    : "border-stone-200/70 bg-surface-low"
               }`}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-start gap-3">
                 <span
-                  className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold ${
+                  className={`mt-0.5 flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold ${
                     isActive
-                      ? "bg-brand-600 text-white"
+                      ? "bg-brand-700 text-white"
                       : isCompleted
-                        ? "bg-emerald-500 text-white"
-                        : "bg-white text-stone-500 border border-stone-200"
+                        ? "bg-success-600 text-white"
+                        : "border border-stone-200 bg-white text-warm-500"
                   }`}
                 >
                   {isCompleted ? "✓" : step.number}
@@ -89,14 +93,14 @@ export default function ProjectStepper({
                     className={`text-sm font-semibold ${
                       isActive
                         ? "text-brand-700"
-                        : isCompleted
-                          ? "text-emerald-700"
-                          : "text-stone-700"
+                      : isCompleted
+                          ? "text-success-600"
+                          : "text-stone-800"
                     }`}
                   >
                     {step.label}
                   </p>
-                  <p className="text-xs text-stone-500">{step.description}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-warm-500">{step.description}</p>
                 </div>
               </div>
             </div>

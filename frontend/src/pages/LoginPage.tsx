@@ -35,91 +35,101 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="mx-auto max-w-md px-6 py-16">
-      <div className="rounded-3xl border border-stone-200 bg-white/88 p-8 shadow-xl shadow-brand-100/40">
-        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-gold-400">
-          로그인
-        </p>
-        <h1 className="mt-4 text-3xl font-bold text-stone-900">
-          다시 이어서 만들기
-        </h1>
-        <p className="mt-3 text-sm text-stone-600">
-          로그인하면 내 프로젝트와 크리에이터 스튜디오 접근 권한이 복원됩니다.
-        </p>
-
-        {reason === "session-expired" && (
-          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            세션이 만료되었거나 서버가 다시 시작되었습니다. 다시 로그인해 주세요.
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+    <div className="page-shell-narrow">
+      <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+        <section className="editorial-panel flex flex-col justify-between p-8 md:p-10">
           <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-stone-700 mb-1.5"
-            >
-              이메일
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-stone-300 bg-stone-50 px-4 py-2.5 text-sm text-stone-900 outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-              placeholder="fan@privateedition.local"
-            />
+            <p className="editorial-label">Private Archive Access</p>
+            <h1 className="mt-5 text-4xl text-brand-700 md:text-5xl">
+              다시 이어서
+              <br />
+              당신의 책으로.
+            </h1>
+            <p className="mt-5 max-w-md text-base leading-8 text-stone-700">
+              로그인하면 내 프로젝트, 미리보기, 주문 흐름과 크리에이터 스튜디오 접근 권한이
+              복원됩니다.
+            </p>
           </div>
 
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-stone-700 mb-1.5"
-            >
-              비밀번호
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-stone-300 bg-stone-50 px-4 py-2.5 text-sm text-stone-900 outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-              placeholder="Fan12345!"
-            />
+          <div className="mt-8 editorial-card p-5 text-sm text-stone-700">
+            <p className="editorial-label">Demo Accounts</p>
+            <div className="mt-4 space-y-3">
+              <p>
+                fan: <code>fan@privateedition.local</code> / <code>Fan12345!</code>
+              </p>
+              <p>
+                creator: <code>creator@privateedition.local</code> /{" "}
+                <code>Creator123!</code>
+              </p>
+            </div>
           </div>
+        </section>
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-full bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-500 disabled:opacity-50"
-          >
-            {submitting ? "로그인 중..." : "로그인"}
-          </button>
-        </form>
-
-        <div className="mt-6 rounded-2xl border border-stone-200 bg-stone-50/90 p-4 text-xs text-stone-600">
-          <p className="font-semibold text-stone-800">로컬 데모 계정</p>
-          <p className="mt-2">
-            fan: <code>fan@privateedition.local</code> /{" "}
-            <code>Fan12345!</code>
+        <section className="editorial-card p-8 md:p-10">
+          <p className="editorial-label">로그인</p>
+          <h2 className="mt-4 text-3xl text-stone-900">아카이브 불러오기</h2>
+          <p className="mt-3 editorial-muted">
+            공식 에디션과 개인화 기록을 다시 불러와 다음 단계로 이어집니다.
           </p>
-          <p className="mt-1">
-            creator: <code>creator@privateedition.local</code> /{" "}
-            <code>Creator123!</code>
-          </p>
-        </div>
 
-        <p className="mt-6 text-sm text-stone-600">
-          아직 계정이 없다면{" "}
-          <Link
-            to={`/signup${next ? `?next=${encodeURIComponent(next)}` : ""}`}
-            className="text-brand-400 hover:underline"
-          >
-            회원가입
-          </Link>
-        </p>
+          {reason === "session-expired" && (
+            <div className="mt-6 rounded-sm border border-amber-300/70 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
+              세션이 만료되었거나 서버가 다시 시작되었습니다. 다시 로그인해 주세요.
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+            <div>
+              <label htmlFor="email" className="text-sm font-semibold text-stone-800">
+                이메일
+              </label>
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="editorial-input mt-2"
+                placeholder="fan@privateedition.local"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="text-sm font-semibold text-stone-800">
+                비밀번호
+              </label>
+              <input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="editorial-input mt-2"
+                placeholder="Fan12345!"
+              />
+            </div>
+
+            {error && <p className="text-sm text-red-500">{error}</p>}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="editorial-button-primary w-full disabled:opacity-50"
+            >
+              {submitting ? "로그인 중..." : "로그인"}
+            </button>
+          </form>
+
+          <p className="mt-6 text-sm text-stone-600">
+            아직 계정이 없다면{" "}
+            <Link
+              to={`/signup${next ? `?next=${encodeURIComponent(next)}` : ""}`}
+              className="font-semibold text-brand-600 underline decoration-brand-300 underline-offset-4"
+            >
+              회원가입
+            </Link>
+          </p>
+        </section>
       </div>
     </div>
   );
