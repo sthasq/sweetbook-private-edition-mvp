@@ -1,6 +1,9 @@
 spring:
   main:
     web-application-type: servlet
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.session.SessionAutoConfiguration
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/private_edition?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul}
     username: ${SPRING_DATASOURCE_USERNAME:root}

@@ -39,7 +39,35 @@
   }
 }
 
+@keyframes route-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 @layer components {
+  .route-transition {
+    will-change: opacity;
+  }
+
+  .route-transition[data-route-transition-state="idle"] {
+    opacity: 1;
+  }
+
+  .route-transition[data-route-transition-state="exiting"] {
+    opacity: 0.22;
+    transition: opacity 180ms ease-out;
+    pointer-events: none;
+  }
+
+  .route-transition[data-route-transition-state="entering"] {
+    animation: route-enter 320ms ease-out;
+  }
+
   .page-shell {
     @apply mx-auto max-w-screen-2xl px-6 py-12 md:px-8 md:py-16;
   }
@@ -183,5 +211,12 @@
   .studio-page textarea:focus,
   .studio-page select:focus {
     outline-color: #9b759a;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-transition {
+    animation: none;
+    transition: none;
   }
 }

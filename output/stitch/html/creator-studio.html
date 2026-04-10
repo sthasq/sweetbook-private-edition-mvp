@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Creator Studio | Private Edition</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&amp;family=Noto+Serif:ital,wght@0,100..900;1,100..900&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-tint": "#775276",
+                    "inverse-on-surface": "#f2f1ec",
+                    "on-error": "#ffffff",
+                    "surface-dim": "#dbdad5",
+                    "on-primary-fixed-variant": "#5e3b5e",
+                    "surface-variant": "#e4e2dd",
+                    "on-primary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed": "#ffd6fa",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-fixed-dim": "#e9c176",
+                    "tertiary-container": "#5d4200",
+                    "inverse-primary": "#e6b8e2",
+                    "secondary-container": "#e6ded9",
+                    "on-surface": "#1b1c19",
+                    "primary": "#442445",
+                    "secondary-fixed-dim": "#cdc5c0",
+                    "tertiary-fixed": "#ffdea5",
+                    "tertiary": "#402d00",
+                    "inverse-surface": "#30312e",
+                    "on-tertiary-fixed-variant": "#5d4201",
+                    "on-secondary-container": "#67625e",
+                    "on-primary-fixed": "#2e0f30",
+                    "primary-fixed-dim": "#e6b8e2",
+                    "on-tertiary-fixed": "#261900",
+                    "surface-container-low": "#f5f3ee",
+                    "error-container": "#ffdad6",
+                    "on-surface-variant": "#4d444b",
+                    "on-tertiary-container": "#d5af66",
+                    "secondary-fixed": "#e9e1dc",
+                    "on-secondary": "#ffffff",
+                    "primary-container": "#5d3a5d",
+                    "background": "#fbf9f4",
+                    "on-background": "#1b1c19",
+                    "outline": "#7f747c",
+                    "on-primary-container": "#d3a6d0",
+                    "surface": "#fbf9f4",
+                    "on-secondary-fixed-variant": "#4b4642",
+                    "error": "#ba1a1a",
+                    "on-error-container": "#93000a",
+                    "surface-container-high": "#eae8e3",
+                    "on-secondary-fixed": "#1e1b18",
+                    "surface-container": "#f0eee9",
+                    "surface-container-highest": "#e4e2dd",
+                    "secondary": "#635d5a",
+                    "outline-variant": "#d0c3cc",
+                    "surface-bright": "#fbf9f4"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": [
+                            "Noto Serif"
+                    ],
+                    "body": [
+                            "Manrope"
+                    ],
+                    "label": [
+                            "Manrope"
+                    ]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+        }
+        .primary-gradient {
+            background: linear-gradient(135deg, #442445 0%, #5d3a5d 100%);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- Top Navigation -->
+<nav class="bg-[#fbf9f4] dark:bg-stone-950 flex justify-between items-center px-8 py-6 w-full max-w-screen-2xl mx-auto docked full-width top-0">
+<div class="text-2xl font-bold font-headline italic text-[#442445] dark:text-[#f5f3ee]">Private Edition</div>
+<div class="hidden md:flex items-center gap-8 font-headline text-base tracking-tight">
+<a class="text-[#635d5a] dark:text-stone-400 hover:text-[#442445] transition-colors duration-300" href="#">Browse Editions</a>
+<a class="text-[#442445] dark:text-[#f5f3ee] border-b-2 border-[#442445] pb-1 hover:text-[#442445] transition-colors duration-300" href="#">Creator Studio</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-[#442445] dark:text-[#f5f3ee] p-2">person</button>
+</div>
+</nav>
+<div class="bg-[#f5f3ee] dark:bg-stone-900 h-[1px] w-full"></div>
+<!-- Main Workspace -->
+<main class="max-w-screen-2xl mx-auto px-8 py-12 md:py-20 grid grid-cols-1 lg:grid-cols-12 gap-12">
+<!-- Sidebar Navigation (Contextual) -->
+<aside class="lg:col-span-3 space-y-10">
+<div>
+<h1 class="font-headline text-3xl font-bold text-primary tracking-tight mb-2">Creator Studio</h1>
+<p class="text-secondary text-sm font-label uppercase tracking-widest">Workspace v2.4</p>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="group flex items-center gap-4 py-3 px-4 bg-surface-container-low rounded-lg text-primary border-l-4 border-primary" href="#basic-info">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">edit_note</span>
+<span class="font-semibold text-sm">Basic Information</span>
+</a>
+<a class="group flex items-center gap-4 py-3 px-4 hover:bg-surface-container-low rounded-lg transition-all duration-200" href="#message">
+<span class="material-symbols-outlined">auto_awesome</span>
+<span class="text-sm font-medium">Official Message</span>
+</a>
+<a class="group flex items-center gap-4 py-3 px-4 hover:bg-surface-container-low rounded-lg transition-all duration-200" href="#fan-inputs">
+<span class="material-symbols-outlined">dynamic_form</span>
+<span class="text-sm font-medium">Fan Inputs</span>
+</a>
+<a class="group flex items-center gap-4 py-3 px-4 hover:bg-surface-container-low rounded-lg transition-all duration-200" href="#media">
+<span class="material-symbols-outlined">cloud_upload</span>
+<span class="text-sm font-medium">Media Assets</span>
+</a>
+</nav>
+<div class="bg-surface-container-low p-6 rounded-xl space-y-4">
+<div class="flex items-center justify-between">
+<span class="text-xs font-label uppercase tracking-widest text-secondary">Status</span>
+<div class="flex items-center gap-1.5 py-1 px-2.5 bg-tertiary-container rounded text-[10px] font-headline italic text-on-tertiary-fixed">
+                        Draft Edition
+                    </div>
+</div>
+<p class="text-xs text-secondary leading-relaxed">Your artifact is 65% complete. Complete all fields to certify this edition.</p>
+<div class="w-full bg-surface-variant h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[65%]"></div>
+</div>
+</div>
+</aside>
+<!-- Content Canvas -->
+<section class="lg:col-span-9 space-y-16">
+<!-- Section 1: Basic Info -->
+<div class="space-y-8" id="basic-info">
+<div class="flex items-baseline justify-between border-b border-outline-variant/15 pb-4">
+<h2 class="font-headline text-2xl text-primary italic">01. Basic Information</h2>
+<span class="text-xs font-label text-outline uppercase tracking-widest">Required</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="space-y-2">
+<label class="block text-xs font-label uppercase tracking-widest text-secondary mb-1">Edition Title</label>
+<input class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/15 focus:ring-primary/50 p-4 text-on-surface font-headline placeholder:text-outline-variant rounded-lg transition-all" placeholder="e.g. The Midnight Archives" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="block text-xs font-label uppercase tracking-widest text-secondary mb-1">Release Date</label>
+<input class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/15 focus:ring-primary/50 p-4 text-on-surface font-body rounded-lg" type="date"/>
+</div>
+<div class="md:col-span-2 space-y-2">
+<label class="block text-xs font-label uppercase tracking-widest text-secondary mb-1">Edition Description</label>
+<textarea class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/15 focus:ring-primary/50 p-4 text-on-surface font-body placeholder:text-outline-variant rounded-lg transition-all" placeholder="Describe the soul of this artifact..." rows="4"></textarea>
+</div>
+</div>
+</div>
+<!-- Section 2: Official Message -->
+<div class="space-y-8" id="message">
+<div class="flex items-baseline justify-between border-b border-outline-variant/15 pb-4">
+<h2 class="font-headline text-2xl text-primary italic">02. Official Message</h2>
+<span class="text-xs font-label text-outline uppercase tracking-widest">Private Token</span>
+</div>
+<div class="bg-surface-container-low p-8 rounded-xl flex gap-8 items-start">
+<div class="hidden md:block w-32 h-48 bg-surface-container-highest flex-shrink-0 shadow-xl relative overflow-hidden rotate-[-2deg]">
+<img class="w-full h-full object-cover grayscale opacity-80" data-alt="close up of a vintage typewriter on a dark wooden desk with soft warm lamp lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3hsIkdEG920sRLbXx6_YnhJ2y0rNRz__qjKZnt0B1JcK_9sd7fYnFauqTzm1rKOGHrtZ8FYBiaypIpL9FTEAAFkf9kUlDYodAvNyuv0latVeQFlYSW6_h_it-8wERe1mqMWwZy5PWwuyCtl3DJ0nKEQk5tR1qZplFC1P7_HF63KY6G3x70Aw9tOilob3jCBzUD1cQFO-5VjpO6NZz5EeHGlUH6v-QsaiHr7KLBlkPLWv9WHkFAApCQUJC9s-gTR63iPe8Wt-RqjCw"/>
+<div class="absolute inset-0 bg-primary/20"></div>
+</div>
+<div class="flex-grow space-y-4">
+<p class="text-sm text-secondary italic leading-relaxed">This message is only revealed to fans after they acquire the edition. It acts as a digital certificate of intimacy from the creator.</p>
+<textarea class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/15 focus:ring-primary/50 p-4 text-on-surface font-headline italic rounded-lg transition-all" placeholder="A personal note for your collectors..." rows="6"></textarea>
+<div class="flex items-center gap-2 text-tertiary">
+<span class="material-symbols-outlined text-sm">verified</span>
+<span class="text-xs font-label uppercase tracking-widest">Authenticated by Archivist</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 3: Fan Inputs -->
+<div class="space-y-8" id="fan-inputs">
+<div class="flex items-baseline justify-between border-b border-outline-variant/15 pb-4">
+<h2 class="font-headline text-2xl text-primary italic">03. Fan Inputs</h2>
+<span class="text-xs font-label text-outline uppercase tracking-widest">Interactive</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Field Card 1 -->
+<div class="bg-surface-container-lowest ring-1 ring-outline-variant/15 p-6 rounded-xl space-y-4">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-primary">person_edit</span>
+<input checked="" class="text-primary focus:ring-primary rounded" type="checkbox"/>
+</div>
+<h3 class="font-headline text-lg text-primary">Collector's Name</h3>
+<p class="text-xs text-secondary leading-relaxed">Fans can enter their real name or a pseudonym for the ledger.</p>
+</div>
+<!-- Field Card 2 -->
+<div class="bg-surface-container-lowest ring-1 ring-outline-variant/15 p-6 rounded-xl space-y-4">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-primary">history_edu</span>
+<input checked="" class="text-primary focus:ring-primary rounded" type="checkbox"/>
+</div>
+<h3 class="font-headline text-lg text-primary">Dedication</h3>
+<p class="text-xs text-secondary leading-relaxed">Allow fans to write a 1-line dedication to someone special.</p>
+</div>
+<!-- Field Card 3 -->
+<div class="bg-surface-container-lowest ring-1 ring-outline-variant/15 p-6 rounded-xl space-y-4 opacity-60">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-primary">mail</span>
+<input class="text-primary focus:ring-primary rounded" type="checkbox"/>
+</div>
+<h3 class="font-headline text-lg text-primary">Personal Note</h3>
+<p class="text-xs text-secondary leading-relaxed">Option for fans to include a private message to you.</p>
+</div>
+</div>
+</div>
+<!-- Section 4: Media Assets -->
+<div class="space-y-8" id="media">
+<div class="flex items-baseline justify-between border-b border-outline-variant/15 pb-4">
+<h2 class="font-headline text-2xl text-primary italic">04. Media Assets</h2>
+<span class="text-xs font-label text-outline uppercase tracking-widest">High Resolution</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+<!-- Large Hero Upload -->
+<div class="md:col-span-3 h-80 bg-surface-container-low border-2 border-dashed border-outline-variant/30 rounded-xl flex flex-col items-center justify-center gap-4 group cursor-pointer hover:bg-surface-container-high transition-all">
+<div class="w-16 h-16 rounded-full bg-surface-container-lowest flex items-center justify-center text-primary shadow-sm group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-3xl">add_photo_alternate</span>
+</div>
+<div class="text-center">
+<p class="font-headline text-lg text-primary">Upload Hero Artifact</p>
+<p class="text-xs text-secondary uppercase font-label tracking-widest">Optimal: 2400 x 1200px</p>
+</div>
+</div>
+<!-- Small Thumbnail -->
+<div class="h-80 bg-surface-container-low border-2 border-dashed border-outline-variant/30 rounded-xl flex flex-col items-center justify-center gap-4 group cursor-pointer hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined text-2xl text-outline">landscape</span>
+<p class="text-[10px] text-secondary font-label uppercase tracking-widest">Thumbnail</p>
+</div>
+</div>
+</div>
+<!-- Form Actions -->
+<div class="pt-12 flex flex-col md:flex-row gap-4 justify-end border-t border-outline-variant/15">
+<button class="px-8 py-4 bg-surface-container-high text-on-surface font-label uppercase tracking-widest text-xs hover:bg-surface-variant transition-all rounded-sm">
+                    Discard Draft
+                </button>
+<button class="px-12 py-4 primary-gradient text-white font-label uppercase tracking-widest text-xs shadow-lg hover:shadow-xl transition-all rounded-sm flex items-center gap-2">
+                    Certify &amp; Publish Edition
+                    <span class="material-symbols-outlined text-sm">verified</span>
+</button>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-[#f5f3ee] dark:bg-stone-900 full-width py-12">
+<div class="flex flex-col md:flex-row justify-between items-center px-12 w-full max-w-screen-2xl mx-auto">
+<div class="mb-8 md:mb-0">
+<span class="text-lg font-bold font-headline text-[#442445]">Private Edition</span>
+<p class="font-label text-[10px] tracking-wide uppercase text-[#635d5a] dark:text-stone-400 mt-2">© 2024 Private Edition. All rights reserved.</p>
+</div>
+<div class="flex gap-8">
+<a class="font-label text-xs tracking-wide uppercase text-[#442445] dark:text-white hover:underline underline-offset-4" href="#">Creator Studio</a>
+<a class="font-label text-xs tracking-wide uppercase text-[#635d5a] dark:text-stone-500 hover:underline underline-offset-4" href="#">Support</a>
+</div>
+</div>
+</footer>
+</body></html>

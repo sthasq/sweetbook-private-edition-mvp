@@ -1,4 +1,4 @@
-import { get, post, patch } from "./client";
+import { get, invalidateApiCache, post, patch } from "./client";
 import type {
   ProjectSnapshot,
   ProjectPreview,
@@ -9,37 +9,49 @@ import type {
   ShippingInput,
 } from "../types/api";
 
-export function createProject(body: {
+export async function createProject(body: {
   editionId: number;
   mode: string;
   personalizationData?: Record<string, unknown>;
 }) {
-  return post<{ projectId: string }>("/projects", body);
+  const result = await post<{ projectId: string }>("/projects", body);
+  invalidateApiCache("/me/projects");
+  return result;
 }
 
-export function updateProject(
+export async function updateProject(
   id: number,
   personalizationData: Record<string, unknown>,
 ) {
-  return patch<ProjectSnapshot>(`/projects/${id}`, { personalizationData });
+  const result = await patch<ProjectSnapshot>(`/projects/${id}`, { personalizationData });
+  invalidateApiCache(`/projects/${id}/preview`);
+  invalidateApiCache("/me/projects");
+  return result;
 }
 
 export function getPreview(id: number) {
-  return get<ProjectPreview>(`/projects/${id}/preview`);
+  return get<ProjectPreview>(`/projects/${id}/preview`, { ttlMs: 20_000 });
 }
 
 export function getOrderSummary(id: number) {
-  return get<ProjectOrderSummary>(`/projects/${id}/order-summary`);
+  return get<ProjectOrderSummary>(`/projects/${id}/order-summary`, { ttlMs: 20_000 });
 }
 
-export function generateBook(id: number) {
-  return post<BookGeneration>(`/projects/${id}/generate-book`);
+export async function generateBook(id: number) {
+  const result = await post<BookGeneration>(`/projects/${id}/generate-book`);
+  invalidateApiCache(`/projects/${id}/preview`);
+  invalidateApiCache("/me/projects");
+  return result;
 }
 
 export function estimateOrder(id: number, shipping?: ShippingInput) {
   return post<EstimateResponse>(`/projects/${id}/estimate`, shipping);
 }
 
-export function createOrder(id: number, shipping: ShippingInput) {
-  return post<OrderResponse>(`/projects/${id}/order`, shipping);
+export async function createOrder(id: number, shipping: ShippingInput) {
+  const result = await post<OrderResponse>(`/projects/${id}/order`, shipping);
+  invalidateApiCache(`/projects/${id}/preview`);
+  invalidateApiCache(`/projects/${id}/order-summary`);
+  invalidateApiCache("/me/projects");
+  return result;
 }

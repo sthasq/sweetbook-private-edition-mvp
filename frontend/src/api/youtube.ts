@@ -10,7 +10,7 @@ import type {
 } from "../types/api";
 
 export function getAvailability() {
-  return get<YouTubeAvailability>("/youtube/availability");
+  return get<YouTubeAvailability>("/youtube/availability", { ttlMs: 60_000 });
 }
 
 export function getAuthUrl() {
@@ -22,16 +22,19 @@ export function handleCallback(code: string, state: string) {
 }
 
 export function getSubscriptions() {
-  return get<YouTubeChannel[]>("/youtube/subscriptions");
+  return get<YouTubeChannel[]>("/youtube/subscriptions", { ttlMs: 30_000 });
 }
 
 export function getChannelDetail(channelId: string) {
-  return get<YouTubeChannelDetail>(`/youtube/channels/${channelId}`);
+  return get<YouTubeChannelDetail>(`/youtube/channels/${channelId}`, {
+    ttlMs: 60_000,
+  });
 }
 
 export function getTopVideos(channelId: string, limit = 5) {
   return get<YouTubeVideo[]>(
     `/youtube/channels/${channelId}/top-videos?limit=${limit}`,
+    { ttlMs: 60_000 },
   );
 }
 

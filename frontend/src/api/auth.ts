@@ -1,24 +1,29 @@
-import { get, post } from "./client";
+import { get, invalidateApiCache, post } from "./client";
 import type { AuthUser } from "../types/api";
 
 export function getCurrentUser() {
-  return get<AuthUser>("/auth/me");
+  return get<AuthUser>("/auth/me", { ttlMs: 15_000 });
 }
 
-export function login(body: { email: string; password: string }) {
-  return post<AuthUser>("/auth/login", body);
+export async function login(body: { email: string; password: string }) {
+  const result = await post<AuthUser>("/auth/login", body);
+  invalidateApiCache();
+  return result;
 }
 
-export function signup(body: {
+export async function signup(body: {
   email: string;
   password: string;
   displayName: string;
   role: "FAN" | "CREATOR";
   channelHandle?: string;
 }) {
-  return post<AuthUser>("/auth/signup", body);
+  const result = await post<AuthUser>("/auth/signup", body);
+  invalidateApiCache();
+  return result;
 }
 
-export function logout() {
-  return post<void>("/auth/logout");
+export async function logout() {
+  await post<void>("/auth/logout");
+  invalidateApiCache();
 }

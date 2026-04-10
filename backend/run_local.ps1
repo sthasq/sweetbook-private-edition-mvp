@@ -160,6 +160,8 @@ if ($Database -eq "mysql") {
   $mysqlHost = if ($env:MYSQL_HOST) { $env:MYSQL_HOST } else { "localhost" }
   $mysqlPort = if ($env:MYSQL_PORT) { $env:MYSQL_PORT } else { "3307" }
   $mysqlDatabase = if ($env:MYSQL_DATABASE) { $env:MYSQL_DATABASE } else { "private_edition" }
+  $redisHost = if ($env:REDIS_HOST) { $env:REDIS_HOST } else { "localhost" }
+  $redisPort = if ($env:REDIS_PORT) { $env:REDIS_PORT } else { "6380" }
 
   $portOwner = Get-PortOwnerProcessName -Port ([int]$mysqlPort)
   if ($portOwner -and -not (Test-DockerOwnedPort -ProcessName $portOwner)) {
@@ -175,9 +177,9 @@ if ($Database -eq "mysql") {
 
   Push-Location $rootDir
   try {
-    & docker compose up -d mysql
+    & docker compose up -d mysql redis
     if ($LASTEXITCODE -ne 0) {
-      throw "docker compose up -d mysql failed."
+      throw "docker compose up -d mysql redis failed."
     }
   } finally {
     Pop-Location
@@ -214,7 +216,11 @@ if ($Database -eq "mysql") {
     $env:SPRING_DATASOURCE_PASSWORD = "privateedition"
   }
 
+  $env:SPRING_DATA_REDIS_HOST = $redisHost
+  $env:SPRING_DATA_REDIS_PORT = $redisPort
+
   Write-Host "Running backend with MySQL datasource: $($env:SPRING_DATASOURCE_URL)" -ForegroundColor Cyan
+  Write-Host "Using Redis-backed HTTP sessions: $($env:SPRING_DATA_REDIS_HOST):$($env:SPRING_DATA_REDIS_PORT)" -ForegroundColor Cyan
   Write-Host "Use -Database h2 if you need the temporary in-memory profile." -ForegroundColor DarkGray
   $serverPortOwner = Get-PortOwnerProcessName -Port 8080
   if ($serverPortOwner) {
@@ -222,7 +228,7 @@ if ($Database -eq "mysql") {
     Write-Host "Stop that process or change SERVER_PORT before running the backend." -ForegroundColor Yellow
     exit 1
   }
-  .\gradlew.bat bootRun --args="--spring.profiles.active=local,mysql-local --server.port=8080"
+  .\gradlew.bat bootRun --args="--spring.profiles.active=local,mysql-local,session-redis --server.port=8080"
   exit $LASTEXITCODE
 }
 

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Private Edition | My Projects</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400;1,700&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-tint": "#775276",
+                    "inverse-on-surface": "#f2f1ec",
+                    "on-error": "#ffffff",
+                    "surface-dim": "#dbdad5",
+                    "on-primary-fixed-variant": "#5e3b5e",
+                    "surface-variant": "#e4e2dd",
+                    "on-primary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed": "#ffd6fa",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-fixed-dim": "#e9c176",
+                    "tertiary-container": "#5d4200",
+                    "inverse-primary": "#e6b8e2",
+                    "secondary-container": "#e6ded9",
+                    "on-surface": "#1b1c19",
+                    "primary": "#442445",
+                    "secondary-fixed-dim": "#cdc5c0",
+                    "tertiary-fixed": "#ffdea5",
+                    "tertiary": "#402d00",
+                    "inverse-surface": "#30312e",
+                    "on-tertiary-fixed-variant": "#5d4201",
+                    "on-secondary-container": "#67625e",
+                    "on-primary-fixed": "#2e0f30",
+                    "primary-fixed-dim": "#e6b8e2",
+                    "on-tertiary-fixed": "#261900",
+                    "surface-container-low": "#f5f3ee",
+                    "error-container": "#ffdad6",
+                    "on-surface-variant": "#4d444b",
+                    "on-tertiary-container": "#d5af66",
+                    "secondary-fixed": "#e9e1dc",
+                    "on-secondary": "#ffffff",
+                    "primary-container": "#5d3a5d",
+                    "background": "#fbf9f4",
+                    "on-background": "#1b1c19",
+                    "outline": "#7f747c",
+                    "on-primary-container": "#d3a6d0",
+                    "surface": "#fbf9f4",
+                    "on-secondary-fixed-variant": "#4b4642",
+                    "error": "#ba1a1a",
+                    "on-error-container": "#93000a",
+                    "surface-container-high": "#eae8e3",
+                    "on-secondary-fixed": "#1e1b18",
+                    "surface-container": "#f0eee9",
+                    "surface-container-highest": "#e4e2dd",
+                    "secondary": "#635d5a",
+                    "outline-variant": "#d0c3cc",
+                    "surface-bright": "#fbf9f4"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Noto Serif"],
+                    "body": ["Manrope"],
+                    "label": ["Manrope"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .archival-gradient {
+            background: linear-gradient(135deg, #442445 0%, #5d3a5d 100%);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- TopNavBar -->
+<nav class="bg-[#fbf9f4] dark:bg-stone-950 docked full-width top-0 z-50">
+<div class="flex justify-between items-center px-8 py-6 w-full max-w-screen-2xl mx-auto">
+<div class="flex items-center gap-12">
+<span class="text-2xl font-bold font-noto-serif italic text-[#442445] dark:text-[#f5f3ee]">Private Edition</span>
+<div class="hidden md:flex gap-8 items-center">
+<a class="font-noto-serif text-base tracking-tight text-[#442445] dark:text-[#f5f3ee] border-b-2 border-[#442445] pb-1 hover:text-[#442445] transition-colors duration-300" href="#">Browse Editions</a>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="text-[#635d5a] dark:text-stone-400 hover:text-[#442445] transition-colors duration-300 flex items-center">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+</button>
+</div>
+</div>
+<div class="bg-[#f5f3ee] dark:bg-stone-900 h-[1px] w-full"></div>
+</nav>
+<main class="max-w-screen-2xl mx-auto px-8 pt-16 pb-32">
+<!-- Header Section -->
+<header class="mb-20">
+<h1 class="font-headline text-5xl md:text-6xl text-primary tracking-tight font-bold mb-4">My Personal Archive</h1>
+<p class="text-secondary font-body text-lg max-w-2xl leading-relaxed">A curated collection of your bespoke literary projects, drafted memories, and certified editions.</p>
+</header>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-10">
+<!-- Featured / Resume Last Project Card (Asymmetric) -->
+<div class="md:col-span-8 group">
+<div class="relative overflow-hidden bg-surface-container-low rounded-lg p-10 flex flex-col md:flex-row gap-10 h-full">
+<div class="flex-1 flex flex-col justify-between z-10">
+<div>
+<div class="flex items-center gap-3 mb-6">
+<span class="bg-tertiary-container text-on-tertiary-fixed px-3 py-1 rounded-sm text-[10px] font-label font-bold uppercase tracking-widest italic">Draft</span>
+<span class="text-secondary font-label text-xs uppercase tracking-widest">Modified 2 hours ago</span>
+</div>
+<h2 class="font-headline text-4xl text-primary font-bold mb-4">The Summer at Lake Como</h2>
+<p class="text-secondary text-sm font-body leading-relaxed mb-8 max-w-sm">A collection of handwritten notes, film photography, and sensory descriptions from the Italian lakes.</p>
+</div>
+<div class="flex gap-4">
+<button class="archival-gradient text-white px-6 py-3 rounded-md font-label text-sm font-semibold tracking-wide flex items-center gap-2 group-hover:shadow-lg transition-all">
+                                Resume Personalization
+                                <span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
+</button>
+</div>
+</div>
+<div class="flex-1 relative min-h-[300px]">
+<div class="absolute inset-0 bg-white shadow-xl rotate-3 translate-x-4 translate-y-4 rounded-sm border border-outline-variant/10"></div>
+<div class="absolute inset-0 bg-white shadow-md -rotate-2 rounded-sm border border-outline-variant/10 overflow-hidden">
+<img class="w-full h-full object-cover grayscale-[0.3]" data-alt="Close-up of a vintage travel journal with Italian calligraphy and a sepia photograph of a lake" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4oBD_dQj65Zfo8e-ZhFiO0hfPjFuL2w2Z68EYPmFAVJjWWXC7kfgIIzl1IOdZ3SJ_hYX3Fdk6ISFfALVq5xtfQCN_cAh0H8Si4dvokBS_mcmflMZW-lj_wTHzqQ8Dz3WHK_Al1qrribq2b1SD0viK-Co-M6YU_zOglJyqyBn6Qs67nkBeX73g5J0usLYQ6QF3He94JGl555J2GN4XapIppw3SP_Zdz_GkLG1wY_C3hhSrg14BPO9IPKmCzS2995QyRUUkrhEY0ESP"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Stats/Summary Card (Small) -->
+<div class="md:col-span-4 bg-surface-container-highest rounded-lg p-8 flex flex-col justify-center items-center text-center">
+<span class="material-symbols-outlined text-primary text-5xl mb-4" data-icon="auto_stories">auto_stories</span>
+<h3 class="font-headline text-2xl text-primary font-bold">4 Artifacts</h3>
+<p class="text-secondary font-label text-xs uppercase tracking-widest mt-2">Certified in your library</p>
+<div class="w-12 h-[1px] bg-outline-variant my-6"></div>
+<button class="text-primary font-label text-xs font-bold uppercase tracking-widest border-b-2 border-primary pb-1 hover:opacity-70 transition-opacity">
+                    Create New Edition
+                </button>
+</div>
+<!-- Project Grid - Row 2 -->
+<div class="md:col-span-4">
+<div class="bg-surface-container-lowest rounded-lg p-6 border border-outline-variant/15 flex flex-col h-full shadow-sm">
+<div class="aspect-[3/4] bg-surface-container mb-6 overflow-hidden rounded-sm relative">
+<img class="w-full h-full object-cover" data-alt="Minimalist book cover design with gold embossed typography on dark plum linen texture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbngKX3Wp-gRXrnHHTj5Y5YVV5KXTTxjPybOD1XCpdyDo37uqsP9KLMH6IO9EufRpBxTAy8s7kUJUogWcjGB2s3s8SjQG__p10rPIYQWHEl_Y4QHRzLMwwgEgLYwJNc4z4bkR0o2u9PdirTRSf8waRR4PQCE977vqHqAcQTGwJObJT36eSX4qKAtcyiZyQWQ0pOkfS78FMVtTkkI-i5F60nFDAQK-MBG8tJa-6kD4BDa_KsBcgbc_bdI9hEg_HtV3zNV8Xb7Z19T9t"/>
+<div class="absolute top-4 right-4">
+<span class="bg-white/90 backdrop-blur-md text-on-surface px-3 py-1 rounded-sm text-[10px] font-label font-bold uppercase tracking-widest">Preview Ready</span>
+</div>
+</div>
+<h3 class="font-headline text-xl text-primary font-bold mb-2">Ancestral Echoes</h3>
+<p class="text-secondary text-xs font-body mb-6 flex-grow">Genealogy mapped through private letters and heirloom portraits.</p>
+<div class="pt-6 border-t border-outline-variant/10 flex justify-between items-center">
+<button class="text-primary font-label text-xs font-bold uppercase tracking-widest hover:opacity-70 transition-opacity">Order Now</button>
+<span class="material-symbols-outlined text-secondary text-lg" data-icon="more_vert">more_vert</span>
+</div>
+</div>
+</div>
+<div class="md:col-span-4">
+<div class="bg-surface-container-lowest rounded-lg p-6 border border-outline-variant/15 flex flex-col h-full shadow-sm">
+<div class="aspect-[3/4] bg-surface-container mb-6 overflow-hidden rounded-sm relative">
+<img class="w-full h-full object-cover" data-alt="Old leather bound book on a wooden desk with warm lamp light and soft shadows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAf7aRMdZj5K7E0MzKrMzA_d8C-8oQBRvcHbtPKKgJBxZX_lRjldEqnd0ScgSFhntKoeVl4yX-gl-grsxn7iXkQ8E5HIdrSpFig1phq4AHvAr_4qqBV5yzV11RCZGixBklTlm9PNXFXZP95LeM8pY9A7aqML0340HHD_DnRaQZao39UUkKnANe-gr8VEAAV2aex9Y5QA7ZPs_gfrn0lYmcL_IAXJop4aJfma2QGvyJRq3899QEFDTv3XH8E_o72js_sl2_8wYC6hrrN"/>
+<div class="absolute top-4 right-4">
+<div class="bg-tertiary text-white px-3 py-1 rounded-sm text-[10px] font-label font-bold uppercase tracking-widest flex items-center gap-1">
+<span class="material-symbols-outlined text-[10px]" data-icon="verified" data-weight="fill">verified</span>
+                                Ordered Jan 12
+                            </div>
+</div>
+</div>
+<h3 class="font-headline text-xl text-primary font-bold mb-2">Nocturnal Musings</h3>
+<p class="text-secondary text-xs font-body mb-6 flex-grow">A private collection of poetry and charcoal sketches created between midnight and dawn.</p>
+<div class="pt-6 border-t border-outline-variant/10 flex justify-between items-center gap-4">
+<button class="text-primary font-label text-xs font-bold uppercase tracking-widest hover:opacity-70 transition-opacity">View Order</button>
+<button class="bg-surface-container-high text-on-surface px-4 py-2 rounded-sm font-label text-[10px] font-bold uppercase tracking-widest hover:bg-surface-variant transition-colors">Order Another Copy</button>
+</div>
+</div>
+</div>
+<div class="md:col-span-4">
+<div class="bg-surface-container-lowest rounded-lg p-6 border border-outline-variant/15 flex flex-col h-full shadow-sm">
+<div class="aspect-[3/4] bg-surface-container-low mb-6 overflow-hidden rounded-sm flex items-center justify-center border border-dashed border-outline-variant/30">
+<span class="material-symbols-outlined text-outline-variant text-4xl" data-icon="add_circle">add_circle</span>
+</div>
+<h3 class="font-headline text-xl text-secondary font-bold mb-2 italic">Begin New Archive...</h3>
+<p class="text-secondary/60 text-xs font-body mb-6 flex-grow">Start a new blank canvas for your next private edition project.</p>
+<div class="pt-6 border-t border-outline-variant/10">
+<button class="w-full py-2 text-primary font-label text-xs font-bold uppercase tracking-widest hover:opacity-70 transition-opacity text-left">Get Started</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-[#f5f3ee] dark:bg-stone-900 full-width py-12">
+<div class="flex flex-col md:flex-row justify-between items-center px-12 w-full max-w-screen-2xl mx-auto">
+<div class="mb-8 md:mb-0">
+<span class="text-lg font-bold font-noto-serif text-[#442445]">Private Edition</span>
+<p class="font-manrope text-[10px] tracking-widest uppercase text-[#635d5a] dark:text-stone-400 mt-2">© 2024 Private Edition. All rights reserved.</p>
+</div>
+<div class="flex gap-12">
+<a class="font-manrope text-sm tracking-wide uppercase text-[#635d5a] dark:text-stone-500 hover:underline underline-offset-4 transition-all duration-200" href="#">Creator Studio</a>
+<a class="font-manrope text-sm tracking-wide uppercase text-[#635d5a] dark:text-stone-500 hover:underline underline-offset-4 transition-all duration-200" href="#">Support</a>
+</div>
+</div>
+</footer>
+</body></html>

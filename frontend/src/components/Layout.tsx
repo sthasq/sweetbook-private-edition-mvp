@@ -1,12 +1,49 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
+const ROUTE_EXIT_MS = 180;
+const ROUTE_ENTER_MS = 320;
+
+type RouteTransitionState = "idle" | "entering" | "exiting";
+
 export default function Layout() {
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname } = location;
   const navigate = useNavigate();
   const { user, loading, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const routeSignature = `${location.pathname}${location.search}${location.hash}`;
+  const [transitionState, setTransitionState] =
+    useState<RouteTransitionState>("entering");
+  const [displayedRoute, setDisplayedRoute] = useState(routeSignature);
+
+  useEffect(() => {
+    if (displayedRoute === routeSignature) {
+      return;
+    }
+
+    setTransitionState("exiting");
+
+    const exitTimer = window.setTimeout(() => {
+      setDisplayedRoute(routeSignature);
+      setTransitionState("entering");
+    }, ROUTE_EXIT_MS);
+
+    return () => window.clearTimeout(exitTimer);
+  }, [displayedRoute, routeSignature]);
+
+  useEffect(() => {
+    if (transitionState !== "entering") {
+      return;
+    }
+
+    const enterTimer = window.setTimeout(() => {
+      setTransitionState("idle");
+    }, ROUTE_ENTER_MS);
+
+    return () => window.clearTimeout(enterTimer);
+  }, [displayedRoute, transitionState]);
 
   async function handleLogout() {
     try {
@@ -160,8 +197,14 @@ export default function Layout() {
         )}
       </header>
 
-      <main className="flex-1">
-        <Outlet />
+      <main className="flex-1 overflow-x-hidden">
+        <div
+          key={displayedRoute}
+          className="route-transition"
+          data-route-transition-state={transitionState}
+        >
+          <Outlet />
+        </div>
       </main>
 
       <footer className="border-t border-stone-200/70 bg-surface-low py-12">

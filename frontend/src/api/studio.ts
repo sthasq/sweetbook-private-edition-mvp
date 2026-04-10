@@ -1,4 +1,4 @@
-import { post, patch } from "./client";
+import { invalidateApiCache, post, patch } from "./client";
 import type { EditionDetail, YouTubeStudioRecapResult } from "../types/api";
 
 export interface StudioCopyBlock {
@@ -36,16 +36,24 @@ export interface StudioEditionInput {
   personalizationFields?: StudioPersonalizationFieldInput[];
 }
 
-export function createEdition(body: StudioEditionInput) {
-  return post<EditionDetail>("/studio/editions", body);
+export async function createEdition(body: StudioEditionInput) {
+  const result = await post<EditionDetail>("/studio/editions", body);
+  invalidateApiCache("/editions");
+  return result;
 }
 
-export function updateEdition(id: number, body: StudioEditionInput) {
-  return patch<EditionDetail>(`/studio/editions/${id}`, body);
+export async function updateEdition(id: number, body: StudioEditionInput) {
+  const result = await patch<EditionDetail>(`/studio/editions/${id}`, body);
+  invalidateApiCache(`/editions/${id}`);
+  invalidateApiCache("/editions");
+  return result;
 }
 
-export function publishEdition(id: number) {
-  return post<EditionDetail>(`/studio/editions/${id}/publish`);
+export async function publishEdition(id: number) {
+  const result = await post<EditionDetail>(`/studio/editions/${id}/publish`);
+  invalidateApiCache(`/editions/${id}`);
+  invalidateApiCache("/editions");
+  return result;
 }
 
 export function importStudioYouTubeRecap(source: string) {

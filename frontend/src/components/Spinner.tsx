@@ -1,4 +1,32 @@
-export default function Spinner({ className = "" }: { className?: string }) {
+import { useEffect, useState } from "react";
+
+export default function Spinner({
+  className = "",
+  delayMs = 260,
+}: {
+  className?: string;
+  delayMs?: number;
+}) {
+  const [visible, setVisible] = useState(delayMs === 0);
+
+  useEffect(() => {
+    if (delayMs === 0) {
+      setVisible(true);
+      return;
+    }
+
+    setVisible(false);
+    const timer = window.setTimeout(() => {
+      setVisible(true);
+    }, delayMs);
+
+    return () => window.clearTimeout(timer);
+  }, [delayMs]);
+
+  if (!visible) {
+    return <div className={`py-20 ${className}`} aria-hidden="true" />;
+  }
+
   return (
     <div className={`flex items-center justify-center py-20 ${className}`}>
       <div className="flex items-center gap-4 rounded-lg bg-white/80 px-6 py-4 shadow-editorial">

@@ -11,11 +11,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
 
 @Service
 @RequiredArgsConstructor
@@ -28,12 +28,12 @@ public class SweetbookService {
 
 	private final SweetbookClient sweetbookClient;
 	private final SweetbookProperties sweetbookProperties;
-	private final Map<String, List<SweetbookViews.Template>> templateCache = new ConcurrentHashMap<>();
 
 	public boolean isLiveEnabled() {
 		return sweetbookProperties.isLiveEnabled();
 	}
 
+	@Cacheable("sweetbook-book-specs")
 	public List<SweetbookViews.BookSpec> getBookSpecs() {
 		if (!isLiveEnabled()) {
 			return List.of(new SweetbookViews.BookSpec(
@@ -46,28 +46,27 @@ public class SweetbookService {
 		return sweetbookClient.getBookSpecs();
 	}
 
+	@Cacheable(cacheNames = "sweetbook-templates", key = "#bookSpecUid")
 	public List<SweetbookViews.Template> getTemplates(String bookSpecUid) {
-		return templateCache.computeIfAbsent(bookSpecUid, key -> {
-			if (!isLiveEnabled()) {
-				return List.of(
-					new SweetbookViews.Template(
-						"demo-cover-template",
-						"Official Cover",
-						"album",
-						"cover",
-						"https://picsum.photos/seed/demo-cover-template/960/720"
-					),
-					new SweetbookViews.Template(
-						"demo-content-template",
-						"Narrative Spread",
-						"album",
-						"content",
-						"https://picsum.photos/seed/demo-content-template/960/720"
-					)
-				);
-			}
-			return sweetbookClient.getTemplates(key);
-		});
+		if (!isLiveEnabled()) {
+			return List.of(
+				new SweetbookViews.Template(
+					"demo-cover-template",
+					"Official Cover",
+					"album",
+					"cover",
+					"https://picsum.photos/seed/demo-cover-template/960/720"
+				),
+				new SweetbookViews.Template(
+					"demo-content-template",
+					"Narrative Spread",
+					"album",
+					"content",
+					"https://picsum.photos/seed/demo-content-template/960/720"
+				)
+			);
+		}
+		return sweetbookClient.getTemplates(bookSpecUid);
 	}
 
 	public ProjectViews.BookGeneration generateBook(ProjectViews.Preview preview) {
