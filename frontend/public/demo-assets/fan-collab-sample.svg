@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-label="PlayPick fan collab sample">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f3e6d0"/>
+      <stop offset="100%" stop-color="#d4b28a"/>
+    </linearGradient>
+    <linearGradient id="shirt" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#486b7a"/>
+      <stop offset="100%" stop-color="#274654"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="900" fill="url(#bg)"/>
+  <circle cx="600" cy="310" r="150" fill="#f7d7bb"/>
+  <path d="M452 288c18-102 84-156 147-156 74 0 127 43 149 138-30-31-60-43-114-43-71 0-118 20-182 61z" fill="#3c2b23"/>
+  <circle cx="542" cy="315" r="12" fill="#2a201a"/>
+  <circle cx="662" cy="315" r="12" fill="#2a201a"/>
+  <path d="M545 390c36 32 78 32 114 0" fill="none" stroke="#ab5c53" stroke-width="14" stroke-linecap="round"/>
+  <path d="M420 650c42-118 102-178 180-178 76 0 138 58 180 178H420z" fill="url(#shirt)"/>
+  <rect x="180" y="94" width="280" height="72" rx="36" fill="#fff7ec" opacity="0.9"/>
+  <text x="320" y="140" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="700" fill="#6b4d33">COLLAB SAMPLE</text>
+  <text x="600" y="780" text-anchor="middle" font-family="sans-serif" font-size="40" font-weight="700" fill="#533824">과제용 샘플 팬 이미지</text>
+  <text x="600" y="830" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#6e5643">파일 선택이 안 되면 이 이미지로 바로 테스트할 수 있어요</text>
+</svg>

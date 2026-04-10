@@ -10,12 +10,10 @@ export default function Spinner({
   const [visible, setVisible] = useState(delayMs === 0);
 
   useEffect(() => {
-    if (delayMs === 0) {
-      setVisible(true);
+    if (delayMs <= 0) {
       return;
     }
 
-    setVisible(false);
     const timer = window.setTimeout(() => {
       setVisible(true);
     }, delayMs);
@@ -23,7 +21,7 @@ export default function Spinner({
     return () => window.clearTimeout(timer);
   }, [delayMs]);
 
-  if (!visible) {
+  if (delayMs > 0 && !visible) {
     return <div className={`py-20 ${className}`} aria-hidden="true" />;
   }
 

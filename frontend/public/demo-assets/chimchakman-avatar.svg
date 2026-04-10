@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
+  <rect width="600" height="600" rx="120" fill="#d6c6ac"/>
+  <circle cx="300" cy="300" r="232" fill="#3a3029"/>
+  <circle cx="300" cy="252" r="110" fill="#efe5d5"/>
+  <path d="M174 476 C212 394 388 394 426 476" fill="#efe5d5"/>
+  <rect x="208" y="214" width="184" height="22" rx="11" fill="#1f1a17"/>
+  <text x="300" y="554" fill="#fff8ef" font-size="34" font-weight="700" text-anchor="middle" font-family="Arial, sans-serif">CHIM</text>
+</svg>

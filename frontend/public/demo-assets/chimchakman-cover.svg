@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#eee7d8"/>
+      <stop offset="50%" stop-color="#c8b28e"/>
+      <stop offset="100%" stop-color="#2f2620"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="1200" fill="url(#bg)"/>
+  <rect x="82" y="84" width="736" height="1032" rx="30" fill="#faf7f0" opacity="0.94"/>
+  <rect x="0" y="842" width="900" height="358" fill="#241d1a" opacity="0.92"/>
+  <circle cx="708" cy="194" r="92" fill="#fff4d8"/>
+  <text x="126" y="180" fill="#6d5b47" font-size="28" font-family="Arial, sans-serif" letter-spacing="8">CHIMCHAKMAN</text>
+  <text x="126" y="304" fill="#231f1b" font-size="82" font-weight="700" font-family="Arial, sans-serif">Talk</text>
+  <text x="126" y="390" fill="#231f1b" font-size="82" font-weight="700" font-family="Arial, sans-serif">Highlight Book</text>
+  <text x="126" y="470" fill="#6d5b47" font-size="30" font-family="Arial, sans-serif">A quiet, editorial demo for long-form talk scenes and fan notes.</text>
+  <rect x="126" y="586" width="650" height="208" rx="26" fill="#e7dcc8"/>
+  <rect x="160" y="624" width="220" height="132" rx="20" fill="#3e342c"/>
+  <rect x="410" y="630" width="248" height="22" rx="11" fill="#6d5b47"/>
+  <rect x="410" y="676" width="300" height="18" rx="9" fill="#947e63"/>
+  <rect x="410" y="714" width="248" height="18" rx="9" fill="#947e63" opacity="0.72"/>
+  <text x="126" y="930" fill="#fbf7f0" font-size="58" font-weight="700" font-family="Arial, sans-serif">Long talk,</text>
+  <text x="126" y="994" fill="#fbf7f0" font-size="58" font-weight="700" font-family="Arial, sans-serif">small details,</text>
+  <text x="126" y="1058" fill="#fbf7f0" font-size="58" font-weight="700" font-family="Arial, sans-serif">saved again.</text>
+</svg>

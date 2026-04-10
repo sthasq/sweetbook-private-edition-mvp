@@ -19,6 +19,13 @@ public final class ProjectCommands {
 	) {
 	}
 
+	public record GenerateAiCollab(
+		String templateKey,
+		String sourceImageUrl,
+		String officialImageUrl
+	) {
+	}
+
 	public record Shipping(
 		String recipientName,
 		String recipientPhone,
@@ -26,6 +33,13 @@ public final class ProjectCommands {
 		String address1,
 		String address2,
 		int quantity
+	) {
+	}
+
+	public record PaymentConfirmation(
+		String paymentKey,
+		String orderId,
+		long amount
 	) {
 	}
 }

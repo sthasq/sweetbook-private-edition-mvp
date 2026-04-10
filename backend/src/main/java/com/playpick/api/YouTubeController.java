@@ -124,7 +124,7 @@ record YouTubeCallbackRequest(
 
 record AnalyzeChannelRequest(
 	@NotBlank String channelId,
-	@NotBlank @Size(max = 30) String fanNickname,
+	@Size(max = 30) String fanNickname,
 	String favoriteVideoId,
 	@Size(max = 240) String fanNote
 ) {

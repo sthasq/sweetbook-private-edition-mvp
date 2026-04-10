@@ -271,8 +271,40 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(jsonPath("$.siteOrderUid").isNotEmpty())
 			.andExpect(jsonPath("$.siteOrderStatus").value("PAID"))
 			.andExpect(jsonPath("$.fulfillmentStatus").isNotEmpty())
-			.andExpect(jsonPath("$.edition.title").value("2주년 기념 메모리북"))
+			.andExpect(jsonPath("$.edition.title").value("빠니보틀 세계여행 메모리북 데모"))
 			.andExpect(jsonPath("$.shipping.recipientName").value("천경신"));
+	}
+
+	@Test
+	void creatorCanViewOnlyOwnedEditionOrdersInStudioDashboard() throws Exception {
+		MockHttpSession creatorSession = signUpCreator(uniqueEmail("creator-orders"), "Order Creator", "@order_creator");
+		MockHttpSession otherCreatorSession = signUpCreator(uniqueEmail("other-creator-orders"), "Other Creator", "@other_creator");
+		MockHttpSession fanSession = signUp(uniqueEmail("fan-orders"), "주문 팬");
+		MockHttpSession otherFanSession = signUp(uniqueEmail("other-fan-orders"), "다른 팬");
+
+		long creatorEditionId = createAndPublishEdition(creatorSession, "Order Creator Edition");
+		long otherCreatorEditionId = createAndPublishEdition(otherCreatorSession, "Other Creator Edition");
+
+		long creatorProjectId = createProject(fanSession, creatorEditionId, "demo");
+		long otherCreatorProjectId = createProject(otherFanSession, otherCreatorEditionId, "demo");
+
+		placeOrder(fanSession, creatorProjectId, "주문 팬", "010-1234-5678");
+		placeOrder(otherFanSession, otherCreatorProjectId, "다른 팬", "010-2222-3333");
+
+		mockMvc.perform(get("/api/studio/orders").session(creatorSession))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalOrders").value(1))
+			.andExpect(jsonPath("$.paidOrders").value(1))
+			.andExpect(jsonPath("$.recentOrders[0].projectId").value(creatorProjectId))
+			.andExpect(jsonPath("$.recentOrders[0].editionId").value(creatorEditionId))
+			.andExpect(jsonPath("$.recentOrders[0].editionTitle").value("Order Creator Edition"))
+			.andExpect(jsonPath("$.recentOrders[0].fanDisplayName").value("주문 팬"))
+			.andExpect(jsonPath("$.recentOrders[0].recipientName").value("주문 팬"))
+			.andExpect(jsonPath("$.recentOrders[0].recipientPhoneMasked").value("010-****-5678"))
+			.andExpect(jsonPath("$.recentOrders[0].siteOrderStatus").value("PAID"));
+
+		mockMvc.perform(get("/api/studio/orders").session(fanSession))
+			.andExpect(status().isForbidden());
 	}
 
 	private MockHttpSession login(String email, String password) throws Exception {
@@ -339,6 +371,46 @@ class AuthAndAccessIntegrationTest {
 			.andReturn();
 
 		return Long.parseLong(readString(result, "projectId"));
+	}
+
+	private long createAndPublishEdition(MockHttpSession session, String title) throws Exception {
+		MvcResult createEditionResult = mockMvc.perform(post("/api/studio/editions")
+				.session(session)
+				.contentType(APPLICATION_JSON)
+				.content(studioPayload(title)))
+			.andExpect(status().isOk())
+			.andReturn();
+
+		long editionId = readLong(createEditionResult, "id");
+
+		mockMvc.perform(post("/api/studio/editions/{editionId}/publish", editionId)
+				.session(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("PUBLISHED"));
+
+		return editionId;
+	}
+
+	private void placeOrder(MockHttpSession session, long projectId, String recipientName, String recipientPhone) throws Exception {
+		mockMvc.perform(post("/api/projects/{projectId}/generate-book", projectId).session(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("FINALIZED"));
+
+		mockMvc.perform(post("/api/projects/{projectId}/order", projectId)
+				.session(session)
+				.contentType(APPLICATION_JSON)
+				.content("""
+					{
+					  "recipientName": "%s",
+					  "recipientPhone": "%s",
+					  "postalCode": "06236",
+					  "address1": "서울특별시 강남구 테헤란로 123",
+					  "address2": "10층",
+					  "quantity": 1
+					}
+					""".formatted(recipientName, recipientPhone)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.siteOrderStatus").value("PAID"));
 	}
 
 	private String studioPayload(String title) {

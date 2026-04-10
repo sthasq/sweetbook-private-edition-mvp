@@ -48,6 +48,17 @@ public class ProjectController {
 		return projectService.getPreview(projectId);
 	}
 
+	@Operation(summary = "Generate AI collab image candidates for a project")
+	@PostMapping("/{projectId}/ai-collab/generate")
+	public AiCollabGenerateResponse generateAiCollab(
+		@PathVariable Long projectId,
+		@Valid @RequestBody AiCollabGenerateRequest request
+	) {
+		return AiCollabGenerateResponse.from(
+			projectService.generateAiCollab(projectId, request.toCommand())
+		);
+	}
+
 	@Operation(summary = "Get order summary for a completed project")
 	@GetMapping("/{projectId}/order-summary")
 	public ProjectViews.OrderSummary getOrderSummary(@PathVariable Long projectId) {
@@ -65,6 +76,18 @@ public class ProjectController {
 	public EstimateResponse estimate(@PathVariable Long projectId, @RequestBody(required = false) ShippingRequest request) {
 		ProjectViews.Estimate estimate = projectService.estimate(projectId, request == null ? null : request.toCommand());
 		return EstimateResponse.from(estimate);
+	}
+
+	@Operation(summary = "Prepare a Toss Payments checkout session")
+	@PostMapping("/{projectId}/payment-session")
+	public PaymentSessionResponse preparePayment(@PathVariable Long projectId, @Valid @RequestBody ShippingRequest request) {
+		return PaymentSessionResponse.from(projectService.preparePayment(projectId, request.toCommand()));
+	}
+
+	@Operation(summary = "Confirm a Toss Payments payment")
+	@PostMapping("/{projectId}/payments/confirm")
+	public OrderResponse confirmPayment(@PathVariable Long projectId, @Valid @RequestBody PaymentConfirmRequest request) {
+		return OrderResponse.from(projectService.confirmPayment(projectId, request.toCommand()));
 	}
 
 	@Operation(summary = "Create an order")
@@ -112,6 +135,50 @@ record EstimateResponse(
 	}
 }
 
+record AiCollabGenerateRequest(
+	@NotBlank String templateKey,
+	@NotBlank String sourceImageUrl,
+	@NotBlank String officialImageUrl
+) {
+	ProjectCommands.GenerateAiCollab toCommand() {
+		return new ProjectCommands.GenerateAiCollab(templateKey, sourceImageUrl, officialImageUrl);
+	}
+}
+
+record AiCollabGenerateResponse(
+	String provider,
+	String model,
+	java.util.List<AiCollabCandidateResponse> candidates
+) {
+	static AiCollabGenerateResponse from(ProjectViews.AiCollabGeneration generation) {
+		return new AiCollabGenerateResponse(
+			generation.provider(),
+			generation.model(),
+			generation.candidates().stream().map(AiCollabCandidateResponse::from).toList()
+		);
+	}
+}
+
+record AiCollabCandidateResponse(
+	String id,
+	String templateKey,
+	String label,
+	String caption,
+	String imageUrl,
+	String source
+) {
+	static AiCollabCandidateResponse from(ProjectViews.AiCollabCandidate candidate) {
+		return new AiCollabCandidateResponse(
+			candidate.id(),
+			candidate.templateKey(),
+			candidate.label(),
+			candidate.caption(),
+			candidate.imageUrl(),
+			candidate.source()
+		);
+	}
+}
+
 record ShippingRequest(
 	@NotBlank String recipientName,
 	@NotBlank String recipientPhone,
@@ -122,6 +189,48 @@ record ShippingRequest(
 ) {
 	ProjectCommands.Shipping toCommand() {
 		return new ProjectCommands.Shipping(recipientName, recipientPhone, postalCode, address1, address2, quantity == null ? 1 : quantity);
+	}
+}
+
+record PaymentSessionResponse(
+	String provider,
+	boolean enabled,
+	String clientKey,
+	String customerKey,
+	String orderId,
+	String orderName,
+	BigDecimal amount,
+	String customerName,
+	String customerEmail,
+	String customerMobilePhone,
+	String successUrl,
+	String failUrl
+) {
+	static PaymentSessionResponse from(ProjectViews.PaymentSession session) {
+		return new PaymentSessionResponse(
+			session.provider(),
+			session.enabled(),
+			session.clientKey(),
+			session.customerKey(),
+			session.orderId(),
+			session.orderName(),
+			session.amount(),
+			session.customerName(),
+			session.customerEmail(),
+			session.customerMobilePhone(),
+			session.successUrl(),
+			session.failUrl()
+		);
+	}
+}
+
+record PaymentConfirmRequest(
+	@NotBlank String paymentKey,
+	@NotBlank String orderId,
+	@Min(1) Long amount
+) {
+	ProjectCommands.PaymentConfirmation toCommand() {
+		return new ProjectCommands.PaymentConfirmation(paymentKey, orderId, amount == null ? 0L : amount);
 	}
 }
 

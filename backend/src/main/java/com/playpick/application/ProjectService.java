@@ -1,5 +1,7 @@
 package com.playpick.application;
 
+import com.playpick.config.AppProperties;
+import com.playpick.config.TossPaymentsProperties;
 import com.playpick.domain.AppUser;
 import com.playpick.domain.CustomerOrder;
 import com.playpick.domain.CustomerOrderRepository;
@@ -11,6 +13,7 @@ import com.playpick.domain.OrderRecord;
 import com.playpick.domain.OrderRecordRepository;
 import com.playpick.domain.OrderStatus;
 import com.playpick.security.CurrentUserService;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,19 +35,28 @@ public class ProjectService {
 	private final OrderRecordRepository orderRecordRepository;
 	private final ProjectPreviewAssembler projectPreviewAssembler;
 	private final SweetbookService sweetbookService;
+	private final TossPaymentsService tossPaymentsService;
+	private final OpenRouterImageService openRouterImageService;
 	private final CurrentUserService currentUserService;
+	private final AppProperties appProperties;
+	private final TossPaymentsProperties tossPaymentsProperties;
 
 	@Transactional
 	public ProjectViews.Snapshot createProject(ProjectCommands.CreateProject command) {
 		AppUser currentUser = currentUserService.requireCurrentAppUser();
 		Long editionId = command.editionId() == null ? editionService.getDefaultPublishedEditionId() : command.editionId();
+		var publishedVersion = editionService.requirePublishedVersion(editionId);
 		FanProject project = new FanProject();
-		project.setEditionVersion(editionService.requirePublishedVersion(editionId));
+		project.setEditionVersion(publishedVersion);
 		project.setOwnerUser(currentUser);
 
 		Map<String, Object> personalizationData = new LinkedHashMap<>();
 		if ("demo".equalsIgnoreCase(command.mode()) || command.mode() == null || command.mode().isBlank()) {
-			personalizationData.putAll(createDemoPersonalization());
+			personalizationData.putAll(createDemoPersonalization(
+				publishedVersion.getEdition().getId(),
+				publishedVersion.getEdition().getCreator().getDisplayName(),
+				publishedVersion.getEdition().getCreator().getChannelHandle()
+			));
 		}
 
 		if (command.personalizationData() != null) {
@@ -58,42 +70,98 @@ public class ProjectService {
 		return toSnapshot(project);
 	}
 
-	private Map<String, Object> createDemoPersonalization() {
+	private Map<String, Object> createDemoPersonalization(Long editionId, String creatorName, String creatorHandle) {
 		Map<String, Object> data = new LinkedHashMap<>();
 		data.put("mode", "demo");
-		data.put("fanNickname", "팬");
-		data.put("subscribedSince", "2024-01-01T00:00:00Z");
-		data.put("daysTogether", 365);
-		data.put("favoriteVideoId", "demo-video-1");
-		data.put("fanNote", "");
+		if (editionId == 1L) {
+			data.put("fanNickname", "연두");
+			data.put("subscribedSince", "2023-07-14T00:00:00Z");
+			data.put("daysTogether", 1002);
+			data.put("favoriteVideoId", "pani-demo-2");
+			data.put("uploadedImageUrl", "/demo-assets/panibottle-landscape.jpg");
+			data.put("fanNote", "밤기차 창밖이 까맣게 흘러가는데도 계속 말을 이어가던 장면이 이상하게 오래 남았어요. 언젠가 저도 그런 식으로 낯선 도시를 건너보고 싶어요.");
+			data.put("channel", Map.of(
+				"channelId", "UC_DEMO_PANIBOTTLE",
+				"title", creatorName,
+				"subscriberCount", "2500000",
+				"thumbnailUrl", "/demo-assets/panibottle-avatar.jpg",
+				"bannerUrl", "/demo-assets/panibottle-landscape.jpg",
+				"handle", creatorHandle
+			));
+			data.put("topVideos", List.of(
+				Map.of(
+					"videoId", "pani-demo-1",
+					"title", "처음 내려본 사막 도시의 오후",
+					"thumbnailUrl", "/demo-assets/panibottle-cover.jpg",
+					"viewCount", 630000,
+					"publishedAt", "2024-06-01T00:00:00Z"
+				),
+				Map.of(
+					"videoId", "pani-demo-2",
+					"title", "야간열차 타고 국경 넘기",
+					"thumbnailUrl", "/demo-assets/panibottle-landscape.jpg",
+					"viewCount", 520000,
+					"publishedAt", "2024-10-01T00:00:00Z"
+				),
+				Map.of(
+					"videoId", "pani-demo-3",
+					"title", "로컬 야시장 한 바퀴",
+					"thumbnailUrl", "/demo-assets/panibottle-landscape.jpg",
+					"viewCount", 410000,
+					"publishedAt", "2025-01-01T00:00:00Z"
+				)
+			));
+			return data;
+		}
+
+		if (editionId == 2L) {
+			data.put("fanNickname", "소연");
+			data.put("favoriteMemory", "처음 보는 골목에서 멈칫하다가도 결국 웃으면서 들어가던 장면이 제일 곽튜브답다고 느꼈어요.");
+			data.put("fanMessage", "영상 속 어색함이 오히려 용기가 되는 순간이 있더라고요. 이 북에는 그때마다 저장해 두고 싶었던 문장들을 편지처럼 모아보고 싶어요.");
+			data.put("channel", Map.of(
+				"channelId", "UC_DEMO_JBKWAK",
+				"title", creatorName,
+				"subscriberCount", "2100000",
+				"thumbnailUrl", "/demo-assets/jbkwak-avatar.jpg",
+				"bannerUrl", "/demo-assets/jbkwak-landscape.jpg",
+				"handle", creatorHandle
+			));
+			return data;
+		}
+
+		data.put("fanNickname", "주은");
+		data.put("favoriteVideoId", "chim-demo-2");
+		data.put("uploadedImageUrl", "/demo-assets/chimchakman-landscape.jpg");
+		data.put("fanNote", "말이 빙 돌아가다가도 마지막에 툭 정리되는 순간이 좋아요. 웃다가도 메모하고 싶어지는 장면들만 따로 접어두고 싶었습니다.");
 		data.put("channel", Map.of(
-			"channelId", "UC_DEMO_CREATOR",
-			"title", "플레이픽 채널",
-			"subscriberCount", "100000",
-			"thumbnailUrl", "https://picsum.photos/seed/demo-ch/600/600",
-			"bannerUrl", "https://picsum.photos/seed/demo-banner/1600/500"
+			"channelId", "UC_DEMO_CHIMCHAKMAN",
+			"title", creatorName,
+			"subscriberCount", "3100000",
+			"thumbnailUrl", "/demo-assets/chimchakman-avatar.jpg",
+			"bannerUrl", "/demo-assets/chimchakman-landscape.jpg",
+			"handle", creatorHandle
 		));
 		data.put("topVideos", List.of(
 			Map.of(
-				"videoId", "demo-video-1",
-				"title", "다시 보고 싶은 장면 모음",
-				"thumbnailUrl", "https://picsum.photos/seed/demo-v1/1280/720",
-				"viewCount", 100000,
-				"publishedAt", "2023-06-01T00:00:00Z"
+				"videoId", "chim-demo-1",
+				"title", "괜히 다시 켜보게 되는 토크",
+				"thumbnailUrl", "/demo-assets/chimchakman-cover.jpg",
+				"viewCount", 980000,
+				"publishedAt", "2024-05-01T00:00:00Z"
 			),
 			Map.of(
-				"videoId", "demo-video-2",
-				"title", "기념 라이브 다시보기",
-				"thumbnailUrl", "https://picsum.photos/seed/demo-v2/1280/720",
-				"viewCount", 85000,
-				"publishedAt", "2024-01-01T00:00:00Z"
+				"videoId", "chim-demo-2",
+				"title", "먹방과 잡담 하이라이트",
+				"thumbnailUrl", "/demo-assets/chimchakman-landscape.jpg",
+				"viewCount", 870000,
+				"publishedAt", "2024-11-01T00:00:00Z"
 			),
 			Map.of(
-				"videoId", "demo-video-3",
-				"title", "비하인드 클립",
-				"thumbnailUrl", "https://picsum.photos/seed/demo-v3/1280/720",
-				"viewCount", 45000,
-				"publishedAt", "2024-03-01T00:00:00Z"
+				"videoId", "chim-demo-3",
+				"title", "팬이 자주 꺼내보는 하이라이트",
+				"thumbnailUrl", "/demo-assets/chimchakman-landscape.jpg",
+				"viewCount", 790000,
+				"publishedAt", "2025-02-01T00:00:00Z"
 			)
 		));
 		return data;
@@ -117,6 +185,15 @@ public class ProjectService {
 		return projectPreviewAssembler.assemble(toSnapshot(project), edition);
 	}
 
+	public ProjectViews.AiCollabGeneration generateAiCollab(Long projectId, ProjectCommands.GenerateAiCollab command) {
+		FanProject project = requireOwnedProject(projectId);
+		Long editionId = project.getEditionVersion().getEdition().getId();
+		if (editionId != 1L) {
+			throw new AppException(HttpStatus.BAD_REQUEST, "AI collab is only enabled for the PaniBottle edition");
+		}
+		return openRouterImageService.generatePaniCollab(command);
+	}
+
 	@Transactional
 	public ProjectViews.BookGeneration generateBook(Long projectId) {
 		FanProject project = requireOwnedProject(projectId);
@@ -137,10 +214,66 @@ public class ProjectService {
 	}
 
 	@Transactional
+	public ProjectViews.PaymentSession preparePayment(Long projectId, ProjectCommands.Shipping shipping) {
+		FanProject project = requireOwnedProject(projectId);
+		if (project.getSweetbookBookUid() == null || project.getSweetbookBookUid().isBlank()) {
+			throw new AppException(HttpStatus.BAD_REQUEST, "Generate the Sweetbook book before requesting payment");
+		}
+		if (!tossPaymentsProperties.isReady()) {
+			throw new AppException(HttpStatus.BAD_REQUEST, "Toss Payments is not configured");
+		}
+
+		CustomerOrder existingOrder = customerOrderRepository.findByFanProjectId(projectId).orElse(null);
+		if (existingOrder != null && existingOrder.getStatus() == OrderStatus.PAID) {
+			throw new AppException(HttpStatus.CONFLICT, "Order already completed for this project");
+		}
+
+		ProjectViews.Estimate estimate = sweetbookService.estimateOrder(projectId, project.getSweetbookBookUid(), shipping);
+		AppUser currentUser = currentUserService.requireCurrentAppUser();
+		CustomerOrder customerOrder = existingOrder == null ? new CustomerOrder() : existingOrder;
+		customerOrder.setFanProject(project);
+		customerOrder.setOrderUid(newSiteOrderUid());
+		customerOrder.setStatus(OrderStatus.CREATED);
+		customerOrder.setTotalAmount(estimate.totalAmount());
+		customerOrder.setSimulated(estimate.simulated());
+		customerOrder.setRecipientName(shipping.recipientName());
+		customerOrder.setRecipientPhone(shipping.recipientPhone());
+		customerOrder.setPostalCode(shipping.postalCode());
+		customerOrder.setAddress1(shipping.address1());
+		customerOrder.setAddress2(shipping.address2());
+		customerOrder.setQuantity(Math.max(shipping.quantity(), 1));
+		customerOrder.setPaymentProvider(null);
+		customerOrder.setPaymentKey(null);
+		customerOrder.setPaymentMethod(null);
+		customerOrder.setPaymentApprovedAt(null);
+		customerOrder.setOrderedAt(Instant.now());
+		customerOrder = customerOrderRepository.save(customerOrder);
+
+		return new ProjectViews.PaymentSession(
+			projectId,
+			"TOSS_PAYMENTS",
+			true,
+			tossPaymentsProperties.getClientKey(),
+			customerOrder.getOrderUid(),
+			customerOrder.getOrderUid(),
+			buildOrderName(project, shipping),
+			customerOrder.getTotalAmount(),
+			currentUser.getDisplayName(),
+			currentUser.getEmail(),
+			sanitizePhone(shipping.recipientPhone()),
+			appProperties.getFrontendBaseUrl() + "/projects/" + projectId + "/payment/success",
+			appProperties.getFrontendBaseUrl() + "/projects/" + projectId + "/payment/fail"
+		);
+	}
+
+	@Transactional
 	public ProjectViews.OrderResult order(Long projectId, ProjectCommands.Shipping shipping) {
 		FanProject project = requireOwnedProject(projectId);
 		if (project.getSweetbookBookUid() == null || project.getSweetbookBookUid().isBlank()) {
 			throw new AppException(HttpStatus.BAD_REQUEST, "Generate the Sweetbook book before ordering");
+		}
+		if (tossPaymentsProperties.isReady()) {
+			throw new AppException(HttpStatus.BAD_REQUEST, "Use payment confirmation flow when Toss Payments is enabled");
 		}
 
 		CustomerOrder existingOrder = customerOrderRepository.findByFanProjectId(projectId).orElse(null);
@@ -158,7 +291,7 @@ public class ProjectService {
 
 		CustomerOrder customerOrder = new CustomerOrder();
 		customerOrder.setFanProject(project);
-		customerOrder.setOrderUid("site-order-" + UUID.randomUUID());
+		customerOrder.setOrderUid(newSiteOrderUid());
 		customerOrder.setStatus(OrderStatus.PAID);
 		customerOrder.setTotalAmount(estimate.totalAmount());
 		customerOrder.setSimulated(estimate.simulated());
@@ -167,18 +300,58 @@ public class ProjectService {
 		customerOrder.setPostalCode(shipping.postalCode());
 		customerOrder.setAddress1(shipping.address1());
 		customerOrder.setAddress2(shipping.address2());
+		customerOrder.setQuantity(Math.max(shipping.quantity(), 1));
 		customerOrder.setOrderedAt(orderedAt);
 		customerOrder = customerOrderRepository.save(customerOrder);
 
-		OrderRecord fulfillmentOrder = submitFulfillmentOrder(project, shipping, customerOrder, orderedAt);
-		if (fulfillmentOrder != null && fulfillmentOrder.getStatus() == FulfillmentStatus.SIMULATED && !customerOrder.isSimulated()) {
-			customerOrder.setSimulated(true);
-			customerOrder = customerOrderRepository.save(customerOrder);
+		return finalizePaidOrder(projectId, project, shipping, customerOrder);
+	}
+
+	@Transactional
+	public ProjectViews.OrderResult confirmPayment(Long projectId, ProjectCommands.PaymentConfirmation confirmation) {
+		FanProject project = requireOwnedProject(projectId);
+		if (!tossPaymentsProperties.isReady()) {
+			throw new AppException(HttpStatus.BAD_REQUEST, "Toss Payments is not configured");
 		}
 
-		project.setStatus(FanProjectStatus.ORDERED);
-		fanProjectRepository.save(project);
-		return toOrderResult(projectId, customerOrder, fulfillmentOrder, Map.of());
+		CustomerOrder customerOrder = customerOrderRepository.findByFanProjectId(projectId)
+			.orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Pending payment not found for project: " + projectId));
+
+		if (!customerOrder.getOrderUid().equals(confirmation.orderId())) {
+			throw new AppException(HttpStatus.BAD_REQUEST, "Payment order does not match the pending project order");
+		}
+
+		if (customerOrder.getStatus() == OrderStatus.PAID) {
+			return toOrderResult(
+				projectId,
+				customerOrder,
+				orderRecordRepository.findByFanProjectId(projectId).orElse(null),
+				Map.of("reused", true)
+			);
+		}
+
+		BigDecimal requestedAmount = BigDecimal.valueOf(confirmation.amount());
+		if (customerOrder.getTotalAmount().compareTo(requestedAmount) != 0) {
+			throw new AppException(HttpStatus.BAD_REQUEST, "Payment amount does not match the prepared order amount");
+		}
+
+		TossPaymentsService.ConfirmedPayment confirmedPayment = tossPaymentsService.confirm(confirmation);
+		if (!customerOrder.getOrderUid().equals(confirmedPayment.orderId())) {
+			throw new AppException(HttpStatus.BAD_REQUEST, "Confirmed payment order does not match the prepared order");
+		}
+		if (customerOrder.getTotalAmount().compareTo(confirmedPayment.totalAmount()) != 0) {
+			throw new AppException(HttpStatus.BAD_REQUEST, "Confirmed payment amount does not match the prepared order");
+		}
+
+		customerOrder.setStatus(OrderStatus.PAID);
+		customerOrder.setPaymentProvider("TOSS_PAYMENTS");
+		customerOrder.setPaymentKey(confirmedPayment.paymentKey());
+		customerOrder.setPaymentMethod(confirmedPayment.method());
+		customerOrder.setPaymentApprovedAt(confirmedPayment.approvedAt() == null ? Instant.now() : confirmedPayment.approvedAt());
+		customerOrder.setOrderedAt(customerOrder.getPaymentApprovedAt());
+		customerOrder = customerOrderRepository.save(customerOrder);
+
+		return finalizePaidOrder(projectId, project, toShipping(customerOrder), customerOrder);
 	}
 
 	public ProjectViews.OrderSummary getOrderSummary(Long projectId) {
@@ -255,6 +428,7 @@ public class ProjectService {
 			project.getId(),
 			project.getEditionVersion().getEdition().getId(),
 			project.getEditionVersion().getEdition().getTitle(),
+			project.getEditionVersion().getEdition().getCoverImageUrl(),
 			project.getStatus().name(),
 			resolveMode(project),
 			customerOrder == null ? null : customerOrder.getStatus().name(),
@@ -279,6 +453,52 @@ public class ProjectService {
 			case BOOK_CREATED, FINALIZED -> "/projects/" + project.getId() + "/shipping";
 			case ORDERED -> "/projects/" + project.getId() + "/complete";
 		};
+	}
+
+	private String newSiteOrderUid() {
+		return "site-order-" + UUID.randomUUID();
+	}
+
+	private String buildOrderName(FanProject project, ProjectCommands.Shipping shipping) {
+		String title = project.getEditionVersion().getEdition().getTitle();
+		int quantity = Math.max(shipping.quantity(), 1);
+		return quantity == 1 ? title : title + " " + quantity + "권";
+	}
+
+	private String sanitizePhone(String phone) {
+		if (phone == null) {
+			return "";
+		}
+		return phone.replaceAll("[^0-9]", "");
+	}
+
+	private ProjectCommands.Shipping toShipping(CustomerOrder customerOrder) {
+		return new ProjectCommands.Shipping(
+			customerOrder.getRecipientName(),
+			customerOrder.getRecipientPhone(),
+			customerOrder.getPostalCode(),
+			customerOrder.getAddress1(),
+			customerOrder.getAddress2(),
+			customerOrder.getQuantity()
+		);
+	}
+
+	private ProjectViews.OrderResult finalizePaidOrder(
+		Long projectId,
+		FanProject project,
+		ProjectCommands.Shipping shipping,
+		CustomerOrder customerOrder
+	) {
+		Instant orderedAt = customerOrder.getOrderedAt() == null ? Instant.now() : customerOrder.getOrderedAt();
+		OrderRecord fulfillmentOrder = submitFulfillmentOrder(project, shipping, customerOrder, orderedAt);
+		if (fulfillmentOrder != null && fulfillmentOrder.getStatus() == FulfillmentStatus.SIMULATED && !customerOrder.isSimulated()) {
+			customerOrder.setSimulated(true);
+			customerOrder = customerOrderRepository.save(customerOrder);
+		}
+
+		project.setStatus(FanProjectStatus.ORDERED);
+		fanProjectRepository.save(project);
+		return toOrderResult(projectId, customerOrder, fulfillmentOrder, Map.of());
 	}
 
 	private OrderRecord submitFulfillmentOrder(

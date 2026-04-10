@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
+  <rect width="600" height="600" rx="120" fill="#8fd0d6"/>
+  <circle cx="300" cy="300" r="230" fill="#1b5b6b"/>
+  <circle cx="300" cy="250" r="108" fill="#dff1f2"/>
+  <path d="M178 470 C214 392 386 392 422 470" fill="#dff1f2"/>
+  <circle cx="232" cy="230" r="18" fill="#f6c861"/>
+  <circle cx="368" cy="230" r="18" fill="#f6c861"/>
+  <text x="300" y="554" fill="#f8feff" font-size="42" font-weight="700" text-anchor="middle" font-family="Arial, sans-serif">JBKWAK</text>
+</svg>

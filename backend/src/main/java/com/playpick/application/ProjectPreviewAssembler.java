@@ -81,17 +81,23 @@ public class ProjectPreviewAssembler {
 			)
 		));
 
+		boolean hasAiCollabCut = edition.id() == 1L && hasText(personalization.get("aiCollabSelectedUrl"));
+		String aiCollabImageUrl = asString(personalization.get("aiCollabSelectedUrl"), "");
+		String aiCollabTemplateLabel = asNonBlankString(personalization.get("aiCollabTemplateLabel"), "공식 콜라보 컷");
 		String memoryImageUrl = asString(personalization.get("uploadedImageUrl"),
 			asString(personalization.get("memoryImageUrl"), asString(channel.get("thumbnailUrl"), edition.coverImageUrl())));
 		pages.add(new ProjectViews.Page(
 			"fan-note",
-			fanNickname + "님의 한마디",
-			asNonBlankString(personalization.get("fanNote"), "좋아하는 마음을 한 줄로 남겨 보세요."),
-			memoryImageUrl,
+			hasAiCollabCut ? "빠니보틀과 남긴 " + aiCollabTemplateLabel : fanNickname + "님의 한마디",
+			hasAiCollabCut
+				? asNonBlankString(personalization.get("fanNote"), "빠니보틀 여행 무드로 정리한 공식 콜라보 컷입니다.")
+				: asNonBlankString(personalization.get("fanNote"), "좋아하는 마음을 한 줄로 남겨 보세요."),
+			hasAiCollabCut ? aiCollabImageUrl : memoryImageUrl,
 			Map.of(
 				"fanNickname", fanNickname,
 				"fanNote", asString(personalization.get("fanNote"), ""),
-				"uploadedImageUrl", memoryImageUrl
+				"uploadedImageUrl", hasAiCollabCut ? aiCollabImageUrl : memoryImageUrl,
+				"aiCollabTemplateLabel", aiCollabTemplateLabel
 			)
 		));
 
@@ -187,6 +193,13 @@ public class ProjectPreviewAssembler {
 			}
 		}
 		return fallback;
+	}
+
+	private boolean hasText(Object value) {
+		if (value instanceof String text) {
+			return !text.isBlank();
+		}
+		return value != null && !String.valueOf(value).isBlank();
 	}
 
 	private String asCopyText(Map<String, Object> source, String primaryKey, String aliasKey, String fallback) {

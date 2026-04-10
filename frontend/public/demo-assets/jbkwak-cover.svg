@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#d8f0f2"/>
+      <stop offset="52%" stop-color="#7bc3ca"/>
+      <stop offset="100%" stop-color="#184f63"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="1200" fill="url(#bg)"/>
+  <rect x="70" y="74" width="760" height="1052" rx="34" fill="#f4fbfb" opacity="0.95"/>
+  <circle cx="714" cy="194" r="94" fill="#f8d06a"/>
+  <path d="M0 856 C260 692 528 728 900 936 L900 1200 L0 1200 Z" fill="#123a48" opacity="0.92"/>
+  <text x="118" y="174" fill="#1e6a78" font-size="28" font-family="Arial, sans-serif" letter-spacing="8">JBKWAK</text>
+  <text x="118" y="300" fill="#14333e" font-size="84" font-weight="700" font-family="Arial, sans-serif">Roadtrip</text>
+  <text x="118" y="386" fill="#14333e" font-size="84" font-weight="700" font-family="Arial, sans-serif">Letter Book</text>
+  <text x="118" y="474" fill="#47717b" font-size="30" font-family="Arial, sans-serif">A playful travel-letter demo with bright local-energy cues.</text>
+  <rect x="118" y="574" width="664" height="222" rx="28" fill="#d8eff0"/>
+  <rect x="152" y="610" width="206" height="152" rx="24" fill="#1f6977"/>
+  <circle cx="255" cy="686" r="40" fill="#f8d06a"/>
+  <rect x="398" y="624" width="258" height="24" rx="12" fill="#175465"/>
+  <rect x="398" y="676" width="302" height="18" rx="9" fill="#4d95a4"/>
+  <rect x="398" y="714" width="272" height="18" rx="9" fill="#4d95a4" opacity="0.76"/>
+  <text x="118" y="920" fill="#f4fbfb" font-size="58" font-weight="700" font-family="Arial, sans-serif">Travel chaos,</text>
+  <text x="118" y="986" fill="#f4fbfb" font-size="58" font-weight="700" font-family="Arial, sans-serif">local jokes,</text>
+  <text x="118" y="1052" fill="#f4fbfb" font-size="58" font-weight="700" font-family="Arial, sans-serif">your own message.</text>
+</svg>

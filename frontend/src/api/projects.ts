@@ -3,7 +3,9 @@ import type {
   ProjectSnapshot,
   ProjectPreview,
   BookGeneration,
+  AiCollabGenerationResponse,
   EstimateResponse,
+  PaymentSessionResponse,
   OrderResponse,
   ProjectOrderSummary,
   ShippingInput,
@@ -44,8 +46,30 @@ export async function generateBook(id: number) {
   return result;
 }
 
+export function generateAiCollab(
+  id: number,
+  body: {
+    templateKey: string;
+    sourceImageUrl: string;
+    officialImageUrl: string;
+  },
+) {
+  return post<AiCollabGenerationResponse>(`/projects/${id}/ai-collab/generate`, body);
+}
+
 export function estimateOrder(id: number, shipping?: ShippingInput) {
   return post<EstimateResponse>(`/projects/${id}/estimate`, shipping);
+}
+
+export function createPaymentSession(id: number, shipping: ShippingInput) {
+  return post<PaymentSessionResponse>(`/projects/${id}/payment-session`, shipping);
+}
+
+export function confirmPayment(
+  id: number,
+  body: { paymentKey: string; orderId: string; amount: number },
+) {
+  return post<OrderResponse>(`/projects/${id}/payments/confirm`, body);
 }
 
 export async function createOrder(id: number, shipping: ShippingInput) {

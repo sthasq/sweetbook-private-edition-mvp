@@ -38,6 +38,7 @@ record EditionSummaryResponse(
 	Long id,
 	String title,
 	String subtitle,
+	String coverImageUrl,
 	String creatorName,
 	String creatorHandle,
 	boolean isVerified
@@ -47,6 +48,7 @@ record EditionSummaryResponse(
 			summary.id(),
 			summary.title(),
 			summary.subtitle(),
+			summary.coverImageUrl(),
 			summary.creator().displayName(),
 			summary.creator().channelHandle(),
 			summary.creator().verified()

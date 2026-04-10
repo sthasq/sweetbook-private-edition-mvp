@@ -135,7 +135,7 @@ export default function MyProjectsPage() {
                     <div className="absolute inset-0 rotate-2 rounded bg-white/70 shadow-sm" />
                     <div className="absolute inset-0 -rotate-2 overflow-hidden rounded bg-white p-3 shadow-editorial">
                       <img
-                        src={`https://picsum.photos/seed/project-${featured.projectId}/900/1200`}
+                        src={featured.editionCoverImageUrl || "/demo-assets/playpick-hero.svg"}
                         alt={featured.editionTitle}
                         className="h-full w-full rounded object-cover"
                       />
@@ -163,7 +163,7 @@ export default function MyProjectsPage() {
               >
                 <div className="relative overflow-hidden rounded bg-surface-low p-3">
                   <img
-                    src={`https://picsum.photos/seed/project-cover-${project.projectId}/900/1200`}
+                    src={project.editionCoverImageUrl || "/demo-assets/playpick-hero.svg"}
                     alt={project.editionTitle}
                     className="aspect-[3/4] w-full rounded object-cover"
                   />

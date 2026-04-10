@@ -4,6 +4,7 @@ export interface EditionSummary {
   id: number;
   title: string;
   subtitle: string;
+  coverImageUrl: string;
   creatorName: string;
   creatorHandle: string;
   isVerified: boolean;
@@ -101,10 +102,40 @@ export interface BookGeneration {
   simulated: boolean;
 }
 
+export interface AiCollabCandidateResponse {
+  id: string;
+  templateKey: string;
+  label: string;
+  caption: string;
+  imageUrl: string;
+  source: string;
+}
+
+export interface AiCollabGenerationResponse {
+  provider: string;
+  model: string;
+  candidates: AiCollabCandidateResponse[];
+}
+
 export interface EstimateResponse {
   totalAmount: number;
   shippingFee: number;
   simulated: boolean;
+}
+
+export interface PaymentSessionResponse {
+  provider: string;
+  enabled: boolean;
+  clientKey: string;
+  customerKey: string;
+  orderId: string;
+  orderName: string;
+  amount: number;
+  customerName: string;
+  customerEmail: string;
+  customerMobilePhone: string;
+  successUrl: string;
+  failUrl: string;
 }
 
 export interface OrderResponse {
@@ -157,12 +188,39 @@ export interface MyProjectSummary {
   projectId: number;
   editionId: number;
   editionTitle: string;
+  editionCoverImageUrl: string;
   status: string;
   mode: string;
   siteOrderStatus: string | null;
   fulfillmentStatus: string | null;
   updatedAt: string;
   continuePath: string;
+}
+
+export interface StudioOrderSummary {
+  projectId: number;
+  editionId: number;
+  editionTitle: string;
+  fanDisplayName: string;
+  recipientName: string;
+  recipientPhoneMasked: string;
+  addressSummary: string;
+  quantity: number;
+  totalAmount: number;
+  siteOrderUid: string;
+  siteOrderStatus: string;
+  fulfillmentStatus: string;
+  paymentProvider: string | null;
+  paymentMethod: string | null;
+  simulated: boolean;
+  orderedAt: string;
+}
+
+export interface StudioOrderDashboard {
+  totalOrders: number;
+  paidOrders: number;
+  totalRevenue: number;
+  recentOrders: StudioOrderSummary[];
 }
 
 /* ── YouTube ── */

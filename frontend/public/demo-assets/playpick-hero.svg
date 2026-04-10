@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f3e9d2"/>
+      <stop offset="55%" stop-color="#f6c26b"/>
+      <stop offset="100%" stop-color="#d85f3d"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="1200" fill="url(#bg)"/>
+  <circle cx="720" cy="180" r="120" fill="#fff7e8" opacity="0.8"/>
+  <circle cx="180" cy="980" r="160" fill="#7f2f22" opacity="0.22"/>
+  <rect x="72" y="80" width="756" height="1040" rx="36" fill="#fff8ed" opacity="0.92"/>
+  <text x="112" y="188" fill="#8c442d" font-size="28" font-family="Arial, sans-serif" letter-spacing="10">PLAYPICK DEMO</text>
+  <text x="112" y="320" fill="#32211b" font-size="88" font-weight="700" font-family="Arial, sans-serif">Fan-made</text>
+  <text x="112" y="410" fill="#32211b" font-size="88" font-weight="700" font-family="Arial, sans-serif">Goods</text>
+  <text x="112" y="520" fill="#6d524a" font-size="34" font-family="Arial, sans-serif">Creator-inspired visual demos for a private assignment.</text>
+  <rect x="112" y="610" width="676" height="188" rx="28" fill="#f4ddc2"/>
+  <rect x="144" y="642" width="240" height="124" rx="20" fill="#d86b3c"/>
+  <rect x="410" y="642" width="168" height="28" rx="14" fill="#8c442d" opacity="0.9"/>
+  <rect x="410" y="692" width="292" height="22" rx="11" fill="#b87053" opacity="0.8"/>
+  <rect x="410" y="734" width="252" height="22" rx="11" fill="#b87053" opacity="0.5"/>
+  <rect x="112" y="856" width="676" height="160" rx="28" fill="#2f211e"/>
+  <text x="150" y="930" fill="#fff2df" font-size="48" font-weight="700" font-family="Arial, sans-serif">Pick a drop.</text>
+  <text x="150" y="988" fill="#fff2df" font-size="48" font-weight="700" font-family="Arial, sans-serif">Add your note.</text>
+</svg>

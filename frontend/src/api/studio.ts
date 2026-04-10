@@ -1,5 +1,5 @@
-import { invalidateApiCache, post, patch } from "./client";
-import type { EditionDetail, YouTubeStudioRecapResult } from "../types/api";
+import { get, invalidateApiCache, post, patch } from "./client";
+import type { EditionDetail, StudioOrderDashboard, YouTubeStudioRecapResult } from "../types/api";
 
 export interface StudioCopyBlock {
   title: string;
@@ -54,6 +54,10 @@ export async function publishEdition(id: number) {
   invalidateApiCache(`/editions/${id}`);
   invalidateApiCache("/editions");
   return result;
+}
+
+export function getStudioOrderDashboard() {
+  return get<StudioOrderDashboard>("/studio/orders");
 }
 
 export function importStudioYouTubeRecap(source: string) {
