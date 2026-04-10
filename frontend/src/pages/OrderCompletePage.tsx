@@ -67,11 +67,12 @@ export default function OrderCompletePage() {
     .join(" ");
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-20">
+    <div className="page-shell-narrow">
       <ProjectStepper current="complete" className="mb-10" />
 
       <div className="text-center">
-        <div className="mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-full bg-brand-100">
+        <p className="editorial-label">Order Archive Complete</p>
+        <div className="mx-auto mb-8 mt-6 flex h-20 w-20 items-center justify-center rounded-full bg-brand-100/70">
           <svg
             className="h-10 w-10 text-brand-600"
             fill="none"
@@ -87,10 +88,10 @@ export default function OrderCompletePage() {
           </svg>
         </div>
 
-        <h1 className="text-3xl font-bold text-stone-900 mb-3">
+        <h1 className="text-3xl text-brand-700 md:text-5xl">
           {summary.simulated ? "데모 주문 접수 완료" : "주문이 접수되었습니다"}
         </h1>
-        <p className="text-stone-600">
+        <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-stone-700">
           <span className="text-brand-700">{creatorName}</span>의{" "}
           <span className="font-medium text-stone-900">{editionTitle}</span>
           {summary.simulated
@@ -100,8 +101,9 @@ export default function OrderCompletePage() {
       </div>
 
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-stone-200 bg-white/88 p-6 shadow-sm shadow-brand-100/30">
-          <h2 className="text-sm font-semibold text-stone-900">사이트 주문 정보</h2>
+        <section className="editorial-card p-6 md:p-8">
+          <p className="editorial-label">Site Order</p>
+          <h2 className="mt-3 text-2xl text-stone-900">사이트 주문 정보</h2>
           <div className="mt-4 space-y-3 text-sm">
             <div className="flex justify-between gap-4">
               <span className="text-stone-500">사이트 주문번호</span>
@@ -126,8 +128,9 @@ export default function OrderCompletePage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-stone-200 bg-white/88 p-6 shadow-sm shadow-brand-100/30">
-          <h2 className="text-sm font-semibold text-stone-900">Sweetbook 제작/출고 연동</h2>
+        <section className="editorial-card p-6 md:p-8">
+          <p className="editorial-label">Fulfillment</p>
+          <h2 className="mt-3 text-2xl text-stone-900">Sweetbook 제작/출고 연동</h2>
           <div className="mt-4 space-y-3 text-sm">
             <div className="flex justify-between gap-4">
               <span className="text-stone-500">발주 상태</span>
@@ -144,8 +147,9 @@ export default function OrderCompletePage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-stone-200 bg-white/88 p-6 shadow-sm shadow-brand-100/30 lg:col-span-2">
-          <h2 className="text-sm font-semibold text-stone-900">배송 정보</h2>
+        <section className="editorial-panel p-6 md:p-8 lg:col-span-2">
+          <p className="editorial-label">Shipping Record</p>
+          <h2 className="mt-3 text-2xl text-stone-900">배송 정보</h2>
           <div className="mt-4 space-y-3 text-sm">
             <div className="flex justify-between gap-4">
               <span className="text-stone-500">받는 분</span>
@@ -170,7 +174,7 @@ export default function OrderCompletePage() {
       </div>
 
       {summary.simulated && (
-        <div className="mt-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+        <div className="mt-6 rounded-sm border border-amber-300/80 bg-amber-50/70 p-5">
           <p className="text-sm font-semibold text-amber-800">
             현재 사이트 주문은 저장되었고, Sweetbook 연동은 데모 모드로 처리되었습니다.
           </p>
@@ -189,13 +193,13 @@ export default function OrderCompletePage() {
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
         <Link
           to="/me/projects"
-          className="inline-flex items-center justify-center rounded-full bg-brand-600 px-8 py-3 text-sm font-semibold text-white hover:bg-brand-500 transition-colors"
+          className="editorial-button-primary"
         >
           내 프로젝트 보기
         </Link>
         <Link
           to="/"
-          className="inline-flex items-center justify-center rounded-full border border-stone-300 bg-white px-8 py-3 text-sm font-semibold text-stone-700 hover:border-brand-400 hover:text-brand-700 transition-colors"
+          className="editorial-button-secondary"
         >
           홈으로 돌아가기
         </Link>

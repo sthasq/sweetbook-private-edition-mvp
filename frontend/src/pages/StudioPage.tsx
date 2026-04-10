@@ -86,15 +86,6 @@ export default function StudioPage() {
     [layoutTemplates],
   );
 
-  function redirectToLogin(message = "세션이 만료되어 다시 로그인해 주세요.") {
-    setError(message);
-    setSuccess("");
-    const next = `${location.pathname}${location.search}`;
-    navigate(`/login?next=${encodeURIComponent(next)}&reason=session-expired`, {
-      replace: true,
-    });
-  }
-
   useEffect(() => {
     listSweetbookBookSpecs()
       .then((specs) => {
@@ -106,7 +97,12 @@ export default function StudioPage() {
       })
       .catch((e: unknown) => {
         if (e instanceof ApiError && e.status === 401) {
-          redirectToLogin();
+          setError("세션이 만료되어 다시 로그인해 주세요.");
+          setSuccess("");
+          const next = `${location.pathname}${location.search}`;
+          navigate(`/login?next=${encodeURIComponent(next)}&reason=session-expired`, {
+            replace: true,
+          });
           return;
         }
         setBookSpecError(e instanceof Error ? e.message : "Sweetbook 규격 목록을 불러오지 못했습니다.");
@@ -129,7 +125,12 @@ export default function StudioPage() {
       .then(setLayoutTemplates)
       .catch((e: unknown) => {
         if (e instanceof ApiError && e.status === 401) {
-          redirectToLogin();
+          setError("세션이 만료되어 다시 로그인해 주세요.");
+          setSuccess("");
+          const next = `${location.pathname}${location.search}`;
+          navigate(`/login?next=${encodeURIComponent(next)}&reason=session-expired`, {
+            replace: true,
+          });
           return;
         }
         setLayoutTemplateError(e instanceof Error ? e.message : "Sweetbook 템플릿 목록을 불러오지 못했습니다.");
@@ -275,7 +276,12 @@ export default function StudioPage() {
       );
     } catch (e: unknown) {
       if (e instanceof ApiError && e.status === 401) {
-        redirectToLogin();
+        setError("세션이 만료되어 다시 로그인해 주세요.");
+        setSuccess("");
+        const next = `${location.pathname}${location.search}`;
+        navigate(`/login?next=${encodeURIComponent(next)}&reason=session-expired`, {
+          replace: true,
+        });
         return;
       }
       setError(e instanceof Error ? e.message : "유튜브 리캡 자산 불러오기 실패");
@@ -334,7 +340,12 @@ export default function StudioPage() {
       setSuccess(created ? "초안 변경사항을 저장했습니다." : "에디션 초안을 생성했습니다.");
     } catch (e: unknown) {
       if (e instanceof ApiError && e.status === 401) {
-        redirectToLogin();
+        setError("세션이 만료되어 다시 로그인해 주세요.");
+        setSuccess("");
+        const next = `${location.pathname}${location.search}`;
+        navigate(`/login?next=${encodeURIComponent(next)}&reason=session-expired`, {
+          replace: true,
+        });
         return;
       }
       setError(e instanceof Error ? e.message : "초안 저장 실패");
@@ -371,7 +382,12 @@ export default function StudioPage() {
       setTimeout(() => navigate(`/editions/${editionId}`), 1500);
     } catch (e: unknown) {
       if (e instanceof ApiError && e.status === 401) {
-        redirectToLogin();
+        setError("세션이 만료되어 다시 로그인해 주세요.");
+        setSuccess("");
+        const next = `${location.pathname}${location.search}`;
+        navigate(`/login?next=${encodeURIComponent(next)}&reason=session-expired`, {
+          replace: true,
+        });
         return;
       }
       setError(e instanceof Error ? e.message : "퍼블리시 실패");
@@ -395,20 +411,24 @@ export default function StudioPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-12">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="studio-page page-shell">
+      <div className="mx-auto max-w-screen-2xl">
+      <div className="flex flex-col gap-4 border-b border-stone-200/70 pb-8 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold text-stone-900">크리에이터 스튜디오</h1>
-          <span className="text-[10px] font-semibold tracking-widest uppercase text-gold-400 border border-gold-400/40 rounded px-1.5 py-0.5">
+          <div>
+            <p className="editorial-label">Creator Workspace</p>
+            <h1 className="mt-3 text-4xl font-bold text-brand-700 md:text-5xl">크리에이터 스튜디오</h1>
+          </div>
+          <span className="rounded bg-gold-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-500">
             크리에이터
           </span>
           {created && (
-            <span className="rounded-full border border-stone-300 bg-stone-50 px-3 py-1 text-[11px] font-medium text-stone-600">
+            <span className="rounded bg-surface-low px-3 py-1 text-[11px] font-medium text-warm-500">
               {created.status} · #{created.id}
             </span>
           )}
           {created && hasUnsavedChanges && (
-            <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-[11px] font-medium text-amber-700">
+            <span className="rounded bg-gold-400/15 px-3 py-1 text-[11px] font-medium text-gold-500">
               저장되지 않은 변경사항
             </span>
           )}
@@ -416,13 +436,13 @@ export default function StudioPage() {
         <button
           type="button"
           onClick={resetToNewEdition}
-          className="self-start rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 hover:border-brand-400 hover:text-brand-700 transition-colors"
+          className="editorial-button-secondary self-start px-4 py-2.5"
         >
           새 에디션 시작
         </button>
       </div>
 
-      <section className="mt-8 rounded-3xl border border-stone-200 bg-white/88 p-4 shadow-sm shadow-brand-100/30">
+      <section className="editorial-card mt-8 p-4 md:p-6">
         <div className="flex flex-wrap gap-3">
           {STUDIO_STEPS.map((step, index) => {
             const isActive = step.id === activeStep;
@@ -432,36 +452,36 @@ export default function StudioPage() {
                 key={step.id}
                 type="button"
                 onClick={() => setActiveStep(step.id)}
-                className={`min-w-[180px] flex-1 rounded-2xl border px-4 py-3 text-left transition-colors ${
+                className={`min-w-[180px] flex-1 rounded border px-4 py-4 text-left transition-colors ${
                   isActive
-                    ? "border-brand-500 bg-brand-50"
+                    ? "border-brand-400 bg-brand-50/50"
                     : isCompleted
-                      ? "border-emerald-200 bg-emerald-50/70"
-                      : "border-stone-200 bg-stone-50/80 hover:border-brand-300"
+                      ? "border-success-200 bg-success-50/70"
+                      : "border-stone-200 bg-surface-low hover:border-brand-300"
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <span
                     className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
                       isActive
-                        ? "bg-brand-600 text-white"
+                        ? "bg-brand-700 text-white"
                         : isCompleted
-                          ? "bg-emerald-600 text-white"
-                          : "bg-white text-stone-600"
+                          ? "bg-success-600 text-white"
+                          : "bg-white text-warm-500"
                     }`}
                   >
                     {step.badge}
                   </span>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-stone-900">{step.title}</p>
-                    <p className="mt-1 text-xs text-stone-500">{step.description}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-warm-500">{step.description}</p>
                   </div>
                 </div>
               </button>
             );
           })}
         </div>
-        <div className="mt-4 flex flex-col gap-2 rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-4 flex flex-col gap-2 rounded bg-surface-low px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-500">
               현재 단계
@@ -470,7 +490,7 @@ export default function StudioPage() {
               {currentStep.badge}. {currentStep.title}
             </p>
           </div>
-          <p className="text-sm text-stone-600">{currentStep.description}</p>
+          <p className="text-sm text-warm-500">{currentStep.description}</p>
         </div>
       </section>
 
@@ -478,7 +498,7 @@ export default function StudioPage() {
         <div className="min-w-0 space-y-6">
           {activeStep === "structure" && (
             <>
-          <section className="rounded-3xl border border-stone-200 bg-white/88 p-6 shadow-sm shadow-brand-100/30">
+          <section className="editorial-card p-6 md:p-8">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-stone-900">Sweetbook 레이아웃 템플릿</h2>
@@ -575,7 +595,7 @@ export default function StudioPage() {
 
           {activeStep === "details" && (
             <>
-          <section className="rounded-3xl border border-stone-200 bg-white/88 p-6 shadow-sm shadow-brand-100/30">
+          <section className="editorial-card p-6 md:p-8">
             <h2 className="text-lg font-semibold text-stone-900">기본 정보</h2>
             <div className="mt-5 grid gap-4">
               <input value={form.title} onChange={(e) => setForm((current) => ({ ...current, title: e.target.value }))} className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="에디션 제목" />
@@ -584,7 +604,7 @@ export default function StudioPage() {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-stone-200 bg-white/88 p-6 shadow-sm shadow-brand-100/30">
+          <section className="editorial-card p-6 md:p-8">
             <h2 className="text-lg font-semibold text-stone-900">공식 메시지</h2>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <div className="space-y-3 rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
@@ -604,10 +624,10 @@ export default function StudioPage() {
 
           {activeStep === "assets" && (
             <>
-          <section className="rounded-3xl border border-stone-200 bg-white/88 p-6 shadow-sm shadow-brand-100/30">
+          <section className="editorial-card p-6 md:p-8">
             <div className="flex items-center justify-between gap-4">
               <h2 className="text-lg font-semibold text-stone-900">큐레이션 자산</h2>
-              <button type="button" onClick={addAsset} className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 hover:border-brand-400 hover:text-brand-700 transition-colors">자산 추가</button>
+              <button type="button" onClick={addAsset} className="editorial-button-secondary px-4 py-2.5">자산 추가</button>
             </div>
             <div className="mt-5 rounded-2xl border border-red-200 bg-red-50/50 p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
@@ -652,7 +672,7 @@ export default function StudioPage() {
                   type="button"
                   onClick={handleImportYouTubeRecap}
                   disabled={recapLoading}
-                  className="rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-500 disabled:opacity-50"
+                  className="editorial-button-primary px-5 py-2.5 disabled:opacity-50"
                 >
                   {recapLoading ? "불러오는 중..." : "리캡 자산 불러오기"}
                 </button>
@@ -939,6 +959,7 @@ export default function StudioPage() {
             </div>
           </div>
         </section>
+      </div>
       </div>
     </div>
   );

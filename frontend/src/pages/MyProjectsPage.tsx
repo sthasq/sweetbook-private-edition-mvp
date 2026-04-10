@@ -66,92 +66,159 @@ export default function MyProjectsPage() {
   if (loading) return <Spinner />;
   if (error) return <ErrorBox message={error} />;
 
-  return (
-    <div className="mx-auto max-w-5xl px-6 py-12">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-gold-400">
-            My Projects
-          </p>
-          <h1 className="mt-3 text-3xl font-bold text-stone-900">
-            저장된 개인화 프로젝트
-          </h1>
-          <p className="mt-2 text-sm text-stone-600">
-            마지막으로 작업한 단계에서 바로 이어서 진행할 수 있습니다.
-          </p>
-        </div>
-      </div>
+  const featured = projects[0];
+  const remainder = projects.slice(1);
 
-      {projects.length === 0 ? (
-        <div className="mt-10 rounded-3xl border border-dashed border-stone-300 bg-white/75 px-8 py-16 text-center">
-          <p className="text-lg font-semibold text-stone-900">
-            아직 저장된 프로젝트가 없습니다
+  return (
+    <div className="page-shell">
+      <div className="mx-auto max-w-7xl">
+        <header className="mb-16">
+          <p className="editorial-label">My Personal Archive</p>
+          <h1 className="mt-4 text-5xl font-bold tracking-tight text-brand-700 md:text-6xl">
+            저장해 둔 프로젝트를
+            <br />
+            <span className="italic font-normal">다시 펼쳐 보는 공간.</span>
+          </h1>
+          <p className="mt-5 max-w-3xl text-lg leading-relaxed text-warm-500">
+            작업 중인 개인화 초안, 주문 직전의 미리보기, 이미 보관된 주문 기록까지 한 곳에서
+            이어서 관리합니다.
           </p>
-          <p className="mt-2 text-sm text-stone-600">
-            Official Edition을 고른 뒤 개인화 프로젝트를 시작해보세요.
-          </p>
-          <Link
-            to="/"
-            className="mt-6 inline-flex rounded-full bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-500"
-          >
-            에디션 보러가기
-          </Link>
-        </div>
-      ) : (
-        <div className="mt-10 space-y-4">
-          {projects.map((project) => (
-            <div
-              key={project.projectId}
-              className="rounded-3xl border border-stone-200 bg-white/85 p-6 shadow-sm shadow-brand-100/30"
-            >
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
+        </header>
+
+        {projects.length === 0 ? (
+          <div className="editorial-card px-8 py-20 text-center">
+            <p className="font-headline text-3xl text-brand-700">아직 저장된 프로젝트가 없습니다.</p>
+            <p className="mt-4 text-sm leading-relaxed text-warm-500">
+              공식 에디션을 고른 뒤 개인화 프로젝트를 시작하면 여기에 당신만의 아카이브가
+              쌓이기 시작합니다.
+            </p>
+            <Link to="/" className="editorial-button-primary mt-8">
+              에디션 보러가기
+            </Link>
+          </div>
+        ) : (
+          <div className="grid gap-10 md:grid-cols-12">
+            {featured && (
+              <article className="editorial-panel overflow-hidden p-8 md:col-span-8 md:p-10">
+                <div className="grid h-full gap-8 md:grid-cols-[1.1fr_0.9fr]">
+                  <div className="flex flex-col justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="rounded bg-gold-400/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-500">
+                          {featured.mode}
+                        </span>
+                        <span className="rounded bg-white/75 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-warm-500">
+                          {statusLabel(featured.status)}
+                        </span>
+                      </div>
+                      <h2 className="mt-6 text-4xl font-bold leading-tight text-brand-700">
+                        {featured.editionTitle}
+                      </h2>
+                      <p className="mt-4 text-sm leading-relaxed text-warm-500">
+                        마지막 업데이트: {new Date(featured.updatedAt).toLocaleString("ko-KR")}
+                      </p>
+                    </div>
+
+                    <div className="mt-8 flex flex-wrap gap-4">
+                      <Link to={featured.continuePath} className="editorial-button-primary">
+                        이어서 진행
+                      </Link>
+                      <Link
+                        to={`/editions/${featured.editionId}`}
+                        className="editorial-button-secondary"
+                      >
+                        에디션 보기
+                      </Link>
+                    </div>
+                  </div>
+
+                  <div className="relative min-h-[260px]">
+                    <div className="absolute inset-0 rotate-2 rounded bg-white/70 shadow-sm" />
+                    <div className="absolute inset-0 -rotate-2 overflow-hidden rounded bg-white p-3 shadow-editorial">
+                      <img
+                        src={`https://picsum.photos/seed/project-${featured.projectId}/900/1200`}
+                        alt={featured.editionTitle}
+                        className="h-full w-full rounded object-cover"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </article>
+            )}
+
+            <aside className="editorial-card flex flex-col items-center justify-center px-8 py-12 text-center md:col-span-4">
+              <p className="text-5xl font-bold text-brand-700">{projects.length}</p>
+              <p className="mt-3 text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">
+                archived projects
+              </p>
+              <div className="my-6 h-px w-14 bg-stone-200/80" />
+              <Link to="/" className="editorial-button-link">
+                새 에디션 시작하기
+              </Link>
+            </aside>
+
+            {remainder.map((project) => (
+              <article
+                key={project.projectId}
+                className="editorial-card flex h-full flex-col overflow-hidden p-6 md:col-span-4"
+              >
+                <div className="relative overflow-hidden rounded bg-surface-low p-3">
+                  <img
+                    src={`https://picsum.photos/seed/project-cover-${project.projectId}/900/1200`}
+                    alt={project.editionTitle}
+                    className="aspect-[3/4] w-full rounded object-cover"
+                  />
+                  <div className="absolute right-6 top-6 rounded bg-white/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-500">
+                    {statusLabel(project.status)}
+                  </div>
+                </div>
+
+                <div className="mt-6 flex flex-1 flex-col">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-gold-400/30 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-gold-400">
+                    <span className="rounded bg-gold-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-gold-500">
                       {project.mode}
                     </span>
-                    <span className="rounded-full border border-stone-300 bg-stone-50 px-3 py-1 text-[11px] font-medium text-stone-600">
-                      {statusLabel(project.status)}
-                    </span>
+                    {project.status === "ORDERED" && (
+                      <span className="rounded bg-brand-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-700">
+                        Archived
+                      </span>
+                    )}
                   </div>
-                  <h2 className="mt-4 text-xl font-semibold text-stone-900">
+
+                  <h3 className="mt-4 text-2xl font-bold leading-tight text-brand-700">
                     {project.editionTitle}
-                  </h2>
-                  <p className="mt-2 text-sm text-stone-600">
-                    마지막 업데이트:{" "}
-                    {new Date(project.updatedAt).toLocaleString("ko-KR")}
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-warm-500">
+                    마지막 업데이트: {new Date(project.updatedAt).toLocaleString("ko-KR")}
                   </p>
+
                   {project.status === "ORDERED" && (
-                    <div className="mt-3 flex flex-col gap-2 text-xs text-stone-600">
-                      <span className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 w-fit">
-                        {siteOrderLabel(project.siteOrderStatus) ?? "사이트 주문 상태 확인 필요"}
-                      </span>
-                      <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 w-fit">
-                        {fulfillmentLabel(project.fulfillmentStatus) ?? "Sweetbook 연동 상태 확인 필요"}
-                      </span>
+                    <div className="mt-4 space-y-2 text-xs text-warm-500">
+                      <p>{siteOrderLabel(project.siteOrderStatus) ?? "사이트 주문 상태 확인 필요"}</p>
+                      <p>
+                        {fulfillmentLabel(project.fulfillmentStatus) ??
+                          "Sweetbook 연동 상태 확인 필요"}
+                      </p>
                     </div>
                   )}
-                </div>
 
-                <div className="flex gap-3">
-                  <Link
-                    to={`/editions/${project.editionId}`}
-                    className="rounded-full border border-stone-300 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition-colors hover:border-brand-400 hover:text-brand-700"
-                  >
-                    에디션 보기
-                  </Link>
-                  <Link
-                    to={project.continuePath}
-                    className="rounded-full bg-brand-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-500"
-                  >
-                    이어서 진행
-                  </Link>
+                  <div className="mt-6 flex flex-wrap gap-3 border-t border-stone-200/70 pt-5">
+                    <Link to={project.continuePath} className="editorial-button-primary px-4 py-2.5">
+                      이어서 진행
+                    </Link>
+                    <Link
+                      to={`/editions/${project.editionId}`}
+                      className="editorial-button-secondary px-4 py-2.5"
+                    >
+                      에디션 보기
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

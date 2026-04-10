@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { getPreview, updateProject } from "../api/projects";
 import { analyzeChannel, getAuthUrl, getSubscriptions } from "../api/youtube";
@@ -126,7 +127,9 @@ export default function PersonalizationPage() {
       };
       setValues(nextValues);
       setTopVideos(result.topVideos);
-      setInfoMessage("YouTube 데이터로 폼을 자동 채웠습니다. 필요한 내용만 다듬고 저장하면 됩니다.");
+      setInfoMessage(
+        "YouTube 데이터를 바탕으로 초안을 채웠습니다. 필요한 문장만 다듬고 저장하면 됩니다.",
+      );
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "YouTube 분석 결과 반영 실패");
     } finally {
@@ -158,252 +161,400 @@ export default function PersonalizationPage() {
 
   const fields: PersonalizationField[] =
     preview.edition.snapshot?.personalizationFields ?? [];
+  const summaryEntries = buildSummaryEntries(values, fields);
+  const previewTitle = summaryEntries[0]?.value ?? preview.edition.title;
+  const previewSubtitle =
+    summaryEntries[1]?.value ??
+    "당신의 기억과 문장이 이 책의 개인화 레이어로 인쇄됩니다.";
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-12">
-      <ProjectStepper current="personalize" className="mb-8" />
+    <div className="page-shell">
+      <div className="mx-auto max-w-7xl">
+        <ProjectStepper current="personalize" className="mb-10" />
 
-      <h1 className="text-2xl font-bold text-stone-900 mb-2">
-        나만의 정보 입력
-      </h1>
-      <p className="text-sm text-stone-600 mb-8">
-        <span className="text-brand-700 font-medium">{preview.edition.title}</span>
-        {" "}에디션을 나만의 것으로 만드세요.
-      </p>
-
-      {/* YouTube connect option */}
-      {preview.mode === "youtube" && (
-        <div className="rounded-2xl border border-red-200 bg-white/88 p-5 mb-8 shadow-sm shadow-red-100/40">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-stone-900">
-                YouTube 데이터 자동 채우기
-              </h3>
-              <p className="text-xs text-stone-600 mt-1">
-                구독 채널, 인기 영상 분석 결과를 자동으로 반영합니다
-              </p>
-              <p className="mt-2 text-xs text-stone-500">
-                {youtubeConnected
-                  ? "Google 계정 연동 완료. 채널을 선택한 뒤 자동 채우기를 누르세요."
-                  : "먼저 Google 계정을 연결하면 구독 채널 목록을 불러올 수 있습니다."}
+        <div className="grid gap-10 lg:grid-cols-2 lg:items-start">
+          <section className="min-w-0">
+            <div className="mb-10">
+              <p className="editorial-label">Step 02 of 04</p>
+              <h1 className="mt-4 text-4xl font-bold leading-tight text-brand-700 md:text-5xl">
+                당신만의 페이지를 채워 넣는 단계
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-warm-500">
+                공식 에디션 위에 들어갈 개인의 기억을 정리해 주세요. 입력 내용은 미리보기
+                단계에서 인쇄용 구성으로 합쳐집니다.
               </p>
             </div>
-            <button
-              onClick={handleYouTubeConnect}
-              className="shrink-0 rounded-full bg-red-600 px-5 py-2 text-xs font-semibold text-white hover:bg-red-500 transition-colors"
-            >
-              {youtubeConnected ? "Google 다시 연결" : "Google 로그인"}
-            </button>
-          </div>
 
-          {youtubeSyncing && (
-            <p className="mt-4 text-xs text-stone-500">YouTube 연결 상태를 확인하는 중...</p>
-          )}
-
-          {youtubeConnected && (
-            <div className="mt-4 rounded-xl border border-stone-200 bg-stone-50/80 p-4">
-              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
-                <div>
-                  <label
-                    htmlFor="youtube-channel"
-                    className="block text-xs font-medium text-stone-700 mb-1.5"
-                  >
-                    구독 채널 선택
-                  </label>
-                  <select
-                    id="youtube-channel"
-                    value={selectedChannelId}
-                    onChange={(e) => setSelectedChannelId(e.target.value)}
-                    className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none transition-colors"
-                  >
-                    <option value="">채널을 선택하세요</option>
-                    {subscriptions.map((channel) => (
-                      <option key={channel.channelId} value={channel.channelId}>
-                        {channel.title}
-                      </option>
-                    ))}
-                  </select>
+            {preview.mode === "youtube" && (
+              <div className="editorial-card mb-8 p-6">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="editorial-label text-brand-700">YouTube Assisted Draft</p>
+                    <p className="mt-3 text-lg font-semibold text-stone-900">
+                      구독 채널과 대표 영상을 바탕으로 개인화 초안을 만들 수 있습니다.
+                    </p>
+                    <p className="mt-2 text-sm leading-relaxed text-warm-500">
+                      {youtubeConnected
+                        ? "채널을 고른 뒤 자동 채우기를 누르면 관련 데이터가 현재 폼에 반영됩니다."
+                        : "먼저 Google 계정을 연결하면 YouTube 데이터를 활용할 수 있습니다."}
+                    </p>
+                  </div>
+                  <button onClick={handleYouTubeConnect} className="editorial-button-secondary">
+                    {youtubeConnected ? "Google 다시 연결" : "Google 로그인"}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  disabled={!selectedChannelId || youtubeAnalyzing}
-                  onClick={handleAnalyzeChannel}
-                  className="rounded-full bg-brand-600 px-5 py-2 text-xs font-semibold text-white hover:bg-brand-500 transition-colors disabled:opacity-50"
-                >
-                  {youtubeAnalyzing ? "불러오는 중..." : "자동 채우기"}
-                </button>
+
+                {youtubeSyncing && (
+                  <p className="mt-4 text-sm text-warm-500">YouTube 연결 상태를 확인하는 중입니다.</p>
+                )}
+
+                {youtubeConnected && (
+                  <div className="mt-6 rounded bg-surface-low px-5 py-5">
+                    <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+                      <div>
+                        <label htmlFor="youtube-channel" className="editorial-label text-warm-500">
+                          Subscribed channel
+                        </label>
+                        <select
+                          id="youtube-channel"
+                          value={selectedChannelId}
+                          onChange={(e) => setSelectedChannelId(e.target.value)}
+                          className="editorial-input mt-2"
+                        >
+                          <option value="">채널을 선택하세요</option>
+                          {subscriptions.map((channel) => (
+                            <option key={channel.channelId} value={channel.channelId}>
+                              {channel.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={!selectedChannelId || youtubeAnalyzing}
+                        onClick={handleAnalyzeChannel}
+                        className="editorial-button-primary disabled:opacity-50"
+                      >
+                        {youtubeAnalyzing ? "불러오는 중..." : "자동 채우기"}
+                      </button>
+                    </div>
+
+                    {subscriptions.length === 0 && !youtubeSyncing && (
+                      <p className="mt-4 text-sm text-warm-500">
+                        읽어올 수 있는 구독 채널이 없습니다. 다른 계정으로 다시 연결하거나 직접
+                        입력해 주세요.
+                      </p>
+                    )}
+
+                    {topVideos.length > 0 && (
+                      <div className="mt-5">
+                        <p className="editorial-label text-warm-500">Imported top videos</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {topVideos.slice(0, 5).map((video) => (
+                            <span
+                              key={video.videoId}
+                              className="rounded bg-white px-3 py-2 text-xs text-warm-500 shadow-sm"
+                            >
+                              {video.title}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-8">
+              {fields.length > 0 ? (
+                fields.map((field) => (
+                  <div key={field.fieldKey}>
+                    <label htmlFor={field.fieldKey} className="block">
+                      <span className="font-headline text-xl text-brand-700">{field.label}</span>
+                      <span className="ml-3 text-xs uppercase tracking-[0.18em] text-warm-500">
+                        {field.required ? "Required" : "Optional"}
+                      </span>
+                    </label>
+                    <div className="mt-3">
+                      {renderField(
+                        field,
+                        values,
+                        setValues,
+                        topVideos,
+                        preview.mode,
+                      )}
+                    </div>
+                    {field.maxLength && (
+                      <p className="mt-2 text-right text-[11px] uppercase tracking-[0.16em] text-warm-500">
+                        {readStringValue(values[field.fieldKey]).length}/{field.maxLength}
+                      </p>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <>
+                  <FallbackField
+                    label="닉네임"
+                    fieldKey="fanNickname"
+                    value={readStringValue(values.fanNickname)}
+                    onChange={(next) =>
+                      setValues((current) => ({ ...current, fanNickname: next }))
+                    }
+                  />
+                  <FallbackTextarea
+                    label="가장 기억에 남는 순간"
+                    fieldKey="favoriteMemory"
+                    value={readStringValue(values.favoriteMemory)}
+                    onChange={(next) =>
+                      setValues((current) => ({ ...current, favoriteMemory: next }))
+                    }
+                  />
+                  <FallbackTextarea
+                    label="크리에이터에게 한마디"
+                    fieldKey="fanMessage"
+                    value={readStringValue(values.fanMessage)}
+                    onChange={(next) =>
+                      setValues((current) => ({ ...current, fanMessage: next }))
+                    }
+                  />
+                </>
+              )}
+            </div>
+
+            {(error || infoMessage) && (
+              <div className="mt-8 space-y-3">
+                {error && <p className="text-sm text-red-600">{error}</p>}
+                {infoMessage && <p className="text-sm text-brand-700">{infoMessage}</p>}
+              </div>
+            )}
+
+            <div className="mt-10 flex items-center justify-between border-t border-stone-200/70 pt-8">
+              <button
+                type="button"
+                onClick={() => navigate(`/editions/${preview.edition.id}`)}
+                className="editorial-button-link"
+              >
+                에디션으로 돌아가기
+              </button>
+              <button
+                disabled={saving}
+                onClick={handleSave}
+                className="editorial-button-primary min-w-[220px] disabled:opacity-50"
+              >
+                {saving ? "저장 중..." : "미리보기로 이동"}
+              </button>
+            </div>
+          </section>
+
+          <section className="lg:sticky lg:top-28">
+            <div className="editorial-panel overflow-hidden p-6 md:p-8">
+              <div className="mb-6 flex items-center justify-between">
+                <div>
+                  <p className="editorial-label text-gold-500">Live Archival Preview</p>
+                  <p className="mt-2 text-sm text-warm-500">{preview.edition.title}</p>
+                </div>
+                <div className="rounded bg-white/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-700">
+                  Draft
+                </div>
               </div>
 
-              {subscriptions.length === 0 && !youtubeSyncing && (
-                <p className="mt-3 text-xs text-stone-500">
-                  읽어올 수 있는 구독 채널이 없습니다. 다른 계정으로 다시 연결하거나 직접 입력해 주세요.
+              <div className="editorial-card bg-[linear-gradient(180deg,#fffefb_0%,#f7f3ec_100%)] p-8">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-gold-500">
+                    Chapter Draft
+                  </span>
+                  <span className="rounded bg-gold-400/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-gold-500">
+                    Official Archive
+                  </span>
+                </div>
+                <h2 className="mt-8 text-3xl font-bold leading-tight text-brand-700">
+                  {previewTitle}
+                </h2>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">
+                  Personalized for {readStringValue(values.fanNickname) || "you"}
                 </p>
-              )}
+
+                <div className="mt-8 overflow-hidden rounded">
+                  <img
+                    src={
+                      preview.edition.coverImageUrl ||
+                      `https://picsum.photos/seed/personalization-${preview.edition.id}/800/520`
+                    }
+                    alt={preview.edition.title}
+                    className="aspect-[4/3] w-full object-cover"
+                  />
+                </div>
+
+                <p className="mt-8 text-sm leading-relaxed text-stone-800">
+                  {previewSubtitle}
+                </p>
+
+                <div className="mt-8 space-y-4 border-t border-stone-200/70 pt-6">
+                  {summaryEntries.slice(0, 4).map((entry) => (
+                    <div key={entry.label}>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-500">
+                        {entry.label}
+                      </p>
+                      <p className="mt-2 text-sm leading-relaxed text-stone-900">{entry.value}</p>
+                    </div>
+                  ))}
+                  {summaryEntries.length === 0 && (
+                    <p className="text-sm leading-relaxed text-warm-500">
+                      입력이 시작되면 이 영역에 실제 미리보기용 문장이 차곡차곡 정리됩니다.
+                    </p>
+                  )}
+                </div>
+              </div>
 
               {topVideos.length > 0 && (
-                <div className="mt-4">
-                  <p className="text-xs font-medium text-stone-700 mb-2">불러온 인기 영상</p>
-                  <div className="flex flex-wrap gap-2">
-                    {topVideos.slice(0, 5).map((video) => (
-                      <span
-                        key={video.videoId}
-                        className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs text-stone-600"
-                      >
-                        {video.title}
-                      </span>
+                <div className="mt-6 rounded bg-white/80 p-5 shadow-sm">
+                  <p className="editorial-label text-brand-700">Referenced videos</p>
+                  <div className="mt-4 space-y-3">
+                    {topVideos.slice(0, 3).map((video) => (
+                      <div key={video.videoId} className="flex items-center gap-3">
+                        <img
+                          src={video.thumbnailUrl}
+                          alt={video.title}
+                          className="h-14 w-20 rounded object-cover"
+                        />
+                        <div className="min-w-0">
+                          <p className="line-clamp-2 text-sm text-stone-900">{video.title}</p>
+                          <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-warm-500">
+                            {new Date(video.publishedAt).toLocaleDateString("ko-KR")}
+                          </p>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
               )}
             </div>
-          )}
+          </section>
         </div>
-      )}
-
-      {/* Dynamic form fields */}
-      <div className="space-y-5">
-        {fields.length > 0 ? (
-          fields.map((f) => (
-            <div key={f.fieldKey}>
-              <label
-                htmlFor={f.fieldKey}
-                className="block text-sm font-medium text-stone-700 mb-1.5"
-              >
-                {f.label}
-                {f.required && (
-                  <span className="text-red-400 ml-1">*</span>
-                )}
-              </label>
-              {normalizeFieldType(f.inputType) === "textarea" ? (
-                <textarea
-                  id={f.fieldKey}
-                  rows={3}
-                  maxLength={f.maxLength ?? undefined}
-                  value={readStringValue(values[f.fieldKey])}
-                  onChange={(e) =>
-                    setValues((v) => ({ ...v, [f.fieldKey]: e.target.value }))
-                  }
-                  className="w-full rounded-lg border border-stone-300 bg-white/85 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none transition-colors"
-                  placeholder={f.label}
-                />
-              ) : normalizeFieldType(f.inputType) === "video_picker" ? (
-                <select
-                  id={f.fieldKey}
-                  value={readStringValue(values[f.fieldKey])}
-                  onChange={(e) =>
-                    setValues((v) => ({ ...v, [f.fieldKey]: e.target.value }))
-                  }
-                  disabled={topVideos.length === 0}
-                  className="w-full rounded-lg border border-stone-300 bg-white/85 px-4 py-2.5 text-sm text-stone-900 disabled:opacity-60 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none transition-colors"
-                >
-                  <option value="">
-                    {preview.mode === "demo" 
-                      ? "영상을 선택하세요 (Demo)" 
-                      : topVideos.length === 0
-                        ? "YouTube 데이터를 먼저 불러와 주세요"
-                        : "가장 좋아하는 영상을 선택하세요"}
-                  </option>
-                  {topVideos.map((video) => (
-                    <option key={video.videoId} value={video.videoId}>
-                      {video.title}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  id={f.fieldKey}
-                  type={resolveInputType(f.inputType)}
-                  maxLength={f.maxLength ?? undefined}
-                  value={readInputValue(f, values[f.fieldKey])}
-                  onChange={(e) =>
-                    setValues((v) => ({ ...v, [f.fieldKey]: e.target.value }))
-                  }
-                  className="w-full rounded-lg border border-stone-300 bg-white/85 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none transition-colors"
-                  placeholder={f.label}
-                />
-              )}
-              {f.maxLength && (
-                <p className="mt-1 text-xs text-stone-500 text-right">
-                  {readStringValue(values[f.fieldKey]).length}/{f.maxLength}
-                </p>
-              )}
-            </div>
-          ))
-        ) : (
-          <>
-            <div>
-              <label
-                htmlFor="fanNickname"
-                className="block text-sm font-medium text-stone-700 mb-1.5"
-              >
-                닉네임 <span className="text-red-400">*</span>
-              </label>
-              <input
-                id="fanNickname"
-                value={readStringValue(values.fanNickname)}
-                onChange={(e) =>
-                  setValues((v) => ({ ...v, fanNickname: e.target.value }))
-                }
-                className="w-full rounded-lg border border-stone-300 bg-white/85 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none transition-colors"
-                placeholder="책에 들어갈 나의 닉네임"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="favoriteMemory"
-                className="block text-sm font-medium text-stone-700 mb-1.5"
-              >
-                가장 기억에 남는 순간
-              </label>
-              <textarea
-                id="favoriteMemory"
-                rows={3}
-                value={readStringValue(values.favoriteMemory)}
-                onChange={(e) =>
-                  setValues((v) => ({ ...v, favoriteMemory: e.target.value }))
-                }
-                className="w-full rounded-lg border border-stone-300 bg-white/85 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none transition-colors"
-                placeholder="크리에이터와 관련된 기억에 남는 순간을 적어주세요"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="fanMessage"
-                className="block text-sm font-medium text-stone-700 mb-1.5"
-              >
-                크리에이터에게 한마디
-              </label>
-              <textarea
-                id="fanMessage"
-                rows={2}
-                value={readStringValue(values.fanMessage)}
-                onChange={(e) =>
-                  setValues((v) => ({ ...v, fanMessage: e.target.value }))
-                }
-                className="w-full rounded-lg border border-stone-300 bg-white/85 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none transition-colors"
-                placeholder="짧은 메시지를 남겨주세요"
-              />
-            </div>
-          </>
-        )}
       </div>
+    </div>
+  );
+}
 
-      {error && (
-        <p className="mt-4 text-sm text-red-400">{error}</p>
-      )}
-      {infoMessage && (
-        <p className="mt-4 text-sm text-emerald-400">{infoMessage}</p>
-      )}
+function renderField(
+  field: PersonalizationField,
+  values: Record<string, unknown>,
+  setValues: Dispatch<SetStateAction<Record<string, unknown>>>,
+  topVideos: YouTubeVideo[],
+  mode: string,
+) {
+  const normalizedType = normalizeFieldType(field.inputType);
 
-      <div className="mt-8 flex justify-end">
-        <button
-          disabled={saving}
-          onClick={handleSave}
-          className="rounded-full bg-brand-600 px-8 py-3 text-sm font-semibold text-white hover:bg-brand-500 transition-colors disabled:opacity-50"
-        >
-          {saving ? "저장 중..." : "미리보기로 →"}
-        </button>
-      </div>
+  if (normalizedType === "textarea") {
+    return (
+      <textarea
+        id={field.fieldKey}
+        rows={5}
+        maxLength={field.maxLength ?? undefined}
+        value={readStringValue(values[field.fieldKey])}
+        onChange={(e) =>
+          setValues((current) => ({ ...current, [field.fieldKey]: e.target.value }))
+        }
+        className="editorial-input min-h-[160px] resize-none"
+        placeholder={field.label}
+      />
+    );
+  }
+
+  if (normalizedType === "video_picker") {
+    return (
+      <select
+        id={field.fieldKey}
+        value={readStringValue(values[field.fieldKey])}
+        onChange={(e) =>
+          setValues((current) => ({ ...current, [field.fieldKey]: e.target.value }))
+        }
+        disabled={topVideos.length === 0}
+        className="editorial-input disabled:opacity-60"
+      >
+        <option value="">
+          {mode === "demo"
+            ? "영상 선택 (Demo)"
+            : topVideos.length === 0
+              ? "YouTube 데이터를 먼저 불러와 주세요"
+              : "대표 영상을 선택하세요"}
+        </option>
+        {topVideos.map((video) => (
+          <option key={video.videoId} value={video.videoId}>
+            {video.title}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  return (
+    <input
+      id={field.fieldKey}
+      type={resolveInputType(field.inputType)}
+      maxLength={field.maxLength ?? undefined}
+      value={readInputValue(field, values[field.fieldKey])}
+      onChange={(e) =>
+        setValues((current) => ({ ...current, [field.fieldKey]: e.target.value }))
+      }
+      className="editorial-input"
+      placeholder={field.label}
+    />
+  );
+}
+
+function FallbackField({
+  label,
+  fieldKey,
+  value,
+  onChange,
+}: {
+  label: string;
+  fieldKey: string;
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  return (
+    <div>
+      <label htmlFor={fieldKey} className="font-headline text-xl text-brand-700">
+        {label}
+      </label>
+      <input
+        id={fieldKey}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="editorial-input mt-3"
+        placeholder={label}
+      />
+    </div>
+  );
+}
+
+function FallbackTextarea({
+  label,
+  fieldKey,
+  value,
+  onChange,
+}: {
+  label: string;
+  fieldKey: string;
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  return (
+    <div>
+      <label htmlFor={fieldKey} className="font-headline text-xl text-brand-700">
+        {label}
+      </label>
+      <textarea
+        id={fieldKey}
+        rows={5}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="editorial-input mt-3 min-h-[160px] resize-none"
+        placeholder={label}
+      />
     </div>
   );
 }
@@ -480,4 +631,21 @@ function readTopVideos(values: Record<string, unknown>): YouTubeVideo[] {
     }
     return [];
   });
+}
+
+function buildSummaryEntries(
+  values: Record<string, unknown>,
+  fields: PersonalizationField[],
+) {
+  const candidates = fields.length > 0
+    ? fields.map((field) => ({
+        label: field.label,
+        value: readStringValue(values[field.fieldKey]).trim(),
+      }))
+    : Object.entries(values).map(([key, value]) => ({
+        label: key,
+        value: readStringValue(value).trim(),
+      }));
+
+  return candidates.filter((item) => item.value.length > 0);
 }

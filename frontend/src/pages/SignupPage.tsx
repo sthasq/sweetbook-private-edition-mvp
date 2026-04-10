@@ -43,148 +43,158 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="mx-auto max-w-md px-6 py-16">
-      <div className="rounded-3xl border border-stone-200 bg-white/88 p-8 shadow-xl shadow-brand-100/40">
-        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-gold-400">
-          Signup
-        </p>
-        <h1 className="mt-4 text-3xl font-bold text-stone-900">
-          {role === "CREATOR" ? "크리에이터 계정 만들기" : "팬 계정 만들기"}
-        </h1>
-        <p className="mt-3 text-sm text-stone-600">
-          {role === "CREATOR"
-            ? "새 크리에이터 계정은 Studio에 바로 연결되며, 에디션 초안 작성과 발행 흐름을 시작할 수 있습니다."
-            : "새 팬 계정은 개인화 프로젝트와 주문 흐름을 저장할 수 있습니다."}
-        </p>
-
-        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+    <div className="page-shell-narrow">
+      <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+        <section className="editorial-panel flex flex-col justify-between p-8 md:p-10">
           <div>
-            <span className="block text-sm font-medium text-stone-700 mb-2">
-              가입 유형
-            </span>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setRole("FAN")}
-                className={`rounded-2xl border px-4 py-3 text-left text-sm transition-colors ${
-                  role === "FAN"
-                    ? "border-brand-500 bg-brand-50 text-brand-700"
-                    : "border-stone-200 bg-stone-50 text-stone-600 hover:border-stone-300"
-                }`}
-              >
-                <span className="block font-semibold">팬</span>
-                <span className="mt-1 block text-xs text-inherit">
-                  개인화 프로젝트와 주문용 계정
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole("CREATOR")}
-                className={`rounded-2xl border px-4 py-3 text-left text-sm transition-colors ${
-                  role === "CREATOR"
-                    ? "border-brand-500 bg-brand-50 text-brand-700"
-                    : "border-stone-200 bg-stone-50 text-stone-600 hover:border-stone-300"
-                }`}
-              >
-                <span className="block font-semibold">크리에이터</span>
-                <span className="mt-1 block text-xs text-inherit">
-                  Studio에서 에디션 제작용 계정
-                </span>
-              </button>
-            </div>
+            <p className="editorial-label">Join Private Edition</p>
+            <h1 className="mt-5 text-4xl text-brand-700 md:text-5xl">
+              {role === "CREATOR" ? "공식 에디션을 발행할 준비." : "개인의 추억을 책으로 묶을 준비."}
+            </h1>
+            <p className="mt-5 max-w-md text-base leading-8 text-stone-700">
+              {role === "CREATOR"
+                ? "크리에이터 계정은 Studio에 바로 연결되어 공식 메시지, 큐레이션 자산, 발행 플로우를 시작할 수 있습니다."
+                : "팬 계정은 개인화 프로젝트를 저장하고, 미리보기와 주문 흐름을 이어서 진행할 수 있습니다."}
+            </p>
           </div>
 
-          <div>
-            <label
-              htmlFor="displayName"
-              className="block text-sm font-medium text-stone-700 mb-1.5"
-            >
-              표시 이름
-            </label>
-            <input
-              id="displayName"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full rounded-lg border border-stone-300 bg-stone-50 px-4 py-2.5 text-sm text-stone-900 outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-              placeholder="Sweetbook Fan"
-            />
+          <div className="mt-8 editorial-card p-5 text-sm text-stone-700">
+            <p className="editorial-label">Account Type</p>
+            <p className="mt-4">
+              가입 후 역할에 맞는 첫 화면으로 바로 이동합니다. 팬은 내 프로젝트로, 크리에이터는
+              스튜디오로 연결됩니다.
+            </p>
           </div>
+        </section>
 
-          {role === "CREATOR" && (
+        <section className="editorial-card p-8 md:p-10">
+          <p className="editorial-label">Signup</p>
+          <h2 className="mt-4 text-3xl text-stone-900">
+            {role === "CREATOR" ? "크리에이터 계정 만들기" : "팬 계정 만들기"}
+          </h2>
+          <p className="mt-3 editorial-muted">
+            에디션을 발행하거나 개인화 프로젝트를 저장하기 위한 기본 정보를 입력해 주세요.
+          </p>
+
+          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
             <div>
-              <label
-                htmlFor="channelHandle"
-                className="block text-sm font-medium text-stone-700 mb-1.5"
-              >
-                크리에이터 아이디 (@아이디)
+              <span className="text-sm font-semibold text-stone-800">가입 유형</span>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRole("FAN")}
+                  className={`rounded-sm border px-4 py-4 text-left text-sm transition ${
+                    role === "FAN"
+                      ? "border-brand-300 bg-brand-50/60 text-brand-700 shadow-sm"
+                      : "border-stone-200 bg-white text-stone-600 hover:border-stone-300"
+                  }`}
+                >
+                  <span className="block font-semibold">팬</span>
+                  <span className="mt-1 block text-xs leading-5 text-inherit">
+                    개인화 프로젝트와 주문용 계정
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole("CREATOR")}
+                  className={`rounded-sm border px-4 py-4 text-left text-sm transition ${
+                    role === "CREATOR"
+                      ? "border-brand-300 bg-brand-50/60 text-brand-700 shadow-sm"
+                      : "border-stone-200 bg-white text-stone-600 hover:border-stone-300"
+                  }`}
+                >
+                  <span className="block font-semibold">크리에이터</span>
+                  <span className="mt-1 block text-xs leading-5 text-inherit">
+                    Studio에서 에디션 제작용 계정
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="displayName" className="text-sm font-semibold text-stone-800">
+                표시 이름
               </label>
               <input
-                id="channelHandle"
-                value={channelHandle}
-                onChange={(e) => setChannelHandle(e.target.value)}
-                className="w-full rounded-lg border border-stone-300 bg-stone-50 px-4 py-2.5 text-sm text-stone-900 outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-                placeholder="@sweetbook_creator"
+                id="displayName"
+                autoComplete="name"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="editorial-input mt-2"
+                placeholder="Sweetbook Fan"
               />
-              <p className="mt-1.5 text-xs text-stone-500">
-                프로필과 에디션에 표시될 공개 아이디입니다. `@` 없이 입력해도 됩니다.
-              </p>
             </div>
-          )}
 
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-stone-700 mb-1.5"
+            {role === "CREATOR" && (
+              <div>
+                <label htmlFor="channelHandle" className="text-sm font-semibold text-stone-800">
+                  크리에이터 아이디 (@아이디)
+                </label>
+                <input
+                  id="channelHandle"
+                  autoComplete="username"
+                  value={channelHandle}
+                  onChange={(e) => setChannelHandle(e.target.value)}
+                  className="editorial-input mt-2"
+                  placeholder="@sweetbook_creator"
+                />
+                <p className="mt-2 text-xs leading-5 text-stone-500">
+                  프로필과 에디션에 표시될 공개 아이디입니다. `@` 없이 입력해도 됩니다.
+                </p>
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="email" className="text-sm font-semibold text-stone-800">
+                이메일
+              </label>
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="editorial-input mt-2"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="text-sm font-semibold text-stone-800">
+                비밀번호
+              </label>
+              <input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="editorial-input mt-2"
+                placeholder="8자 이상"
+              />
+            </div>
+
+            {error && <p className="text-sm text-red-500">{error}</p>}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="editorial-button-primary w-full disabled:opacity-50"
             >
-              이메일
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-stone-300 bg-stone-50 px-4 py-2.5 text-sm text-stone-900 outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-              placeholder="you@example.com"
-            />
-          </div>
+              {submitting ? "가입 중..." : "회원가입"}
+            </button>
+          </form>
 
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-stone-700 mb-1.5"
+          <p className="mt-6 text-sm text-stone-600">
+            이미 계정이 있다면{" "}
+            <Link
+              to={`/login${next ? `?next=${encodeURIComponent(next)}` : ""}`}
+              className="font-semibold text-brand-600 underline decoration-brand-300 underline-offset-4"
             >
-              비밀번호
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-stone-300 bg-stone-50 px-4 py-2.5 text-sm text-stone-900 outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-              placeholder="8자 이상"
-            />
-          </div>
-
-          {error && <p className="text-sm text-red-400">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-full bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-500 disabled:opacity-50"
-          >
-            {submitting ? "가입 중..." : "회원가입"}
-          </button>
-        </form>
-
-        <p className="mt-6 text-sm text-stone-600">
-          이미 계정이 있다면{" "}
-          <Link
-            to={`/login${next ? `?next=${encodeURIComponent(next)}` : ""}`}
-            className="text-brand-400 hover:underline"
-          >
-            로그인
-          </Link>
-        </p>
+              로그인
+            </Link>
+          </p>
+        </section>
       </div>
     </div>
   );
