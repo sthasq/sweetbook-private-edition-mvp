@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e2f7f8"/>
+      <stop offset="55%" stop-color="#89d1d7"/>
+      <stop offset="100%" stop-color="#1c5368"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <path d="M0 520 C190 440 360 450 550 520 C760 598 1010 584 1280 466 L1280 720 L0 720 Z" fill="#1d4d63"/>
+  <circle cx="1036" cy="146" r="66" fill="#ffd269"/>
+  <rect x="76" y="70" width="360" height="164" rx="28" fill="#f4fbfb" opacity="0.9"/>
+  <text x="112" y="132" fill="#1c5f6f" font-size="30" font-family="Arial, sans-serif" letter-spacing="8">JBKWAK</text>
+  <text x="112" y="192" fill="#12313e" font-size="56" font-weight="700" font-family="Arial, sans-serif">Bright, local, funny.</text>
+  <text x="76" y="624" fill="#f4fbfb" font-size="64" font-weight="700" font-family="Arial, sans-serif">Roadtrip letter demo</text>
+</svg>

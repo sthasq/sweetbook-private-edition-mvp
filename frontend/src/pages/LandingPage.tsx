@@ -5,6 +5,7 @@ import type { EditionSummary } from "../types/api";
 import VerifiedBadge from "../components/VerifiedBadge";
 import Spinner from "../components/Spinner";
 import ErrorBox from "../components/ErrorBox";
+import { formatChannelHandle } from "../lib/channelHandle";
 
 const HOW_IT_WORKS = [
   {
@@ -84,8 +85,8 @@ export default function LandingPage() {
                 <img
                   src={
                     featuredEdition
-                      ? `https://picsum.photos/seed/edition-hero-${featuredEdition.id}/900/1200`
-                      : "https://picsum.photos/seed/playpick-hero/900/1200"
+                      ? featuredEdition.coverImageUrl
+                      : "/demo-assets/playpick-hero.svg"
                   }
                   alt={featuredEdition?.title ?? "PlayPick 커버 미리보기"}
                   className="aspect-[4/5] w-full rounded object-cover"
@@ -146,7 +147,7 @@ export default function LandingPage() {
                     <div className={`grid h-full gap-6 ${index === 0 ? "lg:grid-cols-[1.1fr_0.9fr]" : ""}`}>
                       <div className="overflow-hidden rounded bg-surface-low">
                         <img
-                          src={`https://picsum.photos/seed/edition-${edition.id}/900/1200`}
+                          src={edition.coverImageUrl || "/demo-assets/playpick-hero.svg"}
                           alt={edition.title}
                           className={`w-full object-cover transition duration-500 group-hover:scale-[1.02] ${
                             index === 0 ? "aspect-[4/3] h-full lg:aspect-auto" : "aspect-[3/4]"
@@ -175,7 +176,9 @@ export default function LandingPage() {
                             만든 사람
                           </p>
                           <p className="mt-2 text-lg text-brand-700">{edition.creatorName}</p>
-                          <p className="mt-1 text-sm text-warm-500">@{edition.creatorHandle}</p>
+                          <p className="mt-1 text-sm text-warm-500">
+                            {formatChannelHandle(edition.creatorHandle)}
+                          </p>
                         </div>
                       </div>
                     </div>

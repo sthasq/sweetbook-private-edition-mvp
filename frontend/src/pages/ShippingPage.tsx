@@ -1,10 +1,21 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { estimateOrder, createOrder, getPreview } from "../api/projects";
-import type { ShippingInput, ProjectPreview, EstimateResponse } from "../types/api";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  createOrder,
+  createPaymentSession,
+  estimateOrder,
+  getPreview,
+} from "../api/projects";
+import type {
+  EstimateResponse,
+  PaymentSessionResponse,
+  ProjectPreview,
+  ShippingInput,
+} from "../types/api";
 import Spinner from "../components/Spinner";
 import ErrorBox from "../components/ErrorBox";
 import ProjectStepper from "../components/ProjectStepper";
+import { loadTossPayments, type TossWidgetsInstance } from "../lib/tossPayments";
 
 const INITIAL_SHIPPING: ShippingInput = {
   recipientName: "",
@@ -22,19 +33,80 @@ export default function ShippingPage() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<ShippingInput>(INITIAL_SHIPPING);
   const [estimate, setEstimate] = useState<EstimateResponse | null>(null);
+  const [paymentSession, setPaymentSession] = useState<PaymentSessionResponse | null>(null);
   const [estimating, setEstimating] = useState(false);
+  const [preparingPayment, setPreparingPayment] = useState(false);
+  const [renderingPayment, setRenderingPayment] = useState(false);
+  const [requestingPayment, setRequestingPayment] = useState(false);
   const [ordering, setOrdering] = useState(false);
+  const [paymentUnavailable, setPaymentUnavailable] = useState(false);
   const [error, setError] = useState("");
+  const widgetsRef = useRef<TossWidgetsInstance | null>(null);
 
   const pid = Number(projectId);
 
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId) {
+      return;
+    }
+
     getPreview(pid)
       .then(setPreview)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [projectId, pid]);
+
+  useEffect(() => {
+    if (!paymentSession) {
+      widgetsRef.current = null;
+      clearPaymentContainers();
+      return;
+    }
+
+    let cancelled = false;
+    setRenderingPayment(true);
+
+    void (async () => {
+      try {
+        clearPaymentContainers();
+        const TossPayments = await loadTossPayments();
+        if (cancelled) {
+          return;
+        }
+
+        const tossPayments = TossPayments(paymentSession.clientKey);
+        const widgets = tossPayments.widgets({
+          customerKey: paymentSession.customerKey,
+        });
+
+        widgetsRef.current = widgets;
+        await Promise.resolve(
+          widgets.setAmount({ value: paymentSession.amount, currency: "KRW" }),
+        );
+        await Promise.resolve(
+          widgets.renderPaymentMethods({ selector: "#payment-method" }),
+        );
+        await Promise.resolve(widgets.renderAgreement({ selector: "#agreement" }));
+      } catch (e: unknown) {
+        if (!cancelled) {
+          setError(
+            e instanceof Error ? e.message : "토스 결제 UI를 불러오지 못했습니다.",
+          );
+          setPaymentSession(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setRenderingPayment(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      widgetsRef.current = null;
+      clearPaymentContainers();
+    };
+  }, [paymentSession]);
 
   async function handleEstimate() {
     setEstimating(true);
@@ -42,10 +114,58 @@ export default function ShippingPage() {
     try {
       const est = await estimateOrder(pid, form);
       setEstimate(est);
+      setPaymentSession(null);
+      setPaymentUnavailable(false);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "견적 실패");
     } finally {
       setEstimating(false);
+    }
+  }
+
+  async function handlePreparePayment() {
+    setPreparingPayment(true);
+    setError("");
+    try {
+      const session = await createPaymentSession(pid, form);
+      setPaymentSession(session);
+      setPaymentUnavailable(false);
+    } catch (e: unknown) {
+      const message =
+        e instanceof Error ? e.message : "결제 세션을 준비하지 못했습니다.";
+      setError(message);
+      if (message.includes("not configured")) {
+        setPaymentUnavailable(true);
+      }
+    } finally {
+      setPreparingPayment(false);
+    }
+  }
+
+  async function handleTossPayment() {
+    if (!paymentSession || !widgetsRef.current) {
+      setError("결제 위젯이 아직 준비되지 않았습니다.");
+      return;
+    }
+
+    setRequestingPayment(true);
+    setError("");
+    try {
+      await Promise.resolve(
+        widgetsRef.current.requestPayment({
+          orderId: paymentSession.orderId,
+          orderName: paymentSession.orderName,
+          customerEmail: paymentSession.customerEmail || undefined,
+          customerName: paymentSession.customerName || undefined,
+          customerMobilePhone:
+            paymentSession.customerMobilePhone || undefined,
+          successUrl: paymentSession.successUrl,
+          failUrl: paymentSession.failUrl,
+        }),
+      );
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "결제창을 열지 못했습니다.");
+      setRequestingPayment(false);
     }
   }
 
@@ -65,6 +185,10 @@ export default function ShippingPage() {
   function updateField(key: keyof ShippingInput, value: string | number) {
     setForm((current) => ({ ...current, [key]: value }));
     setEstimate(null);
+    setPaymentSession(null);
+    setPaymentUnavailable(false);
+    widgetsRef.current = null;
+    clearPaymentContainers();
   }
 
   if (loading) return <Spinner />;
@@ -146,11 +270,31 @@ export default function ShippingPage() {
             <div className="rounded bg-surface-low px-6 py-6">
               <p className="editorial-label text-brand-700">이렇게 진행돼요</p>
               <p className="mt-3 text-sm leading-relaxed text-warm-500">
-                견적을 먼저 확인하면 배송비와 총 금액을 계산하고, 그 다음 최종 주문을 확정할 수
-                있습니다. 실제 Sweetbook 호출이 되지 않는 환경에서는 데모 금액이 표시될 수
-                있습니다.
+                견적을 먼저 확인하면 배송비와 총 금액을 계산하고, 토스 테스트 결제를
+                완료한 뒤 최종 주문이 저장됩니다. 토스 키가 없는 환경에서는 기존 데모
+                주문 흐름으로도 확인할 수 있습니다.
               </p>
             </div>
+
+            {estimate && paymentSession && (
+              <div className="editorial-panel p-6 md:p-8">
+                <p className="editorial-label">토스 테스트 결제</p>
+                <h2 className="mt-3 text-2xl font-bold text-brand-700">
+                  결제 수단을 선택해 주세요
+                </h2>
+                <p className="mt-3 text-sm leading-relaxed text-warm-500">
+                  결제위젯 성공 시 이 프로젝트 주문이 바로 확정되고, 이어서 제작 주문이
+                  연결됩니다.
+                </p>
+
+                <div className="mt-6 rounded-2xl border border-stone-200 bg-white/90 p-4">
+                  <div id="payment-method" />
+                </div>
+                <div className="mt-4 rounded-2xl border border-stone-200 bg-white/90 p-4">
+                  <div id="agreement" />
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center justify-between border-t border-stone-200/70 pt-8">
               <button
@@ -159,6 +303,7 @@ export default function ShippingPage() {
               >
                 미리보기로 돌아가기
               </button>
+
               {!estimate ? (
                 <button
                   disabled={
@@ -173,18 +318,43 @@ export default function ShippingPage() {
                 >
                   {estimating ? "계산 중..." : "견적 보기"}
                 </button>
-              ) : (
+              ) : paymentSession ? (
+                <button
+                  disabled={renderingPayment || requestingPayment}
+                  onClick={handleTossPayment}
+                  className="editorial-button-primary min-w-[220px] disabled:opacity-50"
+                >
+                  {renderingPayment
+                    ? "결제창 준비 중..."
+                    : requestingPayment
+                      ? "결제창 여는 중..."
+                      : "토스로 결제하기"}
+                </button>
+              ) : paymentUnavailable ? (
                 <button
                   disabled={ordering}
                   onClick={handleOrder}
                   className="editorial-button-primary min-w-[220px] disabled:opacity-50"
                 >
-                  {ordering ? "주문 확정 중..." : "최종 주문하기"}
+                  {ordering ? "주문 확정 중..." : "데모 주문하기"}
+                </button>
+              ) : (
+                <button
+                  disabled={preparingPayment}
+                  onClick={handlePreparePayment}
+                  className="editorial-button-primary min-w-[220px] disabled:opacity-50"
+                >
+                  {preparingPayment ? "결제 준비 중..." : "토스 결제 준비하기"}
                 </button>
               )}
             </div>
 
             {error && <p className="text-sm text-red-600">{error}</p>}
+            {paymentUnavailable && (
+              <p className="text-sm text-amber-700">
+                토스 테스트 키가 아직 설정되지 않아 데모 주문 버튼으로 전환했습니다.
+              </p>
+            )}
           </section>
 
           <aside className="lg:col-span-5 lg:sticky lg:top-28">
@@ -210,12 +380,12 @@ export default function ShippingPage() {
                   </p>
                   <h3 className="mt-2 text-2xl font-bold leading-tight text-brand-700">
                     {preview.edition.title}
-                    </h3>
-                    <p className="mt-2 text-sm text-warm-500">
-                      내가 채운 내용으로 제작되는 실물 굿즈
-                    </p>
-                  </div>
+                  </h3>
+                  <p className="mt-2 text-sm text-warm-500">
+                    내가 채운 내용으로 제작되는 실물 굿즈
+                  </p>
                 </div>
+              </div>
 
               <div className="mt-8 space-y-4 border-t border-stone-200/70 pt-6">
                 <SummaryRow label="받는 분" value={form.recipientName || "입력 전"} />
@@ -224,27 +394,41 @@ export default function ShippingPage() {
               </div>
 
               <div className="mt-8 space-y-3 border-t border-stone-200/70 pt-6">
-                <PriceRow label="상품 소계" value={estimate ? estimate.totalAmount - estimate.shippingFee : null} />
+                <PriceRow
+                  label="상품 소계"
+                  value={estimate ? estimate.totalAmount - estimate.shippingFee : null}
+                />
                 <PriceRow label="배송비" value={estimate?.shippingFee ?? null} />
                 <PriceRow label="예상 총액" value={estimate?.totalAmount ?? null} total />
               </div>
 
-              {estimate ? (
+              {paymentSession ? (
+                <div className="mt-8 rounded bg-white/85 px-5 py-5 shadow-sm">
+                  <p className="editorial-label text-brand-700">결제 준비 완료</p>
+                  <p className="mt-3 text-sm leading-relaxed text-warm-500">
+                    왼쪽에서 결제 수단을 확인한 뒤 토스로 결제하기를 누르면 테스트
+                    결제가 진행됩니다.
+                  </p>
+                </div>
+              ) : estimate ? (
                 <div className="mt-8 rounded bg-white/85 px-5 py-5 shadow-sm">
                   <p className="editorial-label text-brand-700">가격 확인 완료</p>
                   <p className="mt-3 text-sm leading-relaxed text-warm-500">
-                    다음으로 넘어가면 주문이 먼저 저장되고, 이어서 제작 쪽으로 연결됩니다.
+                    다음 단계에서 토스 결제 세션을 만들고 실제 테스트 결제를 이어서
+                    진행합니다.
                   </p>
                   {estimate.simulated && (
                     <p className="mt-3 text-sm leading-relaxed text-gold-500">
-                      실제 Sweetbook 견적 호출 대신 데모 금액이 표시되고 있습니다.
+                      제작 견적 자체는 Sweetbook 데모 금액일 수 있어요. 결제 모듈
+                      테스트와 제작 연동 테스트가 서로 분리되어 동작할 수 있습니다.
                     </p>
                   )}
                 </div>
               ) : (
                 <div className="mt-8 rounded bg-white/85 px-5 py-5 shadow-sm">
                   <p className="text-sm leading-relaxed text-warm-500">
-                    필수 정보만 입력하고 견적 보기를 누르면 오른쪽에 예상 금액이 바로 채워집니다.
+                    필수 정보만 입력하고 견적 보기를 누르면 오른쪽에 예상 금액이 바로
+                    채워집니다.
                   </p>
                 </div>
               )}
@@ -254,6 +438,17 @@ export default function ShippingPage() {
       </div>
     </div>
   );
+}
+
+function clearPaymentContainers() {
+  const paymentMethod = document.getElementById("payment-method");
+  const agreement = document.getElementById("agreement");
+  if (paymentMethod) {
+    paymentMethod.innerHTML = "";
+  }
+  if (agreement) {
+    agreement.innerHTML = "";
+  }
 }
 
 function Field({
@@ -275,7 +470,11 @@ function Field({
     <div>
       <label className="block font-headline text-xl text-brand-700">
         {label}
-        {required && <span className="ml-2 text-xs uppercase tracking-[0.18em] text-warm-500">필수</span>}
+        {required && (
+          <span className="ml-2 text-xs uppercase tracking-[0.18em] text-warm-500">
+            필수
+          </span>
+        )}
       </label>
       <input
         type={type}
@@ -291,7 +490,9 @@ function Field({
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-500">{label}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-500">
+        {label}
+      </p>
       <p className="mt-2 text-sm leading-relaxed text-stone-900">{value}</p>
     </div>
   );

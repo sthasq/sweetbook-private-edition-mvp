@@ -61,6 +61,21 @@ public class CustomerOrder {
 	@Column(name = "address2", length = 255)
 	private String address2;
 
+	@Column(nullable = false)
+	private int quantity = 1;
+
+	@Column(name = "payment_provider", length = 32)
+	private String paymentProvider;
+
+	@Column(name = "payment_key", length = 200)
+	private String paymentKey;
+
+	@Column(name = "payment_method", length = 50)
+	private String paymentMethod;
+
+	@Column(name = "payment_approved_at")
+	private Instant paymentApprovedAt;
+
 	@Column(name = "ordered_at", nullable = false)
 	private Instant orderedAt;
 

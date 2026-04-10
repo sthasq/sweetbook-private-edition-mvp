@@ -40,7 +40,7 @@ export function getTopVideos(channelId: string, limit = 5) {
 
 export function analyzeChannel(body: {
   channelId: string;
-  fanNickname: string;
+  fanNickname?: string;
   favoriteVideoId?: string;
   fanNote?: string;
 }) {

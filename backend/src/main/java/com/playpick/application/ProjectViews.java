@@ -52,6 +52,23 @@ public final class ProjectViews {
 	) {
 	}
 
+	public record AiCollabGeneration(
+		String provider,
+		String model,
+		List<AiCollabCandidate> candidates
+	) {
+	}
+
+	public record AiCollabCandidate(
+		String id,
+		String templateKey,
+		String label,
+		String caption,
+		String imageUrl,
+		String source
+	) {
+	}
+
 	public record Estimate(
 		Long projectId,
 		String currency,
@@ -69,6 +86,23 @@ public final class ProjectViews {
 		BigDecimal totalAmount,
 		boolean simulated,
 		Map<String, Object> raw
+	) {
+	}
+
+	public record PaymentSession(
+		Long projectId,
+		String provider,
+		boolean enabled,
+		String clientKey,
+		String customerKey,
+		String orderId,
+		String orderName,
+		BigDecimal amount,
+		String customerName,
+		String customerEmail,
+		String customerMobilePhone,
+		String successUrl,
+		String failUrl
 	) {
 	}
 
@@ -119,6 +153,7 @@ public final class ProjectViews {
 		Long projectId,
 		Long editionId,
 		String editionTitle,
+		String editionCoverImageUrl,
 		String status,
 		String mode,
 		String siteOrderStatus,

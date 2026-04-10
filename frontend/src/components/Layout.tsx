@@ -23,14 +23,19 @@ export default function Layout() {
       return;
     }
 
-    setTransitionState("exiting");
+    const transitionTimer = window.setTimeout(() => {
+      setTransitionState("exiting");
+    }, 0);
 
     const exitTimer = window.setTimeout(() => {
       setDisplayedRoute(routeSignature);
       setTransitionState("entering");
     }, ROUTE_EXIT_MS);
 
-    return () => window.clearTimeout(exitTimer);
+    return () => {
+      window.clearTimeout(transitionTimer);
+      window.clearTimeout(exitTimer);
+    };
   }, [displayedRoute, routeSignature]);
 
   useEffect(() => {

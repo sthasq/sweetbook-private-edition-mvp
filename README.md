@@ -95,6 +95,8 @@ Fill in at least:
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 - `YOUTUBE_API_KEY`
+- `TOSS_PAYMENTS_CLIENT_KEY`
+- `TOSS_PAYMENTS_SECRET_KEY`
 
 If Google values are omitted, the app still works in Demo mode.
 
@@ -110,6 +112,9 @@ $env:GOOGLE_CLIENT_ID="your_google_client_id"
 $env:GOOGLE_CLIENT_SECRET="your_google_client_secret"
 $env:GOOGLE_REDIRECT_URI="http://localhost:3000/oauth/google/callback"
 $env:YOUTUBE_API_KEY="your_youtube_api_key"
+$env:TOSS_PAYMENTS_ENABLED="true"
+$env:TOSS_PAYMENTS_CLIENT_KEY="your_toss_widget_client_key"
+$env:TOSS_PAYMENTS_SECRET_KEY="your_toss_secret_key"
 .\run_local.ps1
 ```
 
@@ -191,6 +196,13 @@ docker compose up --build
 | `GOOGLE_CLIENT_SECRET` | YouTube mode | Google OAuth client secret |
 | `GOOGLE_REDIRECT_URI` | YouTube mode | Must match the Google OAuth redirect URI |
 | `YOUTUBE_API_KEY` | Recommended | Public YouTube Data API access / fallback |
+| `OPENROUTER_API_KEY` | AI collab mode | Server-side OpenRouter API key for AI collab image generation |
+| `OPENROUTER_IMAGE_MODEL` | Optional | Defaults to `google/gemini-3.1-flash-image-preview` |
+| `OPENROUTER_BASE_URL` | Optional | Defaults to OpenRouter API base URL |
+| `TOSS_PAYMENTS_ENABLED` | Toss test/live mode | Enables Toss payment confirmation flow |
+| `TOSS_PAYMENTS_CLIENT_KEY` | Toss test/live mode | Public Toss widget client key |
+| `TOSS_PAYMENTS_SECRET_KEY` | Toss test/live mode | Server-side Toss secret key |
+| `TOSS_PAYMENTS_BASE_URL` | Optional | Defaults to Toss production API base URL |
 
 ## Session architecture
 
@@ -238,8 +250,11 @@ docker compose up --build
 | `POST` | `/api/projects` | Create fan project |
 | `PATCH` | `/api/projects/{id}` | Update personalization |
 | `GET` | `/api/projects/{id}/preview` | Preview merged official + personal pages |
+| `POST` | `/api/projects/{id}/ai-collab/generate` | Generate AI collab cut candidates via OpenRouter |
 | `POST` | `/api/projects/{id}/generate-book` | Generate Sweetbook book |
 | `POST` | `/api/projects/{id}/estimate` | Estimate order price |
+| `POST` | `/api/projects/{id}/payment-session` | Prepare Toss checkout session |
+| `POST` | `/api/projects/{id}/payments/confirm` | Confirm Toss payment and finalize order |
 | `POST` | `/api/projects/{id}/order` | Create order |
 | `GET` | `/api/youtube/auth-url` | Build Google OAuth URL |
 | `POST` | `/api/youtube/callback` | Exchange code and store session |
@@ -300,5 +315,5 @@ This makes the product fit anniversary drops, comeback drops, fan meeting goods,
 
 - Real creator verification is mocked with seeded data in this MVP
 - YouTube mode depends on local Google Cloud Console setup
-- Webhooks and payment settlement are out of scope for v1
+- Toss payment success/failure webhooks are still out of scope for v1
 - Public release requires secret rotation and a final public-repo hygiene pass

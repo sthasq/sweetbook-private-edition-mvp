@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ApiError } from "../api/client";
-import { createEdition, importStudioYouTubeRecap, publishEdition, updateEdition } from "../api/studio";
+import {
+  createEdition,
+  getStudioOrderDashboard,
+  importStudioYouTubeRecap,
+  publishEdition,
+  updateEdition,
+} from "../api/studio";
 import { listSweetbookBookSpecs, listSweetbookTemplates } from "../api/sweetbook";
 import type {
   StudioCuratedAssetInput,
@@ -10,6 +16,8 @@ import type {
 } from "../api/studio";
 import type {
   EditionDetail,
+  StudioOrderDashboard,
+  StudioOrderSummary,
   SweetbookBookSpec,
   SweetbookTemplate,
   YouTubeStudioRecapResult,
@@ -63,6 +71,9 @@ export default function StudioPage() {
   const [recapImportMode, setRecapImportMode] = useState<"replace" | "append">("replace");
   const [recapLoading, setRecapLoading] = useState(false);
   const [recapResult, setRecapResult] = useState<YouTubeStudioRecapResult | null>(null);
+  const [orderDashboard, setOrderDashboard] = useState<StudioOrderDashboard | null>(null);
+  const [orderDashboardLoading, setOrderDashboardLoading] = useState(true);
+  const [orderDashboardError, setOrderDashboardError] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [savedFingerprint, setSavedFingerprint] = useState<string | null>(null);
@@ -85,6 +96,29 @@ export default function StudioPage() {
     }),
     [layoutTemplates],
   );
+
+  useEffect(() => {
+    setOrderDashboardLoading(true);
+    setOrderDashboardError("");
+
+    getStudioOrderDashboard()
+      .then(setOrderDashboard)
+      .catch((e: unknown) => {
+        if (e instanceof ApiError && e.status === 401) {
+          setError("세션이 만료되어 다시 로그인해 주세요.");
+          setSuccess("");
+          const next = `${location.pathname}${location.search}`;
+          navigate(`/login?next=${encodeURIComponent(next)}&reason=session-expired`, {
+            replace: true,
+          });
+          return;
+        }
+        setOrderDashboardError(
+          e instanceof Error ? e.message : "크리에이터 주문 현황을 불러오지 못했습니다.",
+        );
+      })
+      .finally(() => setOrderDashboardLoading(false));
+  }, [location.pathname, location.search, navigate]);
 
   useEffect(() => {
     listSweetbookBookSpecs()
@@ -441,6 +475,88 @@ export default function StudioPage() {
           새 에디션 시작
         </button>
       </div>
+
+      <section className="mt-8 grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
+        <div className="editorial-card p-6 md:p-7">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="editorial-label">주문 현황</p>
+              <h2 className="mt-3 text-2xl font-semibold text-stone-900">팬 주문 대시보드</h2>
+            </div>
+            <p className="text-sm text-warm-500">
+              결제된 주문과 최근 배송 정보를 한눈에 확인할 수 있습니다.
+            </p>
+          </div>
+
+          {orderDashboardLoading ? (
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              {[0, 1, 2].map((item) => (
+                <div
+                  key={item}
+                  className="h-28 animate-pulse rounded-2xl border border-stone-200 bg-stone-100/70"
+                />
+              ))}
+            </div>
+          ) : orderDashboardError ? (
+            <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-5 text-sm text-rose-700">
+              {orderDashboardError}
+            </div>
+          ) : (
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <StudioMetricCard
+                label="전체 주문"
+                value={`${orderDashboard?.totalOrders ?? 0}건`}
+                hint="내 에디션 기준"
+              />
+              <StudioMetricCard
+                label="결제 완료"
+                value={`${orderDashboard?.paidOrders ?? 0}건`}
+                hint="실제 승인된 주문"
+              />
+              <StudioMetricCard
+                label="누적 매출"
+                value={formatStudioCurrency(orderDashboard?.totalRevenue ?? 0)}
+                hint="테스트 주문 포함"
+              />
+            </div>
+          )}
+        </div>
+
+        <section className="editorial-card p-6 md:p-7">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="editorial-label">최근 주문</p>
+              <h2 className="mt-3 text-2xl font-semibold text-stone-900">새로 들어온 주문</h2>
+            </div>
+            <p className="text-sm text-warm-500">최근 12건까지 표시합니다.</p>
+          </div>
+
+          {orderDashboardLoading ? (
+            <div className="mt-5 space-y-3">
+              {[0, 1, 2].map((item) => (
+                <div
+                  key={item}
+                  className="h-28 animate-pulse rounded-2xl border border-stone-200 bg-stone-100/70"
+                />
+              ))}
+            </div>
+          ) : orderDashboardError ? (
+            <div className="mt-5 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-5 text-sm text-stone-600">
+              주문 목록을 아직 불러오지 못했습니다.
+            </div>
+          ) : (orderDashboard?.recentOrders.length ?? 0) === 0 ? (
+            <div className="mt-5 rounded-2xl border border-dashed border-stone-300 bg-stone-50/80 px-4 py-8 text-center text-sm text-stone-500">
+              아직 팬 주문이 없습니다. 첫 주문이 들어오면 여기에서 바로 확인할 수 있어요.
+            </div>
+          ) : (
+            <div className="mt-5 space-y-3">
+              {orderDashboard?.recentOrders.map((order) => (
+                <StudioRecentOrderCard key={order.siteOrderUid} order={order} />
+              ))}
+            </div>
+          )}
+        </section>
+      </section>
 
       <section className="editorial-card mt-8 p-4 md:p-6">
         <div className="flex flex-wrap gap-3">
@@ -1515,6 +1631,103 @@ function AssetPreview({ asset }: { asset: StudioCuratedAssetInput }) {
   );
 }
 
+function StudioMetricCard({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gold-500">{label}</p>
+      <p className="mt-3 text-3xl font-semibold text-stone-900">{value}</p>
+      <p className="mt-2 text-sm text-warm-500">{hint}</p>
+    </div>
+  );
+}
+
+function StudioRecentOrderCard({ order }: { order: StudioOrderSummary }) {
+  return (
+    <article className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-base font-semibold text-stone-900">{order.editionTitle}</p>
+            <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-warm-500">
+              주문 #{order.projectId}
+            </span>
+            {order.simulated && (
+              <span className="rounded-full bg-gold-400/15 px-2.5 py-1 text-[11px] font-medium text-gold-600">
+                테스트
+              </span>
+            )}
+          </div>
+          <p className="mt-2 text-sm text-stone-600">
+            팬 <span className="font-medium text-stone-900">{order.fanDisplayName}</span>님이{" "}
+            <span className="font-medium text-stone-900">{order.recipientName}</span> 앞으로 주문했습니다.
+          </p>
+        </div>
+        <div className="text-left lg:text-right">
+          <p className="text-lg font-semibold text-stone-900">
+            {formatStudioCurrency(order.totalAmount)}
+          </p>
+          <p className="mt-1 text-xs text-stone-500">{formatStudioDateTime(order.orderedAt)}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <StatusPill label={formatSiteOrderStatus(order.siteOrderStatus)} tone="emerald" />
+        <StatusPill
+          label={formatFulfillmentStatus(order.fulfillmentStatus)}
+          tone={order.fulfillmentStatus === "FAILED" ? "rose" : "stone"}
+        />
+        <StatusPill
+          label={`${order.quantity}권`}
+          tone="stone"
+        />
+        {order.paymentMethod && (
+          <StatusPill label={order.paymentMethod} tone="stone" />
+        )}
+      </div>
+
+      <dl className="mt-4 grid gap-3 text-sm text-stone-600 sm:grid-cols-2">
+        <div className="rounded-xl bg-white px-3 py-3">
+          <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">연락처</dt>
+          <dd className="mt-2 font-medium text-stone-900">{order.recipientPhoneMasked || "-"}</dd>
+        </div>
+        <div className="rounded-xl bg-white px-3 py-3">
+          <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">배송지</dt>
+          <dd className="mt-2 text-stone-900">{order.addressSummary || "-"}</dd>
+        </div>
+      </dl>
+    </article>
+  );
+}
+
+function StatusPill({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: "emerald" | "rose" | "stone";
+}) {
+  const toneClass =
+    tone === "emerald"
+      ? "bg-emerald-50 text-emerald-700"
+      : tone === "rose"
+        ? "bg-rose-50 text-rose-700"
+        : "bg-white text-stone-600";
+
+  return (
+    <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${toneClass}`}>
+      {label}
+    </span>
+  );
+}
+
 function parseVideoPreview(url: string) {
   const trimmed = url.trim();
   if (!trimmed) {
@@ -1554,6 +1767,48 @@ function formatCompactNumber(value: number) {
     notation: "compact",
     maximumFractionDigits: 1,
   }).format(value);
+}
+
+function formatStudioCurrency(value: number) {
+  return `${Math.round(value).toLocaleString("ko-KR")}원`;
+}
+
+function formatStudioDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleString("ko-KR");
+}
+
+function formatSiteOrderStatus(status: string) {
+  switch (status) {
+    case "PAID":
+      return "결제 완료";
+    case "CANCELLED":
+      return "취소됨";
+    case "CREATED":
+      return "생성됨";
+    default:
+      return status;
+  }
+}
+
+function formatFulfillmentStatus(status: string) {
+  switch (status) {
+    case "PENDING_SUBMISSION":
+      return "제작 대기";
+    case "SUBMITTED":
+      return "제작 접수";
+    case "SIMULATED":
+      return "시뮬레이션";
+    case "FAILED":
+      return "제작 실패";
+    case "CANCELLED":
+      return "제작 취소";
+    default:
+      return status;
+  }
 }
 
 function buildImportedAssets(

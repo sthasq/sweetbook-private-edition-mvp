@@ -191,11 +191,15 @@ public class YouTubeService {
 
 		Map<String, Object> personalizationData = new LinkedHashMap<>();
 		personalizationData.put("mode", "youtube");
-		personalizationData.put("fanNickname", command.fanNickname());
+		if (command.fanNickname() != null && !command.fanNickname().isBlank()) {
+			personalizationData.put("fanNickname", command.fanNickname().trim());
+		}
 		personalizationData.put("subscribedSince", subscribedAt.toString());
 		personalizationData.put("daysTogether", daysTogether);
 		personalizationData.put("favoriteVideoId", favoriteVideoId);
-		personalizationData.put("fanNote", command.fanNote());
+		if (command.fanNote() != null && !command.fanNote().isBlank()) {
+			personalizationData.put("fanNote", command.fanNote().trim());
+		}
 		personalizationData.put("channel", Map.of(
 			"channelId", channel.channelId(),
 			"title", channel.title(),

@@ -2,13 +2,24 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { getEdition } from "../api/editions";
 import { createProject } from "../api/projects";
+import { listSweetbookBookSpecs, listSweetbookTemplates } from "../api/sweetbook";
 import { getAvailability as getYouTubeAvailability } from "../api/youtube";
-import type { CuratedAsset, EditionDetail } from "../types/api";
+import type {
+  CuratedAsset,
+  EditionDetail,
+  SweetbookBookSpec,
+  SweetbookTemplate,
+} from "../types/api";
 import { useAuth } from "../auth/AuthContext";
 import VerifiedBadge from "../components/VerifiedBadge";
 import Spinner from "../components/Spinner";
 import ErrorBox from "../components/ErrorBox";
 import ProjectStepper from "../components/ProjectStepper";
+import { formatChannelHandle } from "../lib/channelHandle";
+import {
+  formatBookSpecLabel,
+  formatTemplateLabel,
+} from "../lib/sweetbookDisplay";
 
 export default function EditionDetailPage() {
   const { editionId } = useParams<{ editionId: string }>();
@@ -22,6 +33,8 @@ export default function EditionDetailPage() {
   const [youtubeEnabled, setYouTubeEnabled] = useState(false);
   const [youtubeAvailabilityLoading, setYouTubeAvailabilityLoading] =
     useState(true);
+  const [bookSpecs, setBookSpecs] = useState<SweetbookBookSpec[]>([]);
+  const [templates, setTemplates] = useState<SweetbookTemplate[]>([]);
   const autoStartTriggered = useRef(false);
 
   useEffect(() => {
@@ -38,6 +51,23 @@ export default function EditionDetailPage() {
       .catch(() => setYouTubeEnabled(false))
       .finally(() => setYouTubeAvailabilityLoading(false));
   }, []);
+
+  useEffect(() => {
+    const bookSpecUid = edition?.snapshot?.bookSpecUid;
+    if (!bookSpecUid) {
+      setBookSpecs([]);
+      setTemplates([]);
+      return;
+    }
+
+    listSweetbookBookSpecs()
+      .then(setBookSpecs)
+      .catch(() => setBookSpecs([]));
+
+    listSweetbookTemplates(bookSpecUid)
+      .then(setTemplates)
+      .catch(() => setTemplates([]));
+  }, [edition?.snapshot?.bookSpecUid]);
 
   async function startProject(mode: "demo" | "youtube") {
     if (mode === "youtube" && !youtubeEnabled) {
@@ -150,7 +180,9 @@ export default function EditionDetailPage() {
                   만든 사람
                 </p>
                 <p className="mt-1 text-lg text-stone-900">{edition.creator.displayName}</p>
-                <p className="text-sm text-warm-500">@{edition.creator.channelHandle}</p>
+                <p className="text-sm text-warm-500">
+                  {formatChannelHandle(edition.creator.channelHandle)}
+                </p>
               </div>
             </div>
 
@@ -204,7 +236,7 @@ export default function EditionDetailPage() {
 
         <section className="mt-20 grid gap-10 lg:grid-cols-12">
           <div className="editorial-panel p-8 lg:col-span-5">
-            <p className="font-headline text-2xl italic text-brand-700">먼저 담긴 장면</p>
+            <p className="font-headline text-2xl italic text-brand-700">이 드롭에 담긴 장면</p>
             <p className="mt-3 text-sm leading-relaxed text-warm-500">
               처음부터 담겨 있는 메시지와 이미지가 이 드롭의 분위기를 먼저 잡아줍니다.
             </p>
@@ -277,7 +309,7 @@ export default function EditionDetailPage() {
           <section className="mt-20 bg-surface-low py-16">
             <div className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-12">
               <div className="lg:col-span-7">
-                <h2 className="text-3xl font-bold text-brand-700">미리 담긴 장면들</h2>
+                <h2 className="text-3xl font-bold text-brand-700">이 드롭에 담긴 장면</h2>
                 <p className="mt-4 text-sm leading-relaxed text-warm-500">
                   기본으로 담긴 장면 위에 팬의 입력이 더해져 한 권의 분위기가 완성됩니다.
                 </p>
@@ -300,14 +332,25 @@ export default function EditionDetailPage() {
               <div className="editorial-card p-8 lg:col-span-5">
                 <p className="editorial-label text-gold-500">한눈에 보기</p>
                 <div className="mt-5 space-y-5">
-                  <SpecRow label="사이즈" value={snap?.bookSpecUid ?? "설정 전"} />
+                  <SpecRow
+                    label="사이즈"
+                    value={formatBookSpecLabel(snap?.bookSpecUid, bookSpecs)}
+                  />
                   <SpecRow
                     label="표지 스타일"
-                    value={snap?.sweetbookCoverTemplateUid ?? "설정 전"}
+                    value={formatTemplateLabel(
+                      snap?.sweetbookCoverTemplateUid,
+                      "cover",
+                      templates,
+                    )}
                   />
                   <SpecRow
                     label="내지 스타일"
-                    value={snap?.sweetbookContentTemplateUid ?? "설정 전"}
+                    value={formatTemplateLabel(
+                      snap?.sweetbookContentTemplateUid,
+                      "content",
+                      templates,
+                    )}
                   />
                   <SpecRow
                     label="기본 구성"
@@ -324,6 +367,13 @@ export default function EditionDetailPage() {
 }
 
 function AssetRow({ asset }: { asset: CuratedAsset }) {
+  const summary =
+    asset.assetType === "IMAGE"
+      ? "이 장면이 전체 톤과 온도를 먼저 잡아주는 기본 무드 이미지입니다."
+      : asset.assetType === "VIDEO"
+        ? "팬이 고를 장면의 기준점이 되는 대표 영상 레퍼런스입니다."
+        : asset.content;
+
   return (
     <div className="rounded bg-white/80 px-5 py-5 shadow-sm">
       <div className="flex items-center gap-3">
@@ -332,7 +382,7 @@ function AssetRow({ asset }: { asset: CuratedAsset }) {
         </span>
         <p className="text-base font-semibold text-stone-900">{asset.title}</p>
       </div>
-      <p className="mt-3 text-sm leading-relaxed text-warm-500">{asset.content}</p>
+      <p className="mt-3 text-sm leading-relaxed text-warm-500">{summary}</p>
     </div>
   );
 }

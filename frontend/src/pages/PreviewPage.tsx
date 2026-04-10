@@ -45,6 +45,8 @@ export default function PreviewPage() {
   const leftPage = pages[activeSpread];
   const rightPage = pages[activeSpread + 1];
   const personalizationHighlights = buildPersonalizationHighlights(preview);
+  const collabImageUrl = readString(preview.personalizationData.aiCollabSelectedUrl);
+  const collabTemplateLabel = readString(preview.personalizationData.aiCollabTemplateLabel);
 
   return (
     <div className="page-shell">
@@ -180,6 +182,27 @@ export default function PreviewPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {collabImageUrl && (
+                <div className="mt-8 rounded bg-white/85 p-5 shadow-sm">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="editorial-label text-brand-700">공식 콜라보 컷</p>
+                      <p className="mt-2 text-sm text-stone-900">
+                        {collabTemplateLabel || "빠니보틀 여행 무드 컷"}
+                      </p>
+                    </div>
+                    <span className="rounded bg-gold-400/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-gold-500">
+                      MVP
+                    </span>
+                  </div>
+                  <img
+                    src={collabImageUrl}
+                    alt={collabTemplateLabel || "공식 콜라보 컷"}
+                    className="mt-4 aspect-[4/3] w-full rounded object-cover"
+                  />
                 </div>
               )}
 
@@ -325,11 +348,23 @@ function buildPersonalizationHighlights(preview: ProjectPreview): SummaryHighlig
     (preview.edition.snapshot?.personalizationFields ?? []).map((field) => [field.fieldKey, field.label]),
   );
   const topVideos = readSummaryVideos(preview.personalizationData.topVideos);
+  const collabTemplateLabel = readString(preview.personalizationData.aiCollabTemplateLabel);
+  const highlights: SummaryHighlight[] = [];
 
-  return Object.entries(preview.personalizationData)
-    .map(([key, value]) => buildSummaryHighlight(key, value, fieldLabelByKey, topVideos))
-    .filter((item): item is SummaryHighlight => item !== null)
-    .slice(0, 4);
+  if (collabTemplateLabel) {
+    highlights.push({
+      key: "aiCollabTemplateLabel",
+      label: "공식 콜라보 컷",
+      value: collabTemplateLabel,
+    });
+  }
+
+  return [
+    ...highlights,
+    ...Object.entries(preview.personalizationData)
+      .map(([key, value]) => buildSummaryHighlight(key, value, fieldLabelByKey, topVideos))
+      .filter((item): item is SummaryHighlight => item !== null),
+  ].slice(0, 4);
 }
 
 function buildSummaryHighlight(
@@ -343,7 +378,12 @@ function buildSummaryHighlight(
   }
 
   const trimmed = value.trim();
-  if (!trimmed || key === "uploadedImageUrl" || key === "memoryImageUrl") {
+  if (
+    !trimmed ||
+    key === "uploadedImageUrl" ||
+    key === "memoryImageUrl" ||
+    key.startsWith("aiCollab")
+  ) {
     return null;
   }
 
@@ -371,6 +411,10 @@ function buildSummaryHighlight(
         value: trimmed,
       };
   }
+}
+
+function readString(value: unknown) {
+  return typeof value === "string" ? value : "";
 }
 
 function readSummaryVideos(value: unknown): SummaryVideo[] {

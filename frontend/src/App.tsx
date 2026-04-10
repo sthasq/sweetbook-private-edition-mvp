@@ -8,6 +8,8 @@ import PersonalizationPage from "./pages/PersonalizationPage";
 import PreviewPage from "./pages/PreviewPage";
 import ShippingPage from "./pages/ShippingPage";
 import OrderCompletePage from "./pages/OrderCompletePage";
+import PaymentSuccessPage from "./pages/PaymentSuccessPage";
+import PaymentFailPage from "./pages/PaymentFailPage";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import StudioPage from "./pages/StudioPage";
 import LoginPage from "./pages/LoginPage";
@@ -31,6 +33,14 @@ export default function App() {
             />
             <Route path="projects/:projectId/preview" element={<PreviewPage />} />
             <Route path="projects/:projectId/shipping" element={<ShippingPage />} />
+            <Route
+              path="projects/:projectId/payment/success"
+              element={<PaymentSuccessPage />}
+            />
+            <Route
+              path="projects/:projectId/payment/fail"
+              element={<PaymentFailPage />}
+            />
             <Route
               path="projects/:projectId/complete"
               element={<OrderCompletePage />}
