@@ -17,7 +17,8 @@ public final class SweetbookViews {
 		String uid,
 		String name,
 		String category,
-		String role
+		String role,
+		String thumbnailUrl
 	) {
 	}
 }

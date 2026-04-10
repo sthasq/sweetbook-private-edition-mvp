@@ -50,8 +50,20 @@ public class SweetbookService {
 		return templateCache.computeIfAbsent(bookSpecUid, key -> {
 			if (!isLiveEnabled()) {
 				return List.of(
-					new SweetbookViews.Template("demo-cover-template", "Official Cover", "album", "cover"),
-					new SweetbookViews.Template("demo-content-template", "Narrative Spread", "album", "content")
+					new SweetbookViews.Template(
+						"demo-cover-template",
+						"Official Cover",
+						"album",
+						"cover",
+						"https://picsum.photos/seed/demo-cover-template/960/720"
+					),
+					new SweetbookViews.Template(
+						"demo-content-template",
+						"Narrative Spread",
+						"album",
+						"content",
+						"https://picsum.photos/seed/demo-content-template/960/720"
+					)
 				);
 			}
 			return sweetbookClient.getTemplates(key);
@@ -191,8 +203,20 @@ public class SweetbookService {
 
 	private List<SweetbookViews.Template> demoTemplates() {
 		return List.of(
-			new SweetbookViews.Template("demo-cover-template", "Official Cover", "album", "cover"),
-			new SweetbookViews.Template("demo-content-template", "Narrative Spread", "album", "content")
+			new SweetbookViews.Template(
+				"demo-cover-template",
+				"Official Cover",
+				"album",
+				"cover",
+				"https://picsum.photos/seed/demo-cover-template/960/720"
+			),
+			new SweetbookViews.Template(
+				"demo-content-template",
+				"Narrative Spread",
+				"album",
+				"content",
+				"https://picsum.photos/seed/demo-content-template/960/720"
+			)
 		);
 	}
 
@@ -282,7 +306,8 @@ public class SweetbookService {
 					preferredTemplateUid,
 					"Selected Cover Template",
 					sweetbookProperties.getDefaultTemplateCategory(),
-					"cover"
+					"cover",
+					""
 				));
 		}
 		if (!sweetbookProperties.getDefaultCoverTemplateUid().isBlank()) {
@@ -293,7 +318,8 @@ public class SweetbookService {
 					sweetbookProperties.getDefaultCoverTemplateUid(),
 					"Configured Cover Template",
 					sweetbookProperties.getDefaultTemplateCategory(),
-					"cover"
+					"cover",
+					""
 				));
 		}
 		return templates.stream()
@@ -314,7 +340,8 @@ public class SweetbookService {
 					preferredTemplateUid,
 					"Selected Publish Template",
 					sweetbookProperties.getDefaultTemplateCategory(),
-					"publish"
+					"publish",
+					""
 				));
 		}
 		if (!sweetbookProperties.getDefaultPublishTemplateUid().isBlank()) {
@@ -325,7 +352,8 @@ public class SweetbookService {
 					sweetbookProperties.getDefaultPublishTemplateUid(),
 					"Configured Publish Template",
 					sweetbookProperties.getDefaultTemplateCategory(),
-					"publish"
+					"publish",
+					""
 				));
 		}
 		return templates.stream()
@@ -343,7 +371,8 @@ public class SweetbookService {
 					preferredTemplateUid,
 					"Selected Content Template",
 					sweetbookProperties.getDefaultTemplateCategory(),
-					"content"
+					"content",
+					""
 				));
 		}
 		if (!sweetbookProperties.getDefaultContentTemplateUid().isBlank()) {
@@ -354,7 +383,8 @@ public class SweetbookService {
 					sweetbookProperties.getDefaultContentTemplateUid(),
 					"Configured Content Template",
 					sweetbookProperties.getDefaultTemplateCategory(),
-					"content"
+					"content",
+					""
 				));
 		}
 		return templates.stream()

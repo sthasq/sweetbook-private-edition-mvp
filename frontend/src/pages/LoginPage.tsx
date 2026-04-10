@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const next = searchParams.get("next");
+  const reason = searchParams.get("reason");
 
   useEffect(() => {
     if (!loading && user) {
@@ -45,6 +46,12 @@ export default function LoginPage() {
         <p className="mt-3 text-sm text-stone-600">
           로그인하면 내 프로젝트와 크리에이터 스튜디오 접근 권한이 복원됩니다.
         </p>
+
+        {reason === "session-expired" && (
+          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            세션이 만료되었거나 서버가 다시 시작되었습니다. 다시 로그인해 주세요.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
           <div>

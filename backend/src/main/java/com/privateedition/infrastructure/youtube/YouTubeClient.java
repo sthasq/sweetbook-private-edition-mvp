@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -24,6 +25,7 @@ public class YouTubeClient {
 
 	private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() {
 	};
+	private static final int YOUTUBE_RESPONSE_BUFFER_SIZE = 2 * 1024 * 1024;
 
 	private final WebClient.Builder webClientBuilder;
 	private final ObjectMapper objectMapper;
@@ -38,6 +40,7 @@ public class YouTubeClient {
 
 		JsonNode response = webClientBuilder.clone()
 			.baseUrl("https://oauth2.googleapis.com")
+			.exchangeStrategies(largeResponseStrategies())
 			.build()
 			.post()
 			.uri("/token")
@@ -55,6 +58,7 @@ public class YouTubeClient {
 	public JsonNode getYouTubeResource(String path, Map<String, String> queryParams, String accessToken, String apiKey) {
 		return webClientBuilder.clone()
 			.baseUrl("https://www.googleapis.com")
+			.exchangeStrategies(largeResponseStrategies())
 			.build()
 			.get()
 			.uri(uriBuilder -> {
@@ -76,5 +80,11 @@ public class YouTubeClient {
 				.map(body -> new AppException(HttpStatus.BAD_GATEWAY, "YouTube API error: " + body)))
 			.bodyToMono(JsonNode.class)
 			.block(Duration.ofSeconds(30));
+	}
+
+	private ExchangeStrategies largeResponseStrategies() {
+		return ExchangeStrategies.builder()
+			.codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(YOUTUBE_RESPONSE_BUFFER_SIZE))
+			.build();
 	}
 }

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { createEdition, publishEdition, updateEdition } from "../api/studio";
-import { getEdition, listEditions } from "../api/editions";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { ApiError } from "../api/client";
+import { createEdition, importStudioYouTubeRecap, publishEdition, updateEdition } from "../api/studio";
 import { listSweetbookBookSpecs, listSweetbookTemplates } from "../api/sweetbook";
 import type {
   StudioCuratedAssetInput,
@@ -10,33 +10,63 @@ import type {
 } from "../api/studio";
 import type {
   EditionDetail,
-  EditionSummary,
   SweetbookBookSpec,
   SweetbookTemplate,
+  YouTubeStudioRecapResult,
 } from "../types/api";
 
 const ASSET_TYPES = ["IMAGE", "VIDEO", "MESSAGE"] as const;
 const FIELD_TYPES = ["TEXT", "TEXTAREA", "DATE", "VIDEO_PICKER", "IMAGE_URL"] as const;
+const STUDIO_STEPS = [
+  {
+    id: "structure",
+    badge: "1",
+    title: "템플릿 선택",
+    description: "Sweetbook 레이아웃과 출력 규격을 먼저 고릅니다.",
+  },
+  {
+    id: "details",
+    badge: "2",
+    title: "기본 정보",
+    description: "에디션 제목, 커버, 공식 메시지를 채웁니다.",
+  },
+  {
+    id: "assets",
+    badge: "3",
+    title: "자산 구성",
+    description: "큐레이션 자산과 팬 입력 항목을 구성합니다.",
+  },
+  {
+    id: "review",
+    badge: "4",
+    title: "검토 및 발행",
+    description: "전체 구성을 확인하고 저장하거나 퍼블리시합니다.",
+  },
+] as const;
+
+type StudioStepId = (typeof STUDIO_STEPS)[number]["id"];
 
 export default function StudioPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [form, setForm] = useState<StudioEditionInput>(createInitialForm);
   const [created, setCreated] = useState<EditionDetail | null>(null);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [editionTemplates, setEditionTemplates] = useState<EditionSummary[]>([]);
-  const [editionTemplatesLoading, setEditionTemplatesLoading] = useState(true);
-  const [editionTemplateError, setEditionTemplateError] = useState("");
-  const [applyingTemplateId, setApplyingTemplateId] = useState<number | null>(null);
   const [bookSpecs, setBookSpecs] = useState<SweetbookBookSpec[]>([]);
   const [bookSpecsLoading, setBookSpecsLoading] = useState(true);
   const [bookSpecError, setBookSpecError] = useState("");
   const [layoutTemplates, setLayoutTemplates] = useState<SweetbookTemplate[]>([]);
   const [layoutTemplatesLoading, setLayoutTemplatesLoading] = useState(true);
   const [layoutTemplateError, setLayoutTemplateError] = useState("");
+  const [recapSource, setRecapSource] = useState("");
+  const [recapImportMode, setRecapImportMode] = useState<"replace" | "append">("replace");
+  const [recapLoading, setRecapLoading] = useState(false);
+  const [recapResult, setRecapResult] = useState<YouTubeStudioRecapResult | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [savedFingerprint, setSavedFingerprint] = useState<string | null>(null);
+  const [activeStep, setActiveStep] = useState<StudioStepId>("structure");
 
   const intro = form.officialIntro ?? createCopyBlock();
   const closing = form.officialClosing ?? createCopyBlock();
@@ -45,6 +75,8 @@ export default function StudioPage() {
   const validationMessages = useMemo(() => validateForm(form), [form]);
   const fingerprint = serializeForm(form);
   const hasUnsavedChanges = savedFingerprint != null && savedFingerprint !== fingerprint;
+  const currentStepIndex = STUDIO_STEPS.findIndex((step) => step.id === activeStep);
+  const currentStep = STUDIO_STEPS[currentStepIndex] ?? STUDIO_STEPS[0];
   const sweetbookTemplateGroups = useMemo(
     () => ({
       cover: groupTemplatesByRole(layoutTemplates, "cover"),
@@ -54,28 +86,33 @@ export default function StudioPage() {
     [layoutTemplates],
   );
 
-  useEffect(() => {
-    listEditions()
-      .then(setEditionTemplates)
-      .catch((e: unknown) => {
-        setEditionTemplateError(e instanceof Error ? e.message : "에디션 템플릿 목록을 불러오지 못했습니다.");
-      })
-      .finally(() => setEditionTemplatesLoading(false));
-  }, []);
+  function redirectToLogin(message = "세션이 만료되어 다시 로그인해 주세요.") {
+    setError(message);
+    setSuccess("");
+    const next = `${location.pathname}${location.search}`;
+    navigate(`/login?next=${encodeURIComponent(next)}&reason=session-expired`, {
+      replace: true,
+    });
+  }
 
   useEffect(() => {
     listSweetbookBookSpecs()
       .then((specs) => {
-        setBookSpecs(specs);
-        if (!form.bookSpecUid && specs[0]?.uid) {
-          setForm((current) => ({ ...current, bookSpecUid: specs[0].uid }));
+        const validSpecs = specs.filter((spec) => spec.uid.trim() && spec.name.trim());
+        setBookSpecs(validSpecs);
+        if (!form.bookSpecUid && validSpecs[0]?.uid) {
+          setForm((current) => ({ ...current, bookSpecUid: validSpecs[0].uid }));
         }
       })
       .catch((e: unknown) => {
+        if (e instanceof ApiError && e.status === 401) {
+          redirectToLogin();
+          return;
+        }
         setBookSpecError(e instanceof Error ? e.message : "Sweetbook 규격 목록을 불러오지 못했습니다.");
       })
       .finally(() => setBookSpecsLoading(false));
-  }, []);
+  }, [form.bookSpecUid, location.pathname, location.search, navigate]);
 
   useEffect(() => {
     const bookSpecUid = form.bookSpecUid?.trim();
@@ -91,11 +128,15 @@ export default function StudioPage() {
     listSweetbookTemplates(bookSpecUid)
       .then(setLayoutTemplates)
       .catch((e: unknown) => {
+        if (e instanceof ApiError && e.status === 401) {
+          redirectToLogin();
+          return;
+        }
         setLayoutTemplateError(e instanceof Error ? e.message : "Sweetbook 템플릿 목록을 불러오지 못했습니다.");
         setLayoutTemplates([]);
       })
       .finally(() => setLayoutTemplatesLoading(false));
-  }, [form.bookSpecUid]);
+  }, [form.bookSpecUid, location.pathname, location.search, navigate]);
 
   useEffect(() => {
     if (layoutTemplates.length === 0) {
@@ -200,6 +241,49 @@ export default function StudioPage() {
     }));
   }
 
+  async function handleImportYouTubeRecap() {
+    const source = recapSource.trim();
+    if (!source) {
+      setError("유튜브 채널 링크, @핸들, 채널 ID, 또는 영상 링크를 입력해 주세요.");
+      setSuccess("");
+      return;
+    }
+
+    if (
+      recapImportMode === "replace" &&
+      assets.length > 0 &&
+      !window.confirm("현재 큐레이션 자산을 유튜브 리캡 자산으로 교체할까요?")
+    ) {
+      return;
+    }
+
+    setRecapLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const result = await importStudioYouTubeRecap(source);
+      setRecapResult(result);
+      setForm((current) => ({
+        ...current,
+        curatedAssets: resequenceAssets(buildImportedAssets(current.curatedAssets ?? [], result.curatedAssets, recapImportMode)),
+      }));
+      setSuccess(
+        recapImportMode === "append"
+          ? `"${result.channel.title}" 리캡 자산을 기존 큐레이션 뒤에 추가했습니다.`
+          : `"${result.channel.title}" 채널 기준으로 리캡 자산을 불러왔습니다.`,
+      );
+    } catch (e: unknown) {
+      if (e instanceof ApiError && e.status === 401) {
+        redirectToLogin();
+        return;
+      }
+      setError(e instanceof Error ? e.message : "유튜브 리캡 자산 불러오기 실패");
+    } finally {
+      setRecapLoading(false);
+    }
+  }
+
   function addField() {
     setForm((current) => ({
       ...current,
@@ -227,29 +311,6 @@ export default function StudioPage() {
     setSuccess("새 에디션 작성을 시작합니다.");
   }
 
-  async function applyTemplate(templateId: number) {
-    if ((created || hasUnsavedChanges) && !window.confirm("현재 작업 중인 내용이 초기화됩니다. 이 템플릿으로 다시 시작할까요?")) {
-      return;
-    }
-
-    setApplyingTemplateId(templateId);
-    setError("");
-    setSuccess("");
-
-    try {
-      const template = await getEdition(templateId);
-      const normalized = normalizeEditionToForm(template);
-      setForm(normalized);
-      setCreated(null);
-      setSavedFingerprint(null);
-      setSuccess(`"${template.title}" 템플릿으로 새 초안을 시작합니다.`);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "템플릿을 불러오지 못했습니다.");
-    } finally {
-      setApplyingTemplateId(null);
-    }
-  }
-
   async function handleSave() {
     if (validationMessages.length > 0) {
       setError(validationMessages[0]);
@@ -272,6 +333,10 @@ export default function StudioPage() {
       setSavedFingerprint(serializeForm(normalized));
       setSuccess(created ? "초안 변경사항을 저장했습니다." : "에디션 초안을 생성했습니다.");
     } catch (e: unknown) {
+      if (e instanceof ApiError && e.status === 401) {
+        redirectToLogin();
+        return;
+      }
       setError(e instanceof Error ? e.message : "초안 저장 실패");
     } finally {
       setSaving(false);
@@ -305,10 +370,28 @@ export default function StudioPage() {
       setSuccess("에디션이 퍼블리시되었습니다!");
       setTimeout(() => navigate(`/editions/${editionId}`), 1500);
     } catch (e: unknown) {
+      if (e instanceof ApiError && e.status === 401) {
+        redirectToLogin();
+        return;
+      }
       setError(e instanceof Error ? e.message : "퍼블리시 실패");
     } finally {
       setPublishing(false);
     }
+  }
+
+  function goToPreviousStep() {
+    if (currentStepIndex <= 0) {
+      return;
+    }
+    setActiveStep(STUDIO_STEPS[currentStepIndex - 1]?.id ?? "structure");
+  }
+
+  function goToNextStep() {
+    if (currentStepIndex >= STUDIO_STEPS.length - 1) {
+      return;
+    }
+    setActiveStep(STUDIO_STEPS[currentStepIndex + 1]?.id ?? "review");
   }
 
   return (
@@ -339,73 +422,62 @@ export default function StudioPage() {
         </button>
       </div>
 
-      <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.85fr)]">
-        <div className="min-w-0 space-y-6">
-          <section className="rounded-3xl border border-stone-200 bg-white/88 p-6 shadow-sm shadow-brand-100/30">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-stone-900">내부 에디션 템플릿</h2>
-                <p className="mt-1 text-sm text-stone-600">
-                  공식 메시지, 큐레이션 자산, 팬 입력 필드 구조를 빠르게 가져오는 내부 시작점입니다.
-                </p>
-              </div>
-              <p className="text-xs font-medium text-stone-500">
-                선택 후 수정해도 원본 에디션은 바뀌지 않고 새 초안에만 복사됩니다.
-              </p>
-            </div>
-
-            {editionTemplatesLoading ? (
-              <p className="mt-5 rounded-2xl border border-dashed border-stone-300 bg-stone-50/70 px-4 py-8 text-center text-sm text-stone-500">
-                에디션 템플릿 목록을 불러오는 중입니다.
-              </p>
-            ) : editionTemplateError ? (
-              <p className="mt-5 rounded-2xl border border-red-200 bg-red-50/80 px-4 py-4 text-sm text-red-500">
-                {editionTemplateError}
-              </p>
-            ) : (
-              <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {editionTemplates.map((template) => (
-                  <article
-                    key={template.id}
-                    className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-50/70"
+      <section className="mt-8 rounded-3xl border border-stone-200 bg-white/88 p-4 shadow-sm shadow-brand-100/30">
+        <div className="flex flex-wrap gap-3">
+          {STUDIO_STEPS.map((step, index) => {
+            const isActive = step.id === activeStep;
+            const isCompleted = index < currentStepIndex;
+            return (
+              <button
+                key={step.id}
+                type="button"
+                onClick={() => setActiveStep(step.id)}
+                className={`min-w-[180px] flex-1 rounded-2xl border px-4 py-3 text-left transition-colors ${
+                  isActive
+                    ? "border-brand-500 bg-brand-50"
+                    : isCompleted
+                      ? "border-emerald-200 bg-emerald-50/70"
+                      : "border-stone-200 bg-stone-50/80 hover:border-brand-300"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
+                      isActive
+                        ? "bg-brand-600 text-white"
+                        : isCompleted
+                          ? "bg-emerald-600 text-white"
+                          : "bg-white text-stone-600"
+                    }`}
                   >
-                    <div className="aspect-[4/3] bg-stone-100">
-                      <img
-                        src={`https://picsum.photos/seed/studio-template-${template.id}/720/540`}
-                        alt={template.title}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                    <div className="space-y-3 p-4">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-400">
-                          시작 템플릿
-                        </p>
-                        <h3 className="mt-2 text-base font-semibold text-stone-900">
-                          {template.title}
-                        </h3>
-                        <p className="mt-1 text-sm text-stone-600">
-                          {template.subtitle || "미리 준비된 구조로 새 에디션 초안을 시작합니다."}
-                        </p>
-                      </div>
-                      <div className="rounded-xl border border-stone-200 bg-white/80 px-3 py-2 text-xs text-stone-500">
-                        스위트북에서 바로 시작할 수 있도록 준비한 기본 템플릿
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => applyTemplate(template.id)}
-                        disabled={applyingTemplateId === template.id}
-                        className="w-full rounded-full border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-700 transition-colors hover:border-brand-400 hover:text-brand-700 disabled:opacity-50"
-                      >
-                        {applyingTemplateId === template.id ? "불러오는 중..." : "이 템플릿으로 시작"}
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
+                    {step.badge}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-stone-900">{step.title}</p>
+                    <p className="mt-1 text-xs text-stone-500">{step.description}</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-4 flex flex-col gap-2 rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-500">
+              현재 단계
+            </p>
+            <p className="mt-1 text-sm font-semibold text-stone-900">
+              {currentStep.badge}. {currentStep.title}
+            </p>
+          </div>
+          <p className="text-sm text-stone-600">{currentStep.description}</p>
+        </div>
+      </section>
 
+      <div className="mt-8 space-y-6">
+        <div className="min-w-0 space-y-6">
+          {activeStep === "structure" && (
+            <>
           <section className="rounded-3xl border border-stone-200 bg-white/88 p-6 shadow-sm shadow-brand-100/30">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -415,7 +487,7 @@ export default function StudioPage() {
                 </p>
               </div>
               <p className="text-xs font-medium text-stone-500">
-                이 영역은 내부 에디션 템플릿과 별개로, 인쇄 레이아웃만 담당합니다.
+                이 단계에서는 출력 규격과 인쇄 레이아웃만 고르면 됩니다.
               </p>
             </div>
 
@@ -477,6 +549,7 @@ export default function StudioPage() {
                   templates={sweetbookTemplateGroups.cover}
                   selectedUid={form.sweetbookCoverTemplateUid ?? ""}
                   onSelect={(uid) => selectSweetbookTemplate("cover", uid)}
+                  defaultExpanded={true}
                 />
                 <SweetbookTemplateSection
                   title="발행면 템플릿"
@@ -484,6 +557,7 @@ export default function StudioPage() {
                   templates={sweetbookTemplateGroups.publish}
                   selectedUid={form.sweetbookPublishTemplateUid ?? ""}
                   onSelect={(uid) => selectSweetbookTemplate("publish", uid)}
+                  defaultExpanded={false}
                 />
                 <SweetbookTemplateSection
                   title="본문 템플릿"
@@ -491,11 +565,16 @@ export default function StudioPage() {
                   templates={sweetbookTemplateGroups.content}
                   selectedUid={form.sweetbookContentTemplateUid ?? ""}
                   onSelect={(uid) => selectSweetbookTemplate("content", uid)}
+                  defaultExpanded={false}
                 />
               </div>
             )}
           </section>
+            </>
+          )}
 
+          {activeStep === "details" && (
+            <>
           <section className="rounded-3xl border border-stone-200 bg-white/88 p-6 shadow-sm shadow-brand-100/30">
             <h2 className="text-lg font-semibold text-stone-900">기본 정보</h2>
             <div className="mt-5 grid gap-4">
@@ -520,11 +599,151 @@ export default function StudioPage() {
               </div>
             </div>
           </section>
+            </>
+          )}
 
+          {activeStep === "assets" && (
+            <>
           <section className="rounded-3xl border border-stone-200 bg-white/88 p-6 shadow-sm shadow-brand-100/30">
             <div className="flex items-center justify-between gap-4">
               <h2 className="text-lg font-semibold text-stone-900">큐레이션 자산</h2>
               <button type="button" onClick={addAsset} className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 hover:border-brand-400 hover:text-brand-700 transition-colors">자산 추가</button>
+            </div>
+            <div className="mt-5 rounded-2xl border border-red-200 bg-red-50/50 p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                <div className="min-w-0 flex-1">
+                  <label htmlFor="youtube-recap-source" className="block text-sm font-medium text-stone-800 mb-1.5">
+                    유튜브 리캡 자산 불러오기
+                  </label>
+                  <input
+                    id="youtube-recap-source"
+                    value={recapSource}
+                    onChange={(e) => setRecapSource(e.target.value)}
+                    className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                    placeholder="채널 링크, @핸들, 채널 ID, 또는 영상 링크"
+                  />
+                  <p className="mt-2 text-xs text-stone-500">
+                    예: `https://www.youtube.com/@ondolog`, `@ondolog`, `UC...`, 또는 해당 채널의 영상 링크
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-stone-600">
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="recap-import-mode"
+                        checked={recapImportMode === "replace"}
+                        onChange={() => setRecapImportMode("replace")}
+                        className="h-4 w-4 border-stone-300 text-brand-600 focus:ring-brand-500"
+                      />
+                      기존 자산 교체
+                    </label>
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="recap-import-mode"
+                        checked={recapImportMode === "append"}
+                        onChange={() => setRecapImportMode("append")}
+                        className="h-4 w-4 border-stone-300 text-brand-600 focus:ring-brand-500"
+                      />
+                      기존 자산 뒤에 추가
+                    </label>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleImportYouTubeRecap}
+                  disabled={recapLoading}
+                  className="rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-500 disabled:opacity-50"
+                >
+                  {recapLoading ? "불러오는 중..." : "리캡 자산 불러오기"}
+                </button>
+              </div>
+
+              {recapResult && (
+                <div className="mt-4 rounded-2xl border border-red-100 bg-white/90 p-4">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={recapResult.channel.thumbnailUrl || "https://picsum.photos/seed/studio-youtube-channel/120/120"}
+                      alt={recapResult.channel.title}
+                      className="h-12 w-12 rounded-full object-cover"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-stone-900">{recapResult.channel.title}</p>
+                      <p className="truncate text-xs text-stone-500">
+                        구독자 {formatCompactNumber(recapResult.channel.subscriberCount)} · 영상 {formatCompactNumber(recapResult.channel.videoCount)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    <div className="rounded-xl border border-stone-200 bg-stone-50/80 p-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">최근 1년 업로드</p>
+                      <p className="mt-2 text-xl font-bold text-stone-900">{recapResult.yearlySummary.uploadCount}</p>
+                    </div>
+                    <div className="rounded-xl border border-stone-200 bg-stone-50/80 p-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">최근 1년 조회수</p>
+                      <p className="mt-2 text-xl font-bold text-stone-900">{formatCompactNumber(recapResult.yearlySummary.totalViews)}</p>
+                    </div>
+                    <div className="rounded-xl border border-stone-200 bg-stone-50/80 p-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">영상당 평균 조회수</p>
+                      <p className="mt-2 text-xl font-bold text-stone-900">{formatCompactNumber(recapResult.yearlySummary.averageViewsPerVideo)}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-medium text-stone-700">월별 업로드/조회 추이</p>
+                      <p className="text-[11px] text-stone-500">{recapResult.yearlySummary.periodLabel}</p>
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-2 md:grid-cols-6 xl:grid-cols-12">
+                      {recapResult.yearlySummary.monthlyStats.map((stat) => (
+                        <div key={stat.month} className="rounded-xl border border-stone-200 bg-stone-50/80 p-2">
+                          <div className="flex h-20 items-end justify-center gap-1">
+                            <div
+                              className="w-3 rounded-full bg-brand-200"
+                              style={{ height: `${scaleStatHeight(stat.uploadCount, recapResult.yearlySummary.monthlyStats, "uploadCount")}%` }}
+                              title={`업로드 ${stat.uploadCount}개`}
+                            />
+                            <div
+                              className="w-3 rounded-full bg-red-300"
+                              style={{ height: `${scaleStatHeight(stat.totalViews, recapResult.yearlySummary.monthlyStats, "totalViews")}%` }}
+                              title={`조회수 ${stat.totalViews.toLocaleString("ko-KR")}회`}
+                            />
+                          </div>
+                          <p className="mt-2 text-center text-[11px] font-medium text-stone-600">
+                            {stat.month.slice(5).replace("-", ".")}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-stone-500">
+                      <span className="inline-flex items-center gap-1">
+                        <span className="h-2.5 w-2.5 rounded-full bg-brand-200" />
+                        업로드 수
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <span className="h-2.5 w-2.5 rounded-full bg-red-300" />
+                        조회수
+                      </span>
+                    </div>
+                  </div>
+
+                  {recapResult.topVideos.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-xs font-medium text-stone-700">대표 영상</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {recapResult.topVideos.slice(0, 3).map((video) => (
+                          <span
+                            key={video.videoId}
+                            className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs text-stone-600"
+                          >
+                            {video.title}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="mt-5 space-y-4">
               {assets.length === 0 ? (
@@ -589,82 +808,128 @@ export default function StudioPage() {
               ))}
             </div>
           </section>
+            </>
+          )}
+
+          {activeStep === "review" && (
+            <section className="rounded-3xl border border-stone-200 bg-white/88 p-6 shadow-sm shadow-brand-100/30">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-stone-900">검토 및 발행</h2>
+                  <p className="mt-1 text-sm text-stone-600">
+                    지금까지 고른 템플릿과 입력한 내용을 확인한 뒤 초안을 저장하거나 퍼블리시하세요.
+                  </p>
+                </div>
+                <p className="text-xs font-medium text-stone-500">
+                  오른쪽 요약 카드에서 현재 상태를 바로 확인할 수 있습니다.
+                </p>
+              </div>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-400">에디션 정보</p>
+                  <p className="mt-3 text-base font-semibold text-stone-900">
+                    {form.title || "아직 제목이 없습니다"}
+                  </p>
+                  <p className="mt-1 text-sm text-stone-600">
+                    {form.subtitle || "부제목을 입력하면 여기에서 함께 확인됩니다."}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">레이아웃 선택 요약</p>
+                  <div className="mt-3 space-y-2 text-sm text-stone-600">
+                    <p>표지: <span className="font-medium text-stone-900">{readTemplateName(layoutTemplates, form.sweetbookCoverTemplateUid)}</span></p>
+                    <p>발행면: <span className="font-medium text-stone-900">{readTemplateName(layoutTemplates, form.sweetbookPublishTemplateUid)}</span></p>
+                    <p>본문: <span className="font-medium text-stone-900">{readTemplateName(layoutTemplates, form.sweetbookContentTemplateUid)}</span></p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                <div className="rounded-2xl border border-stone-200 bg-white/80 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">공식 메시지</p>
+                  <p className="mt-2 text-2xl font-bold text-stone-900">
+                    {[intro.title, intro.message, closing.title, closing.message].filter(Boolean).length}/4
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-stone-200 bg-white/80 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">큐레이션 자산</p>
+                  <p className="mt-2 text-2xl font-bold text-stone-900">{assets.length}</p>
+                </div>
+                <div className="rounded-2xl border border-stone-200 bg-white/80 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">팬 입력 항목</p>
+                  <p className="mt-2 text-2xl font-bold text-stone-900">{fields.length}</p>
+                </div>
+              </div>
+
+              {validationMessages.length > 0 ? (
+                <ul className="mt-5 space-y-1 rounded-2xl border border-red-200 bg-red-50/80 p-4 text-sm text-red-500">
+                  {validationMessages.map((message) => <li key={message}>{message}</li>)}
+                </ul>
+              ) : (
+                <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-emerald-700">
+                  필수 입력이 모두 채워졌습니다. 초안 저장 또는 퍼블리시를 진행해도 됩니다.
+                </div>
+              )}
+            </section>
+          )}
+
+          <div className="flex flex-col gap-3 rounded-3xl border border-stone-200 bg-white/88 p-4 shadow-sm shadow-brand-100/30 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={goToPreviousStep}
+              disabled={currentStepIndex === 0}
+              className="rounded-full border border-stone-300 bg-white px-5 py-2.5 text-sm font-semibold text-stone-700 transition-colors hover:border-brand-400 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              이전 단계
+            </button>
+            <p className="text-sm text-stone-500">
+              {currentStepIndex + 1} / {STUDIO_STEPS.length} 단계
+            </p>
+            <button
+              type="button"
+              onClick={goToNextStep}
+              disabled={currentStepIndex === STUDIO_STEPS.length - 1}
+              className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              다음 단계
+            </button>
+          </div>
         </div>
-
-        <aside className="min-w-0 space-y-6">
-          <section className="rounded-3xl border border-stone-200 bg-white/88 p-6 shadow-sm shadow-brand-100/30 xl:sticky xl:top-24">
-            <h2 className="text-lg font-semibold text-stone-900">템플릿 요약</h2>
-            <div className="mt-5 overflow-hidden rounded-2xl border border-stone-200 bg-stone-50/80">
-              <div className="aspect-square bg-stone-100">
-                <img src={form.coverImageUrl || "https://picsum.photos/seed/studio-empty/900/900"} alt="" className="h-full w-full object-cover" />
-              </div>
-              <div className="p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-400">에디션 미리보기</p>
-                <h3 className="mt-2 text-lg font-semibold text-stone-900">{form.title || "에디션 제목"}</h3>
-                <p className="mt-1 text-sm text-stone-600">{form.subtitle || "부제목이 여기에 표시됩니다."}</p>
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-stone-200 bg-stone-50/80 p-4 space-y-3">
-              <div>
-                <p className="text-sm font-medium text-stone-900">{intro.title || "인트로 제목"}</p>
-                <p className="mt-1 text-sm text-stone-600">{intro.message || "인트로 메시지를 입력해 주세요."}</p>
-              </div>
-              <div className="border-t border-stone-200 pt-3">
-                <p className="text-sm font-medium text-stone-900">{closing.title || "클로징 제목"}</p>
-                <p className="mt-1 text-sm text-stone-600">{closing.message || "클로징 메시지를 입력해 주세요."}</p>
-              </div>
-            </div>
-
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">큐레이션 자산</p>
-                <p className="mt-2 text-2xl font-bold text-stone-900">{assets.length}</p>
-              </div>
-              <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">팬 입력 항목</p>
-                <p className="mt-2 text-2xl font-bold text-stone-900">{fields.length}</p>
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
-                선택한 레이아웃
-              </p>
-              <div className="mt-3 space-y-2 text-sm text-stone-600">
-                <p>
-                  표지:
-                  {" "}
-                  <span className="font-medium text-stone-900">
+        <section className="rounded-3xl border border-stone-200 bg-white/92 p-5 shadow-sm shadow-brand-100/30">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-3">
+                <div className="rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">큐레이션 자산</p>
+                  <p className="mt-1 text-lg font-bold text-stone-900">{assets.length}</p>
+                </div>
+                <div className="rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">팬 입력 항목</p>
+                  <p className="mt-1 text-lg font-bold text-stone-900">{fields.length}</p>
+                </div>
+                <div className="rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">선택한 레이아웃</p>
+                  <p className="mt-1 text-sm font-medium text-stone-900">
                     {readTemplateName(layoutTemplates, form.sweetbookCoverTemplateUid)}
-                  </span>
-                </p>
-                <p>
-                  발행면:
-                  {" "}
-                  <span className="font-medium text-stone-900">
+                    {" / "}
                     {readTemplateName(layoutTemplates, form.sweetbookPublishTemplateUid)}
-                  </span>
-                </p>
-                <p>
-                  본문:
-                  {" "}
-                  <span className="font-medium text-stone-900">
+                    {" / "}
                     {readTemplateName(layoutTemplates, form.sweetbookContentTemplateUid)}
-                  </span>
-                </p>
+                  </p>
+                </div>
               </div>
+
+              {validationMessages.length > 0 && (
+                <ul className="space-y-1 rounded-2xl border border-red-200 bg-red-50/80 p-4 text-sm text-red-500">
+                  {validationMessages.map((message) => <li key={message}>{message}</li>)}
+                </ul>
+              )}
+              {error && <p className="text-sm text-red-500">{error}</p>}
+              {success && <p className="text-sm text-emerald-600">{success}</p>}
             </div>
 
-            {validationMessages.length > 0 && (
-              <ul className="mt-5 space-y-1 rounded-2xl border border-red-200 bg-red-50/80 p-4 text-sm text-red-500">
-                {validationMessages.map((message) => <li key={message}>{message}</li>)}
-              </ul>
-            )}
-            {error && <p className="mt-5 text-sm text-red-500">{error}</p>}
-            {success && <p className="mt-5 text-sm text-emerald-600">{success}</p>}
-
-            <div className="mt-6 flex flex-col gap-3">
+            <div className="flex w-full flex-col gap-3 lg:w-auto lg:min-w-[240px]">
               <button type="button" disabled={saving || publishing || validationMessages.length > 0} onClick={handleSave} className="rounded-full bg-brand-600 px-8 py-3 text-sm font-semibold text-white hover:bg-brand-500 transition-colors disabled:opacity-50">
                 {saving ? "저장 중..." : created ? "초안 저장" : "에디션 초안 생성"}
               </button>
@@ -672,8 +937,8 @@ export default function StudioPage() {
                 {publishing ? "퍼블리시 중..." : hasUnsavedChanges ? "저장 후 퍼블리시" : "퍼블리시하기"}
               </button>
             </div>
-          </section>
-        </aside>
+          </div>
+        </section>
       </div>
     </div>
   );
@@ -811,7 +1076,71 @@ function readTemplateName(templates: SweetbookTemplate[], uid: string | undefine
   if (!uid) {
     return "선택되지 않음";
   }
-  return templates.find((template) => template.uid === uid)?.name ?? uid;
+  const template = templates.find((item) => item.uid === uid);
+  return template ? formatTemplateDisplayName(template, templates) : uid;
+}
+
+function formatTemplateDisplayName(template: SweetbookTemplate, templates: SweetbookTemplate[]) {
+  const fallbackName = humanizeTemplateText(template.name?.trim() || "");
+  const baseName = fallbackName || "이름 없는 템플릿";
+  const category = humanizeTemplateText(template.category?.trim() || "");
+  const duplicateCount = templates.filter(
+    (item) => normalizeTemplateKey(item.name) === normalizeTemplateKey(template.name),
+  ).length;
+
+  if (duplicateCount > 1 && category && !baseName.startsWith(category)) {
+    return `${category} · ${baseName}`;
+  }
+  if (!fallbackName && category) {
+    return category;
+  }
+  return baseName;
+}
+
+function normalizeTemplateKey(value: string | undefined) {
+  return humanizeTemplateText(value ?? "").toLowerCase();
+}
+
+function humanizeTemplateText(value: string) {
+  if (!value.trim()) {
+    return "";
+  }
+
+  const tokenMap: Record<string, string> = {
+    cover: "표지",
+    publish: "발행면",
+    content: "본문",
+    divider: "간지",
+    gallery: "갤러리",
+    fill: "풀페이지",
+    blank: "여백형",
+    header: "헤더",
+  };
+
+  return value
+    .replace(/[_-]+/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((token) => tokenMap[token.toLowerCase()] ?? token)
+    .join(" ")
+    .trim();
+}
+
+function formatTemplateRoleLabel(role: string) {
+  const normalized = role.trim().toLowerCase();
+  if (normalized.includes("cover")) {
+    return "표지";
+  }
+  if (normalized.includes("publish")) {
+    return "발행면";
+  }
+  if (normalized.includes("content")) {
+    return "본문";
+  }
+  if (normalized.includes("divider")) {
+    return "간지";
+  }
+  return humanizeTemplateText(role) || "레이아웃";
 }
 
 function SweetbookTemplateSection({
@@ -820,26 +1149,105 @@ function SweetbookTemplateSection({
   templates,
   selectedUid,
   onSelect,
+  defaultExpanded,
 }: {
   title: string;
   description: string;
   templates: SweetbookTemplate[];
   selectedUid: string;
   onSelect: (uid: string) => void;
+  defaultExpanded?: boolean;
 }) {
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded ?? true);
+  const selectedTemplate = templates.find((template) => template.uid === selectedUid) ?? null;
+  const selectedTemplateName = selectedTemplate
+    ? formatTemplateDisplayName(selectedTemplate, templates)
+    : "선택되지 않음";
+
+  function scrollTemplates(direction: "prev" | "next") {
+    const track = trackRef.current;
+    if (!track) {
+      return;
+    }
+    const offset = Math.max(track.clientWidth * 0.9, 320);
+    track.scrollBy({
+      left: direction === "next" ? offset : -offset,
+      behavior: "smooth",
+    });
+  }
+
   return (
     <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4">
-      <div>
-        <h3 className="text-sm font-semibold text-stone-900">{title}</h3>
-        <p className="mt-1 text-sm text-stone-600">{description}</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-stone-900">{title}</h3>
+          <p className="mt-1 text-sm text-stone-600">{description}</p>
+          <p className="mt-2 text-xs text-stone-500">
+            현재 선택: <span className="font-medium text-stone-700">{selectedTemplateName}</span>
+          </p>
+        </div>
+        <div className="flex items-center gap-2 self-start">
+          {isExpanded && (
+            <>
+              <button
+                type="button"
+                onClick={() => scrollTemplates("prev")}
+                className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 transition-colors hover:border-brand-400 hover:text-brand-700"
+              >
+                이전
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollTemplates("next")}
+                className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 transition-colors hover:border-brand-400 hover:text-brand-700"
+              >
+                다음
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => setIsExpanded((current) => !current)}
+            className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 transition-colors hover:border-brand-400 hover:text-brand-700"
+          >
+            {isExpanded ? "접기" : "펼치기"}
+          </button>
+        </div>
       </div>
 
-      {templates.length === 0 ? (
+      {!isExpanded ? (
+        <div className="mt-4 rounded-xl border border-dashed border-stone-300 bg-white/80 p-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-stone-500">
+              템플릿 {templates.length}개가 준비되어 있습니다. 필요할 때 펼쳐서 살펴보세요.
+            </div>
+            {selectedTemplate && (
+              <div className="flex w-full items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50/80 p-3 sm:w-auto sm:min-w-[260px]">
+                <div className="w-24 shrink-0 overflow-hidden rounded-xl border border-stone-200 bg-white">
+                  <SweetbookTemplatePreview template={selectedTemplate} selected={true} compact />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">
+                    선택됨
+                  </p>
+                  <p className="mt-1 truncate text-sm font-semibold text-stone-900">
+                    {formatTemplateDisplayName(selectedTemplate, templates)}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : templates.length === 0 ? (
         <p className="mt-4 rounded-xl border border-dashed border-stone-300 bg-white/80 px-4 py-6 text-center text-sm text-stone-500">
           현재 규격에서 제공되는 템플릿이 없습니다.
         </p>
       ) : (
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div
+          ref={trackRef}
+          className="mt-4 grid snap-x snap-mandatory grid-flow-col auto-cols-[94%] gap-4 overflow-x-auto pb-2 pr-2 sm:auto-cols-[72%] xl:auto-cols-[52%]"
+        >
           {templates.map((template) => {
             const isSelected = selectedUid === template.uid;
             return (
@@ -847,20 +1255,20 @@ function SweetbookTemplateSection({
                 key={template.uid}
                 type="button"
                 onClick={() => onSelect(template.uid)}
-                className={`rounded-2xl border p-4 text-left transition-colors ${
+                className={`snap-start rounded-2xl border p-5 text-left transition-colors ${
                   isSelected
                     ? "border-brand-500 bg-brand-50 text-brand-700"
                     : "border-stone-200 bg-white text-stone-700 hover:border-brand-300"
                 }`}
               >
-                <div className="mb-3 overflow-hidden rounded-xl border border-stone-200 bg-stone-50">
+                <div className="mb-4 overflow-hidden rounded-xl border border-stone-200 bg-stone-50">
                   <SweetbookTemplatePreview template={template} selected={isSelected} />
                 </div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-stone-500">
-                  {template.role || "layout"}
+                  {formatTemplateRoleLabel(template.role)}
                 </p>
-                <p className="mt-2 text-sm font-semibold text-current">
-                  {template.name}
+                <p className="mt-2 text-base font-semibold text-current">
+                  {formatTemplateDisplayName(template, templates)}
                 </p>
               </button>
             );
@@ -874,17 +1282,38 @@ function SweetbookTemplateSection({
 function SweetbookTemplatePreview({
   template,
   selected,
+  compact = false,
 }: {
   template: SweetbookTemplate;
   selected: boolean;
+  compact?: boolean;
 }) {
   const role = template.role.toLowerCase();
   const name = template.name.toLowerCase();
   const selectedClass = selected ? "ring-2 ring-brand-400/70" : "";
+  const aspectClass = compact ? "aspect-[6/5]" : "aspect-[5/4]";
+
+  if (template.thumbnailUrl) {
+    return (
+      <div className={`relative ${aspectClass} overflow-hidden bg-stone-100 ${selectedClass}`}>
+        <img
+          src={template.thumbnailUrl}
+          alt={`${template.name} 레이아웃 미리보기`}
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-stone-950/55 via-stone-900/10 to-transparent px-3 py-2">
+          <div className="inline-flex rounded-full bg-white/88 px-2.5 py-1 text-[10px] font-semibold tracking-[0.18em] text-stone-700">
+            템플릿 미리보기
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (role.includes("cover")) {
     return (
-      <div className={`relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-amber-100 via-rose-50 to-orange-200 ${selectedClass}`}>
+      <div className={`relative ${aspectClass} overflow-hidden bg-gradient-to-br from-amber-100 via-rose-50 to-orange-200 ${selectedClass}`}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.85),transparent_40%),linear-gradient(135deg,rgba(120,53,15,0.1),transparent_55%)]" />
         <div className="absolute inset-x-4 top-4 rounded-lg bg-white/85 px-3 py-2 shadow-sm">
           <div className="h-2.5 w-16 rounded-full bg-gold-300/80" />
@@ -900,7 +1329,7 @@ function SweetbookTemplatePreview({
 
   if (role.includes("publish")) {
     return (
-      <div className={`aspect-[4/3] bg-gradient-to-br from-stone-100 via-white to-stone-200 p-3 ${selectedClass}`}>
+      <div className={`${aspectClass} bg-gradient-to-br from-stone-100 via-white to-stone-200 p-3 ${selectedClass}`}>
         <div className="flex h-full gap-2">
           <div className="flex-1 rounded-lg border border-stone-200 bg-white p-3 shadow-sm">
             <div className="h-2 w-12 rounded-full bg-brand-300/80" />
@@ -923,7 +1352,7 @@ function SweetbookTemplatePreview({
 
   if (name.includes("gallery")) {
     return (
-      <div className={`aspect-[4/3] bg-stone-100 p-3 ${selectedClass}`}>
+      <div className={`${aspectClass} bg-stone-100 p-3 ${selectedClass}`}>
         <div className="grid h-full grid-cols-2 gap-2">
           {["from-rose-100 to-orange-200", "from-sky-100 to-cyan-200", "from-lime-100 to-emerald-200", "from-violet-100 to-fuchsia-200"].map((gradient) => (
             <div
@@ -938,7 +1367,7 @@ function SweetbookTemplatePreview({
 
   if (name.includes("blank") || name.includes("빈내지")) {
     return (
-      <div className={`aspect-[4/3] bg-white p-3 ${selectedClass}`}>
+      <div className={`${aspectClass} bg-white p-3 ${selectedClass}`}>
         <div className="flex h-full items-center justify-center rounded-xl border-2 border-dashed border-stone-200 bg-stone-50">
           <div className="text-center text-xs text-stone-400">
             <div className="mx-auto h-10 w-10 rounded-full border border-stone-200 bg-white" />
@@ -951,7 +1380,7 @@ function SweetbookTemplatePreview({
 
   if (name.includes("month") || name.includes("월시작") || name.includes("header") || name.includes("date")) {
     return (
-      <div className={`aspect-[4/3] bg-gradient-to-br from-sky-50 to-white p-3 ${selectedClass}`}>
+      <div className={`${aspectClass} bg-gradient-to-br from-sky-50 to-white p-3 ${selectedClass}`}>
         <div className="h-full rounded-xl border border-sky-100 bg-white shadow-sm">
           <div className="rounded-t-xl bg-gradient-to-r from-brand-500 to-sky-400 px-3 py-2">
             <div className="h-2.5 w-16 rounded-full bg-white/80" />
@@ -968,7 +1397,7 @@ function SweetbookTemplatePreview({
   }
 
   return (
-    <div className={`aspect-[4/3] bg-stone-100 p-3 ${selectedClass}`}>
+    <div className={`${aspectClass} bg-stone-100 p-3 ${selectedClass}`}>
       <div className="grid h-full grid-cols-[1.15fr_0.85fr] gap-2">
         <div className="rounded-xl bg-gradient-to-br from-brand-100 via-brand-50 to-white p-3">
           <div className="h-full rounded-lg bg-white/70 p-2 shadow-sm">
@@ -1097,4 +1526,34 @@ function extractYouTubeVideoId(url: string) {
   }
 
   return "";
+}
+
+function formatCompactNumber(value: number) {
+  return new Intl.NumberFormat("ko-KR", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
+function buildImportedAssets(
+  currentAssets: StudioCuratedAssetInput[],
+  importedAssets: StudioCuratedAssetInput[],
+  mode: "replace" | "append",
+) {
+  if (mode === "replace") {
+    return importedAssets.map((asset) => createAsset(asset));
+  }
+
+  const existing = currentAssets.map((asset) => createAsset(asset));
+  const imported = importedAssets.map((asset) => createAsset(asset));
+  return [...existing, ...imported];
+}
+
+function scaleStatHeight(
+  value: number,
+  stats: YouTubeStudioRecapResult["yearlySummary"]["monthlyStats"],
+  key: "uploadCount" | "totalViews",
+) {
+  const max = Math.max(...stats.map((item) => item[key]), 1);
+  return Math.max(12, Math.round((value / max) * 100));
 }

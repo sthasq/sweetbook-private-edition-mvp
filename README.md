@@ -177,12 +177,12 @@ docker compose up --build
 | `SWEETBOOK_ENABLED` | Recommended | Turns live Sweetbook mode on when used with a key |
 | `SWEETBOOK_API_KEY` | For live mode | Sweetbook sandbox API key |
 | `SWEETBOOK_BASE_URL` | Optional | Defaults to Sweetbook sandbox base URL |
-| `MYSQL_ROOT_PASSWORD` | Docker only | MySQL root password for Compose |
+| `MYSQL_ROOT_PASSWORD` | Docker only | MySQL root password for Compose maintenance |
 | `MYSQL_HOST` | Local MySQL mode | Host for `.\run_local.ps1 -Database mysql` |
 | `MYSQL_PORT` | Local MySQL mode | Port for `.\run_local.ps1 -Database mysql` |
 | `MYSQL_DATABASE` | Local MySQL mode | Database name for `.\run_local.ps1 -Database mysql` |
-| `MYSQL_USERNAME` | Local MySQL mode | Username for `.\run_local.ps1 -Database mysql` |
-| `MYSQL_PASSWORD` | Local MySQL mode | Password for `.\run_local.ps1 -Database mysql` |
+| `MYSQL_USERNAME` | Local MySQL mode | App DB username for `.\run_local.ps1 -Database mysql` |
+| `MYSQL_PASSWORD` | Local MySQL mode | App DB password for `.\run_local.ps1 -Database mysql` |
 | `GOOGLE_CLIENT_ID` | YouTube mode | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | YouTube mode | Google OAuth client secret |
 | `GOOGLE_REDIRECT_URI` | YouTube mode | Must match the Google OAuth redirect URI |
