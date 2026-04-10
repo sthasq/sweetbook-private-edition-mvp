@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/private_edition?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/playpick?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul}
 
   data:
     redis:

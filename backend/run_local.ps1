@@ -159,7 +159,7 @@ if ((Test-BlankEnv "GOOGLE_CLIENT_ID") -or (Test-BlankEnv "GOOGLE_CLIENT_SECRET"
 if ($Database -eq "mysql") {
   $mysqlHost = if ($env:MYSQL_HOST) { $env:MYSQL_HOST } else { "localhost" }
   $mysqlPort = if ($env:MYSQL_PORT) { $env:MYSQL_PORT } else { "3307" }
-  $mysqlDatabase = if ($env:MYSQL_DATABASE) { $env:MYSQL_DATABASE } else { "private_edition" }
+  $mysqlDatabase = if ($env:MYSQL_DATABASE) { $env:MYSQL_DATABASE } else { "playpick" }
   $redisHost = if ($env:REDIS_HOST) { $env:REDIS_HOST } else { "localhost" }
   $redisPort = if ($env:REDIS_PORT) { $env:REDIS_PORT } else { "6380" }
 
@@ -205,7 +205,7 @@ if ($Database -eq "mysql") {
   if ($env:MYSQL_USERNAME) {
     $env:SPRING_DATASOURCE_USERNAME = $env:MYSQL_USERNAME
   } else {
-    $env:SPRING_DATASOURCE_USERNAME = "privateedition"
+    $env:SPRING_DATASOURCE_USERNAME = "playpick"
   }
 
   if ($env:MYSQL_PASSWORD) {
@@ -213,7 +213,7 @@ if ($Database -eq "mysql") {
   } elseif ($env:MYSQL_ROOT_PASSWORD) {
     $env:SPRING_DATASOURCE_PASSWORD = $env:MYSQL_ROOT_PASSWORD
   } else {
-    $env:SPRING_DATASOURCE_PASSWORD = "privateedition"
+    $env:SPRING_DATASOURCE_PASSWORD = "playpick"
   }
 
   $env:SPRING_DATA_REDIS_HOST = $redisHost

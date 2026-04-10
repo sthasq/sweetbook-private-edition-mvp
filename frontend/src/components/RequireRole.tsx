@@ -31,7 +31,7 @@ export default function RequireRole({
           이 화면은 크리에이터 전용입니다
         </h1>
         <p className="mt-3 text-sm text-stone-600">
-          현재 계정으로는 크리에이터 스튜디오에 접근할 수 없습니다.
+          지금 계정으로는 크리에이터 스튜디오에 들어갈 수 없어요.
         </p>
         <Link
           to="/"

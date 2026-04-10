@@ -1,6 +1,6 @@
-# Private Edition MVP
+# PlayPick MVP
 
-Private Edition is a creator-certified fan merch service built for the Sweetbook Book Print API assignment. A creator publishes an official edition once, and each fan personalizes that approved edition with their own nickname, relationship timeline, favorite moment, and shipping information before generating and ordering a printed book.
+PlayPick is a creator-certified fan merch service built for the Sweetbook Book Print API assignment. A creator publishes an official edition once, and each fan personalizes that approved edition with their own nickname, relationship timeline, favorite moment, and shipping information before generating and ordering a printed book.
 
 ## Why this project
 
@@ -48,14 +48,14 @@ Private Edition is a creator-certified fan merch service built for the Sweetbook
 │   ├── build.gradle
 │   ├── run_local.ps1
 │   └── src
-│       ├── main/java/com/privateedition
+│       ├── main/java/com/playpick
 │       ├── main/resources
 │       │   ├── application.yml
 │       │   ├── application-local.yml
 │       │   ├── application-docker.yml
 │       │   ├── application-session-redis.yml
 │       │   └── db/migration
-│       └── test/java/com/privateedition
+│       └── test/java/com/playpick
 ├── frontend
 │   ├── Dockerfile
 │   ├── nginx.conf
@@ -125,7 +125,7 @@ cd backend
 .\run_local.ps1 -Database h2
 ```
 
-For MySQL mode, the script starts `docker compose up -d mysql redis` automatically, then reads `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USERNAME`, `MYSQL_PASSWORD`, `REDIS_HOST`, and `REDIS_PORT` from `.env`. By default it connects to MySQL at `localhost:3307/private_edition` and Redis at `localhost:6380`.
+For MySQL mode, the script starts `docker compose up -d mysql redis` automatically, then reads `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USERNAME`, `MYSQL_PASSWORD`, `REDIS_HOST`, and `REDIS_PORT` from `.env`. By default it connects to MySQL at `localhost:3307/playpick` and Redis at `localhost:6380`.
 
 ### 3. Run frontend locally
 
@@ -147,8 +147,8 @@ Vite runs on [http://localhost:3000](http://localhost:3000) and proxies `/api` r
 
 These accounts are for local review only.
 
-- Fan: `fan@privateedition.local` / `Fan12345!`
-- Creator: `creator@privateedition.local` / `Creator123!`
+- Fan: `fan@playpick.local` / `Fan12345!`
+- Creator: `creator@playpick.local` / `Creator123!`
 
 Landing and edition detail pages are public, but project creation, My Projects, YouTube connection, and Creator Studio require login.
 
@@ -253,7 +253,7 @@ The backend ships with Flyway seed data:
 
 - Fictional verified creator: `온도로그`
 - Published editions:
-  - `2nd Anniversary Private Edition`
+  - `2nd Anniversary PlayPick`
   - `Fan Letter Archive`
   - `Milestone Recap Edition`
 - Curated assets and personalization schemas for each template
@@ -286,7 +286,7 @@ npm run build
 
 ## Business potential
 
-Private Edition sits between official creator merch and personal keepsake printing. Existing creator merch is usually identical for all fans, while generic photobook tools lack official creator approval. This project explores a premium middle ground: a creator publishes an official drop once, then every fan receives a private-feeling personalized variant of that approved edition.
+PlayPick sits between official creator merch and personal keepsake printing. Existing creator merch is usually identical for all fans, while generic photobook tools lack official creator approval. This project explores a premium middle ground: a creator publishes an official drop once, then every fan receives a private-feeling personalized variant of that approved edition.
 
 This makes the product fit anniversary drops, comeback drops, fan meeting goods, and limited creator collaborations better than a plain photobook service.
 

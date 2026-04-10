@@ -44,26 +44,17 @@ export default function PreviewPage() {
   const readOnly = preview.status === "ORDERED";
   const leftPage = pages[activeSpread];
   const rightPage = pages[activeSpread + 1];
-  const personalizationHighlights = Object.entries(preview.personalizationData)
-    .filter(([, value]) => typeof value === "string" && value.trim().length > 0)
-    .slice(0, 4);
+  const personalizationHighlights = buildPersonalizationHighlights(preview);
 
   return (
     <div className="page-shell">
       <div className="mx-auto max-w-7xl">
-        <ProjectStepper current="preview" className="mb-10" />
+        <ProjectStepper current="preview" className="mb-8" />
 
-        <div className="mb-14 max-w-3xl">
-          <p className="editorial-label">Preview Your Archive</p>
-          <h1 className="mt-4 text-5xl font-bold leading-tight tracking-tight text-brand-700 md:text-7xl">
-            인쇄되기 전,
-            <br />
-            <span className="italic font-normal">당신의 책을 마지막으로 확인합니다.</span>
+        <div className="mb-5 max-w-sm">
+          <h1 className="text-2xl font-bold leading-tight tracking-tight text-brand-700 md:text-3xl">
+            주문 전 확인
           </h1>
-          <p className="mt-6 text-lg leading-relaxed text-warm-500">
-            공식 콘텐츠와 개인화된 문장이 한 권으로 어떻게 섞였는지 확인한 뒤, 제작과 주문
-            단계로 넘어갑니다.
-          </p>
         </div>
 
         <div className="grid gap-12 lg:grid-cols-12 lg:items-start">
@@ -74,14 +65,14 @@ export default function PreviewPage() {
                   <div className="overflow-hidden rounded bg-white shadow-editorial">
                     <div className="grid min-h-[520px] md:grid-cols-2">
                       <BookPage
-                        label="Official creator content"
+                        label="크리에이터 페이지"
                         page={leftPage}
-                        fallbackTitle="Official content"
+                        fallbackTitle="크리에이터 페이지"
                       />
                       <BookPage
-                        label="Your personal story"
+                        label="내 페이지"
                         page={rightPage}
-                        fallbackTitle="Personalized page"
+                        fallbackTitle="내 페이지"
                         right
                       />
                     </div>
@@ -96,7 +87,7 @@ export default function PreviewPage() {
                       이전
                     </button>
                     <div className="rounded-full bg-white/85 px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-warm-500 shadow-sm">
-                      Page {activeSpread + 1} / {pages.length}
+                      페이지 {activeSpread + 1} / {pages.length}
                     </div>
                     <button
                       disabled={activeSpread + 2 >= pages.length}
@@ -157,34 +148,34 @@ export default function PreviewPage() {
           <aside className="lg:col-span-4 lg:sticky lg:top-28">
             <div className="editorial-card p-8">
               <h2 className="border-b border-stone-200/70 pb-4 text-2xl font-bold text-brand-700">
-                Artifact Summary
+                미리보기 요약
               </h2>
 
               <div className="mt-6 space-y-5">
-                <SummaryRow label="Edition" value={preview.edition.title} />
-                <SummaryRow label="Mode" value={preview.mode.toUpperCase()} />
-                <SummaryRow label="Pages prepared" value={`${pages.length} pages`} />
+                <SummaryRow label="드롭" value={preview.edition.title} />
+                <SummaryRow label="방식" value={projectModeLabel(preview.mode)} />
+                <SummaryRow label="준비된 페이지" value={`${pages.length}페이지`} />
                 <SummaryRow
-                  label="Personalized for"
+                  label="맞춤 대상"
                   value={
                     typeof preview.personalizationData.fanNickname === "string"
                       ? preview.personalizationData.fanNickname
-                      : "You"
+                      : "나"
                   }
                 />
               </div>
 
               {personalizationHighlights.length > 0 && (
                 <div className="mt-8 rounded bg-surface-low px-5 py-5">
-                  <p className="editorial-label text-brand-700">Personal details</p>
+                  <p className="editorial-label text-brand-700">내 입력 요약</p>
                   <div className="mt-4 space-y-4">
-                    {personalizationHighlights.map(([key, value]) => (
-                      <div key={key}>
+                    {personalizationHighlights.map((item) => (
+                      <div key={item.key}>
                         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-500">
-                          {key}
+                          {item.label}
                         </p>
                         <p className="mt-2 text-sm leading-relaxed text-stone-900">
-                          {String(value)}
+                          {item.value}
                         </p>
                       </div>
                     ))}
@@ -207,7 +198,7 @@ export default function PreviewPage() {
                     onClick={handleGenerate}
                     className="editorial-button-primary w-full disabled:opacity-50"
                   >
-                    {generating ? "생성 중..." : "제작 및 주문 단계로"}
+                    {generating ? "생성 중..." : "주문 단계로 가기"}
                   </button>
                 )}
 
@@ -228,7 +219,7 @@ export default function PreviewPage() {
               </div>
 
               <div className="mt-8 rounded bg-gold-400/15 px-4 py-4 text-sm text-gold-500">
-                Official creator-certified archive
+                이제 주문만 하면 돼요
               </div>
             </div>
           </aside>
@@ -291,7 +282,7 @@ function BookPage({
         </>
       ) : (
         <div className="flex h-full min-h-[360px] items-center justify-center text-sm text-warm-500">
-          End of book
+          마지막 페이지
         </div>
       )}
     </div>
@@ -305,4 +296,110 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
       <p className="mt-2 text-sm text-stone-900">{value}</p>
     </div>
   );
+}
+
+function projectModeLabel(mode: string) {
+  switch (mode.toUpperCase()) {
+    case "DEMO":
+      return "데모";
+    case "YOUTUBE":
+      return "YouTube 연동";
+    default:
+      return mode;
+  }
+}
+
+type SummaryHighlight = {
+  key: string;
+  label: string;
+  value: string;
+};
+
+type SummaryVideo = {
+  videoId: string;
+  title: string;
+};
+
+function buildPersonalizationHighlights(preview: ProjectPreview): SummaryHighlight[] {
+  const fieldLabelByKey = new Map(
+    (preview.edition.snapshot?.personalizationFields ?? []).map((field) => [field.fieldKey, field.label]),
+  );
+  const topVideos = readSummaryVideos(preview.personalizationData.topVideos);
+
+  return Object.entries(preview.personalizationData)
+    .map(([key, value]) => buildSummaryHighlight(key, value, fieldLabelByKey, topVideos))
+    .filter((item): item is SummaryHighlight => item !== null)
+    .slice(0, 4);
+}
+
+function buildSummaryHighlight(
+  key: string,
+  value: unknown,
+  fieldLabelByKey: Map<string, string>,
+  topVideos: SummaryVideo[],
+): SummaryHighlight | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed || key === "uploadedImageUrl" || key === "memoryImageUrl") {
+    return null;
+  }
+
+  switch (key) {
+    case "mode":
+      return { key, label: "만드는 방식", value: projectModeLabel(trimmed) };
+    case "favoriteVideoId": {
+      const selectedVideo = topVideos.find((video) => video.videoId === trimmed);
+      return {
+        key,
+        label: fieldLabelByKey.get(key) ?? "가장 좋아하는 영상",
+        value: selectedVideo?.title ?? "선택한 영상",
+      };
+    }
+    case "subscribedSince":
+      return {
+        key,
+        label: fieldLabelByKey.get(key) ?? "함께 보기 시작한 날",
+        value: formatSummaryDate(trimmed),
+      };
+    default:
+      return {
+        key,
+        label: fieldLabelByKey.get(key) ?? fallbackSummaryLabel(key),
+        value: trimmed,
+      };
+  }
+}
+
+function readSummaryVideos(value: unknown): SummaryVideo[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .map((item) => ({
+      videoId: typeof item.videoId === "string" ? item.videoId : "",
+      title: typeof item.title === "string" ? item.title : "",
+    }))
+    .filter((video) => video.videoId && video.title);
+}
+
+function formatSummaryDate(value: string) {
+  return value.length >= 10 ? value.slice(0, 10) : value;
+}
+
+function fallbackSummaryLabel(key: string) {
+  switch (key) {
+    case "fanNickname":
+      return "닉네임";
+    case "fanNote":
+      return "남긴 한마디";
+    case "favoriteReason":
+      return "좋아한 이유";
+    default:
+      return key;
+  }
 }

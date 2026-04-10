@@ -7,7 +7,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, loading, login } = useAuth();
-  const [email, setEmail] = useState("fan@privateedition.local");
+  const [email, setEmail] = useState("fan@playpick.local");
   const [password, setPassword] = useState("Fan12345!");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -39,7 +39,7 @@ export default function LoginPage() {
       <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
         <section className="editorial-panel flex flex-col justify-between p-8 md:p-10">
           <div>
-            <p className="editorial-label">Private Archive Access</p>
+            <p className="editorial-label">다시 시작하기</p>
             <h1 className="mt-5 text-4xl text-brand-700 md:text-5xl">
               다시 이어서
               <br />
@@ -52,13 +52,13 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-8 editorial-card p-5 text-sm text-stone-700">
-            <p className="editorial-label">Demo Accounts</p>
+            <p className="editorial-label">데모 계정</p>
             <div className="mt-4 space-y-3">
               <p>
-                fan: <code>fan@privateedition.local</code> / <code>Fan12345!</code>
+                fan: <code>fan@playpick.local</code> / <code>Fan12345!</code>
               </p>
               <p>
-                creator: <code>creator@privateedition.local</code> /{" "}
+                creator: <code>creator@playpick.local</code> /{" "}
                 <code>Creator123!</code>
               </p>
             </div>
@@ -67,9 +67,9 @@ export default function LoginPage() {
 
         <section className="editorial-card p-8 md:p-10">
           <p className="editorial-label">로그인</p>
-          <h2 className="mt-4 text-3xl text-stone-900">아카이브 불러오기</h2>
+          <h2 className="mt-4 text-3xl text-stone-900">내 프로젝트 이어하기</h2>
           <p className="mt-3 editorial-muted">
-            공식 에디션과 개인화 기록을 다시 불러와 다음 단계로 이어집니다.
+            저장해 둔 프로젝트와 주문 흐름을 바로 이어서 볼 수 있어요.
           </p>
 
           {reason === "session-expired" && (
@@ -90,7 +90,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="editorial-input mt-2"
-                placeholder="fan@privateedition.local"
+                placeholder="fan@playpick.local"
               />
             </div>
 

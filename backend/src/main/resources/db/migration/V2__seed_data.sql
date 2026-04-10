@@ -4,7 +4,7 @@ VALUES
 
 INSERT INTO edition (id, creator_id, title, subtitle, cover_image_url, status, created_at, updated_at)
 VALUES
-    (1, 1, '2nd Anniversary Private Edition', 'Officially approved keepsake for the 온도로그 fandom', 'https://picsum.photos/seed/ondolog-cover/1200/1200', 'PUBLISHED', CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6));
+    (1, 1, '2nd Anniversary PlayPick', 'Officially approved keepsake for the 온도로그 fandom', 'https://picsum.photos/seed/ondolog-cover/1200/1200', 'PUBLISHED', CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6));
 
 INSERT INTO edition_version (id, edition_id, version_number, official_intro, official_closing, book_spec_uid, approved_at, created_at, updated_at)
 VALUES
@@ -14,7 +14,7 @@ VALUES
         1,
         JSON_OBJECT(
             'title', 'To our second spring',
-            'message', '온도로그가 직접 고른 순간들을 담고, 팬 한 명 한 명의 이야기를 덧입힌 Private Edition입니다.'
+            'message', '온도로그가 직접 고른 순간들을 담고, 팬 한 명 한 명의 이야기를 덧입힌 PlayPick입니다.'
         ),
         JSON_OBJECT(
             'title', 'See you on the next page',

@@ -24,11 +24,11 @@ function statusLabel(status: string) {
 function siteOrderLabel(status: string | null) {
   switch (status) {
     case "CREATED":
-      return "사이트 주문 생성됨";
+      return "주문 접수됨";
     case "PAID":
-      return "사이트 주문 확정";
+      return "주문 확정";
     case "CANCELLED":
-      return "사이트 주문 취소";
+      return "주문 취소";
     default:
       return status;
   }
@@ -37,15 +37,15 @@ function siteOrderLabel(status: string | null) {
 function fulfillmentLabel(status: string | null) {
   switch (status) {
     case "PENDING_SUBMISSION":
-      return "Sweetbook 발주 대기";
+      return "제작 대기";
     case "SUBMITTED":
-      return "Sweetbook 발주 완료";
+      return "제작 접수 완료";
     case "SIMULATED":
-      return "Sweetbook 데모 발주";
+      return "데모 처리";
     case "FAILED":
-      return "Sweetbook 발주 실패";
+      return "제작 요청 실패";
     case "CANCELLED":
-      return "Sweetbook 발주 취소";
+      return "제작 취소";
     default:
       return status;
   }
@@ -73,7 +73,7 @@ export default function MyProjectsPage() {
     <div className="page-shell">
       <div className="mx-auto max-w-7xl">
         <header className="mb-16">
-          <p className="editorial-label">My Personal Archive</p>
+          <p className="editorial-label">내 프로젝트</p>
           <h1 className="mt-4 text-5xl font-bold tracking-tight text-brand-700 md:text-6xl">
             저장해 둔 프로젝트를
             <br />
@@ -89,8 +89,7 @@ export default function MyProjectsPage() {
           <div className="editorial-card px-8 py-20 text-center">
             <p className="font-headline text-3xl text-brand-700">아직 저장된 프로젝트가 없습니다.</p>
             <p className="mt-4 text-sm leading-relaxed text-warm-500">
-              공식 에디션을 고른 뒤 개인화 프로젝트를 시작하면 여기에 당신만의 아카이브가
-              쌓이기 시작합니다.
+              드롭을 고르고 프로젝트를 시작하면 여기에 내 작업이 하나씩 쌓이기 시작합니다.
             </p>
             <Link to="/" className="editorial-button-primary mt-8">
               에디션 보러가기
@@ -105,7 +104,7 @@ export default function MyProjectsPage() {
                     <div>
                       <div className="flex flex-wrap items-center gap-3">
                         <span className="rounded bg-gold-400/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-500">
-                          {featured.mode}
+                          {projectModeLabel(featured.mode)}
                         </span>
                         <span className="rounded bg-white/75 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-warm-500">
                           {statusLabel(featured.status)}
@@ -149,7 +148,7 @@ export default function MyProjectsPage() {
             <aside className="editorial-card flex flex-col items-center justify-center px-8 py-12 text-center md:col-span-4">
               <p className="text-5xl font-bold text-brand-700">{projects.length}</p>
               <p className="mt-3 text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">
-                archived projects
+                저장된 프로젝트
               </p>
               <div className="my-6 h-px w-14 bg-stone-200/80" />
               <Link to="/" className="editorial-button-link">
@@ -176,11 +175,11 @@ export default function MyProjectsPage() {
                 <div className="mt-6 flex flex-1 flex-col">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded bg-gold-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-gold-500">
-                      {project.mode}
+                      {projectModeLabel(project.mode)}
                     </span>
                     {project.status === "ORDERED" && (
                       <span className="rounded bg-brand-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-700">
-                        Archived
+                        보관됨
                       </span>
                     )}
                   </div>
@@ -194,10 +193,10 @@ export default function MyProjectsPage() {
 
                   {project.status === "ORDERED" && (
                     <div className="mt-4 space-y-2 text-xs text-warm-500">
-                      <p>{siteOrderLabel(project.siteOrderStatus) ?? "사이트 주문 상태 확인 필요"}</p>
+                      <p>{siteOrderLabel(project.siteOrderStatus) ?? "주문 상태 확인 필요"}</p>
                       <p>
                         {fulfillmentLabel(project.fulfillmentStatus) ??
-                          "Sweetbook 연동 상태 확인 필요"}
+                          "제작 상태 확인 필요"}
                       </p>
                     </div>
                   )}
@@ -221,4 +220,15 @@ export default function MyProjectsPage() {
       </div>
     </div>
   );
+}
+
+function projectModeLabel(mode: string) {
+  switch (mode.toUpperCase()) {
+    case "DEMO":
+      return "데모";
+    case "YOUTUBE":
+      return "YouTube 연동";
+    default:
+      return mode;
+  }
 }

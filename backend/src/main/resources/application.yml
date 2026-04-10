@@ -5,9 +5,9 @@ spring:
     exclude:
       - org.springframework.boot.autoconfigure.session.SessionAutoConfiguration
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/private_edition?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/playpick?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul}
     username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:privateedition}
+    password: ${SPRING_DATASOURCE_PASSWORD:playpick}
   jpa:
     hibernate:
       ddl-auto: validate
