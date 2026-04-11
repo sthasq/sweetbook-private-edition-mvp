@@ -1,0 +1,92 @@
+import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { ApiError } from "../api/client";
+import { getAdminWebhooks } from "../api/admin";
+import AdminShell from "../components/AdminShell";
+import type { AdminWebhookEvent } from "../types/api";
+
+export default function AdminWebhooksPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [events, setEvents] = useState<AdminWebhookEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    getAdminWebhooks()
+      .then(setEvents)
+      .catch((e: unknown) => {
+        if (e instanceof ApiError && e.status === 401) {
+          navigate(`/login?next=${encodeURIComponent(location.pathname)}`, { replace: true });
+          return;
+        }
+        setError(e instanceof Error ? e.message : "Webhook 로그를 불러오지 못했어요.");
+      })
+      .finally(() => setLoading(false));
+  }, [navigate, location.pathname]);
+
+  return (
+    <AdminShell
+      title="Webhook 로그"
+      description="Sweetbook에서 수신한 최근 Webhook 이벤트를 확인합니다."
+    >
+      {loading ? (
+        <div className="space-y-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-20 animate-pulse rounded-2xl border border-stone-200 bg-stone-100/70" />
+          ))}
+        </div>
+      ) : error ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-5 text-sm text-rose-700">{error}</div>
+      ) : events.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50/80 px-4 py-8 text-center text-sm text-stone-500">
+          아직 수신된 Webhook 이벤트가 없어요.
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-2xl border border-stone-200">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-stone-50 text-xs uppercase tracking-wider text-stone-500">
+              <tr>
+                <th className="px-5 py-4">ID</th>
+                <th className="px-5 py-4">이벤트 타입</th>
+                <th className="px-5 py-4">주문 UID</th>
+                <th className="px-5 py-4 text-center">연결됨</th>
+                <th className="px-5 py-4 text-right">처리 시각</th>
+                <th className="px-5 py-4 text-right">수신 시각</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-stone-100">
+              {events.map((event) => (
+                <tr key={event.id} className="bg-white hover:bg-stone-50/60">
+                  <td className="px-5 py-4 font-medium text-stone-900">#{event.id}</td>
+                  <td className="px-5 py-4">
+                    <span className="rounded bg-stone-100 px-2 py-1 font-mono text-xs text-stone-700">{event.eventType}</span>
+                  </td>
+                  <td className="px-5 py-4 font-mono text-xs text-stone-600">
+                    {event.sweetbookOrderUid || "—"}
+                  </td>
+                  <td className="px-5 py-4 text-center">
+                    {event.linked ? (
+                      <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">연결</span>
+                    ) : (
+                      <span className="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-500">미연결</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-4 text-right text-xs text-stone-600">
+                    {event.processedAt ? fmtDate(event.processedAt) : "—"}
+                  </td>
+                  <td className="px-5 py-4 text-right text-xs text-stone-600">{fmtDate(event.createdAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </AdminShell>
+  );
+}
+
+function fmtDate(v: string) {
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? v : d.toLocaleString("ko-KR");
+}

@@ -51,6 +51,7 @@ public class SecurityConfig {
 				.requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/logout").permitAll()
 				.requestMatchers("/api/assets/**").permitAll()
 				.requestMatchers("/api/editions/**").permitAll()
+				.requestMatchers("/api/admin/**").hasRole("ADMIN")
 				.requestMatchers("/api/studio/**").hasRole("CREATOR")
 				.requestMatchers("/api/projects/**", "/api/me/**", "/api/youtube/**", "/api/auth/me").authenticated()
 				.anyRequest().permitAll()

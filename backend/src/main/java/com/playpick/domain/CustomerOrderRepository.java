@@ -27,4 +27,14 @@ public interface CustomerOrderRepository extends JpaRepository<CustomerOrder, Lo
 		order by customerOrder.orderedAt desc
 		""")
 	List<CustomerOrder> findAllByCreatorUserIdOrderByOrderedAtDesc(@Param("creatorUserId") Long creatorUserId);
+
+	@EntityGraph(attributePaths = {
+		"fanProject",
+		"fanProject.ownerUser",
+		"fanProject.editionVersion",
+		"fanProject.editionVersion.edition",
+		"fanProject.editionVersion.edition.creator"
+	})
+	@Query("select o from CustomerOrder o order by o.orderedAt desc")
+	List<CustomerOrder> findAllOrderByOrderedAtDesc();
 }

@@ -64,6 +64,15 @@ public class CustomerOrder {
 	@Column(nullable = false)
 	private int quantity = 1;
 
+	@Column(name = "commission_rate", nullable = false, precision = 5, scale = 4)
+	private BigDecimal commissionRate = new BigDecimal("0.2000");
+
+	@Column(name = "platform_fee", nullable = false, precision = 10, scale = 2)
+	private BigDecimal platformFee = BigDecimal.ZERO;
+
+	@Column(name = "creator_payout", nullable = false, precision = 10, scale = 2)
+	private BigDecimal creatorPayout = BigDecimal.ZERO;
+
 	@Column(name = "payment_provider", length = 32)
 	private String paymentProvider;
 

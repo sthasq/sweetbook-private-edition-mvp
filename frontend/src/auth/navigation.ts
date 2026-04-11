@@ -8,5 +8,6 @@ export function resolvePostAuthPath(
     return next;
   }
 
+  if (user.role === "ADMIN") return "/admin/dashboard";
   return user.role === "CREATOR" ? "/studio/orders" : "/me/projects";
 }

@@ -293,6 +293,7 @@ public class ProjectService {
 		customerOrder.setPaymentMethod(null);
 		customerOrder.setPaymentApprovedAt(null);
 		customerOrder.setOrderedAt(Instant.now());
+		applyCommission(customerOrder);
 		customerOrder = customerOrderRepository.save(customerOrder);
 
 		return new ProjectViews.PaymentSession(
@@ -346,6 +347,7 @@ public class ProjectService {
 		customerOrder.setAddress2(shipping.address2());
 		customerOrder.setQuantity(Math.max(shipping.quantity(), 1));
 		customerOrder.setOrderedAt(orderedAt);
+		applyCommission(customerOrder);
 		customerOrder = customerOrderRepository.save(customerOrder);
 
 		return finalizePaidOrder(projectId, project, shipping, customerOrder);
@@ -394,6 +396,7 @@ public class ProjectService {
 		customerOrder.setPaymentMethod(confirmedPayment.method());
 		customerOrder.setPaymentApprovedAt(confirmedPayment.approvedAt() == null ? Instant.now() : confirmedPayment.approvedAt());
 		customerOrder.setOrderedAt(customerOrder.getPaymentApprovedAt());
+		applyCommission(customerOrder);
 		customerOrder = customerOrderRepository.save(customerOrder);
 
 		return finalizePaidOrder(projectId, project, toShipping(customerOrder), customerOrder);
@@ -657,6 +660,15 @@ public class ProjectService {
 			isSimulatedBook(project.getSweetbookBookUid()),
 			reused
 		);
+	}
+
+	private void applyCommission(CustomerOrder customerOrder) {
+		java.math.BigDecimal rate = appProperties.getCommissionRate();
+		java.math.BigDecimal total = customerOrder.getTotalAmount();
+		java.math.BigDecimal fee = total.multiply(rate).setScale(2, java.math.RoundingMode.HALF_UP);
+		customerOrder.setCommissionRate(rate);
+		customerOrder.setPlatformFee(fee);
+		customerOrder.setCreatorPayout(total.subtract(fee));
 	}
 
 	private boolean isSimulatedBook(String bookUid) {
