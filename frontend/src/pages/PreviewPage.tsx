@@ -73,7 +73,7 @@ export default function PreviewPage() {
 
   if (loading) return <Spinner />;
   if (error && !preview) return <ErrorBox message={error} />;
-  if (!preview) return <ErrorBox message="미리보기 데이터가 없습니다." />;
+  if (!preview) return <ErrorBox message="포토북 정보를 불러올 수 없어요." />;
 
   const pages = preview.pages;
   const readOnly = preview.status === "ORDERED";
@@ -86,12 +86,12 @@ export default function PreviewPage() {
   const primaryActionLabel =
     preview.status === "BOOK_CREATED"
       ? finalizing
-        ? "인쇄용 확정 중..."
+        ? "인쇄 확정 중…"
         : "인쇄용으로 확정하기"
       : preview.status === "FINALIZED"
         ? "배송 · 결제로 이동"
         : generating
-          ? "포토북 생성 중..."
+          ? "포토북 만드는 중…"
           : "포토북 만들기";
 
   return (
@@ -99,10 +99,13 @@ export default function PreviewPage() {
       <div className="mx-auto max-w-7xl">
         <ProjectStepper current="preview" className="mb-8" />
 
-        <div className="mb-5 max-w-sm">
+        <div className="mb-5 max-w-lg">
           <h1 className="text-2xl font-bold leading-tight tracking-tight text-brand-700 md:text-3xl">
             포토북 미리보기
           </h1>
+          <p className="mt-2 text-sm leading-relaxed text-warm-500">
+            완성된 포토북을 페이지별로 확인하고, 마음에 들면 주문을 진행하세요.
+          </p>
         </div>
 
         <div className="grid gap-12 lg:grid-cols-12 lg:items-start">
@@ -113,14 +116,14 @@ export default function PreviewPage() {
                   <div className="overflow-hidden rounded bg-white shadow-editorial">
                     <div className="grid min-h-[520px] md:grid-cols-2">
                       <BookPage
-                        label="크리에이터 페이지"
+                        label="에디션 원본"
                         page={leftPage}
-                        fallbackTitle="크리에이터 페이지"
+                        fallbackTitle="크리에이터가 구성한 페이지"
                       />
                       <BookPage
-                        label="내 페이지"
+                        label="나의 페이지"
                         page={rightPage}
-                        fallbackTitle="내 페이지"
+                        fallbackTitle="내가 채운 페이지"
                         right
                       />
                     </div>
@@ -151,10 +154,10 @@ export default function PreviewPage() {
               ) : (
                 <div className="rounded bg-white px-8 py-20 text-center shadow-sm">
                   <p className="font-headline text-2xl text-brand-700">
-                    아직 만들어진 페이지가 없어요
+                    아직 포토북이 만들어지지 않았어요
                   </p>
                   <p className="mt-3 text-sm text-warm-500">
-                    개인화 내용을 저장한 뒤 포토북을 만들어보세요.
+                    개인화를 완료한 뒤, 아래 '포토북 만들기' 버튼을 눌러주세요.
                   </p>
                 </div>
               )}
@@ -200,16 +203,16 @@ export default function PreviewPage() {
               </h2>
 
               <div className="mt-6 space-y-5">
-                <SummaryRow label="진행 상태" value={projectStageLabel(preview.status)} />
+                <SummaryRow label="현재 단계" value={projectStageLabel(preview.status)} />
                 <SummaryRow label="에디션" value={preview.edition.title} />
                 <SummaryRow label="제작 방식" value={projectModeLabel(preview.mode)} />
-                <SummaryRow label="페이지 수" value={`${pages.length}페이지`} />
+                <SummaryRow label="총 페이지" value={`${pages.length}p`} />
                 <SummaryRow
-                  label="예상 제작가"
-                  value={`${pricingHint.productPrice.toLocaleString("ko-KR")}원부터`}
+                  label="예상 가격"
+                  value={`${pricingHint.productPrice.toLocaleString("ko-KR")}원~`}
                 />
                 <SummaryRow
-                  label="맞춤 대상"
+                  label="주인공"
                   value={
                     typeof preview.personalizationData.fanNickname === "string"
                       ? preview.personalizationData.fanNickname
@@ -221,22 +224,22 @@ export default function PreviewPage() {
               {integrationStatus && (
                 <div className="mt-6 rounded bg-surface-low px-5 py-4">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="editorial-label text-brand-700">제작 상태</p>
+                    <p className="editorial-label text-brand-700">제작 연동</p>
                     <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${integrationTone(integrationStatus)}`}>
                       {integrationStatus.label}
                     </span>
                   </div>
                   <p className="mt-3 text-sm leading-relaxed text-warm-500">
                     {integrationStatus.mode === "SIMULATED"
-                      ? "현재 체험 모드로 운영 중이에요. 실제 인쇄 없이 전체 흐름을 확인할 수 있습니다."
-                      : "포토북 생성과 인쇄 확정을 순서대로 진행합니다."}
+                      ? "체험 모드에서는 실제 인쇄 없이 전체 흐름을 미리 확인할 수 있어요."
+                      : "포토북 생성 후 인쇄 확정까지 완료하면 주문할 수 있어요."}
                   </p>
                 </div>
               )}
 
               {personalizationHighlights.length > 0 && (
                 <div className="mt-8 rounded bg-surface-low px-5 py-5">
-                  <p className="editorial-label text-brand-700">내 입력 요약</p>
+                  <p className="editorial-label text-brand-700">내가 채운 내용</p>
                   <div className="mt-4 space-y-4">
                     {personalizationHighlights.map((item) => (
                       <div key={item.key}>
@@ -256,18 +259,18 @@ export default function PreviewPage() {
                 <div className="mt-8 rounded bg-white/85 p-5 shadow-sm">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="editorial-label text-brand-700">공식 콜라보 컷</p>
+                      <p className="editorial-label text-brand-700">콜라보 이미지</p>
                       <p className="mt-2 text-sm text-stone-900">
-                        {collabTemplateLabel || "빠니보틀 여행 무드 컷"}
+                        {collabTemplateLabel || "크리에이터 콜라보 컷"}
                       </p>
                     </div>
                     <span className="rounded bg-gold-400/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-gold-500">
-                      MVP
+                      PICK
                     </span>
                   </div>
                   <img
                     src={collabImageUrl}
-                    alt={collabTemplateLabel || "공식 콜라보 컷"}
+                    alt={collabTemplateLabel || "콜라보 이미지"}
                     className="mt-4 aspect-[4/3] w-full rounded object-cover"
                   />
                 </div>
@@ -294,7 +297,7 @@ export default function PreviewPage() {
 
                 {readOnly ? (
                   <p className="text-sm leading-relaxed text-warm-500">
-                    주문이 완료된 포토북이에요. 주문 정보와 배송 상태를 다시 확인할 수 있습니다.
+                    이미 주문이 완료된 포토북이에요. 주문 내역에서 배송 상태를 확인할 수 있어요.
                   </p>
                 ) : (
                   <button
@@ -302,17 +305,19 @@ export default function PreviewPage() {
                     onClick={() => navigate(`/projects/${projectId}/personalize`)}
                     className="editorial-button-link"
                   >
-                    개인화 수정하기
+                    이전 단계로 돌아가기
                   </button>
                 )}
               </div>
 
-              <div className="mt-8 rounded bg-gold-400/15 px-4 py-4 text-sm text-gold-500">
+              <div className="mt-8 rounded bg-gold-400/15 px-4 py-4 text-sm leading-relaxed text-gold-500">
                 {preview.status === "BOOK_CREATED"
-                  ? "포토북이 만들어졌어요! 인쇄용으로 확정하면 배송과 결제만 남습니다."
+                  ? "포토북이 준비됐어요! '인쇄용으로 확정하기'를 누르면 배송 · 결제 단계로 넘어갈 수 있어요."
                   : preview.status === "FINALIZED"
-                    ? "인쇄 준비가 끝났어요. 배송지와 결제만 입력하면 주문할 수 있습니다."
-                    : "포토북 만들기 버튼을 눌러 완성된 포토북을 확인해보세요."}
+                    ? "모든 준비가 끝났어요. '배송 · 결제로 이동'을 눌러 주문을 완료해주세요."
+                    : preview.status === "ORDERED"
+                      ? ""
+                      : "아래 '포토북 만들기' 버튼을 누르면 입력한 내용으로 포토북이 완성돼요."}
               </div>
             </div>
           </aside>
@@ -374,8 +379,9 @@ function BookPage({
           )}
         </>
       ) : (
-        <div className="flex h-full min-h-[360px] items-center justify-center text-sm text-warm-500">
-          마지막 페이지
+        <div className="flex h-full min-h-[360px] flex-col items-center justify-center gap-2 text-warm-500">
+          <p className="text-sm">빈 페이지</p>
+          <p className="text-xs opacity-70">홀수 페이지일 때 자동으로 비워져요</p>
         </div>
       )}
     </div>
@@ -394,9 +400,9 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 function projectModeLabel(mode: string) {
   switch (mode.toUpperCase()) {
     case "DEMO":
-      return "데모";
+      return "직접 입력";
     case "YOUTUBE":
-      return "YouTube 연동";
+      return "YouTube 기반";
     default:
       return mode;
   }
@@ -424,7 +430,7 @@ function buildPersonalizationHighlights(preview: ProjectPreview): SummaryHighlig
   if (collabTemplateLabel) {
     highlights.push({
       key: "aiCollabTemplateLabel",
-      label: "공식 콜라보 컷",
+      label: "콜라보 이미지",
       value: collabTemplateLabel,
     });
   }
@@ -459,19 +465,19 @@ function buildSummaryHighlight(
 
   switch (key) {
     case "mode":
-      return { key, label: "만드는 방식", value: projectModeLabel(trimmed) };
+      return { key, label: "제작 방식", value: projectModeLabel(trimmed) };
     case "favoriteVideoId": {
       const selectedVideo = topVideos.find((video) => video.videoId === trimmed);
       return {
         key,
-        label: fieldLabelByKey.get(key) ?? "가장 좋아하는 영상",
+        label: fieldLabelByKey.get(key) ?? "최애 영상",
         value: selectedVideo?.title ?? "선택한 영상",
       };
     }
     case "subscribedSince":
       return {
         key,
-        label: fieldLabelByKey.get(key) ?? "함께 보기 시작한 날",
+        label: fieldLabelByKey.get(key) ?? "구독 시작일",
         value: formatSummaryDate(trimmed),
       };
     default:
@@ -510,9 +516,9 @@ function fallbackSummaryLabel(key: string) {
     case "fanNickname":
       return "닉네임";
     case "fanNote":
-      return "남긴 한마디";
+      return "한마디 메시지";
     case "favoriteReason":
-      return "좋아한 이유";
+      return "좋아하는 이유";
     default:
       return key;
   }

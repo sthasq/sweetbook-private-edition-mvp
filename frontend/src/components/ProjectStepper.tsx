@@ -10,25 +10,25 @@ const STEPS = [
     key: "edition",
     number: "01",
     label: "에디션 선택",
-    description: "좋아하는 드롭 고르기",
+    description: "마음에 드는 에디션 고르기",
   },
   {
     key: "personalize",
     number: "02",
     label: "개인화",
-    description: "내 얘기 채워 넣기",
+    description: "나만의 이야기 채우기",
   },
   {
     key: "preview",
     number: "03",
     label: "미리보기",
-    description: "완성본 먼저 보기",
+    description: "완성된 포토북 확인하기",
   },
   {
     key: "shipping",
     number: "04",
-    label: "배송/주문",
-    description: "주소 적고 주문하기",
+    label: "배송 · 결제",
+    description: "배송지 입력 후 주문하기",
   },
 ] as const;
 
@@ -51,7 +51,7 @@ export default function ProjectStepper({
     >
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200/60 pb-4">
         <div>
-          <p className="editorial-label">만드는 흐름</p>
+          <p className="editorial-label">주문 과정</p>
           <p className="mt-2 text-sm text-warm-500">{statusLabel}</p>
         </div>
         <div className="h-px min-w-24 flex-1 bg-stone-200/70" />
