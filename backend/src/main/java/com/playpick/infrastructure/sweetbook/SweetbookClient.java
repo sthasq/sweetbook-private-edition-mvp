@@ -49,7 +49,8 @@ public class SweetbookClient {
 				uid,
 				name,
 				intField(item, "minPages", "minimumPages"),
-				intField(item, "maxPages", "maximumPages")
+				intField(item, "maxPages", "maximumPages"),
+				intField(item, "pageIncrement", "pagesPerIncrement", "pageStep", "increment")
 			));
 		}
 		return result;
@@ -74,8 +75,12 @@ public class SweetbookClient {
 		return result;
 	}
 
-	public String createBook(Map<String, Object> payload) {
-		JsonNode response = unwrapEnvelope(postJson("/books", payload));
+	public String createBook(Map<String, Object> payload, String idempotencyKey) {
+		JsonNode response = unwrapEnvelope(postJson("/books", payload, headers -> {
+			if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+				headers.add("Idempotency-Key", idempotencyKey);
+			}
+		}));
 		return field(response, "bookUid", "uid", "id");
 	}
 

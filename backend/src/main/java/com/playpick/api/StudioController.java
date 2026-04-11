@@ -13,6 +13,7 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,6 +28,18 @@ import org.springframework.web.bind.annotation.RestController;
 public class StudioController {
 
 	private final EditionService editionService;
+
+	@Operation(summary = "List studio editions owned by the current creator")
+	@GetMapping
+	public List<EditionViews.Summary> listOwnedEditions() {
+		return editionService.listOwnedEditions();
+	}
+
+	@Operation(summary = "Get one studio edition owned by the current creator")
+	@GetMapping("/{editionId}")
+	public EditionViews.Detail getOwnedEdition(@PathVariable Long editionId) {
+		return editionService.getOwnedEdition(editionId);
+	}
 
 	@Operation(summary = "Create a studio edition draft")
 	@PostMapping

@@ -65,10 +65,16 @@ public class ProjectController {
 		return projectService.getOrderSummary(projectId);
 	}
 
-	@Operation(summary = "Generate a Sweetbook book")
+	@Operation(summary = "Create a Sweetbook draft book")
 	@PostMapping("/{projectId}/generate-book")
 	public ProjectViews.BookGeneration generateBook(@PathVariable Long projectId) {
 		return projectService.generateBook(projectId);
+	}
+
+	@Operation(summary = "Finalize a Sweetbook draft book")
+	@PostMapping("/{projectId}/finalize-book")
+	public ProjectViews.BookGeneration finalizeBook(@PathVariable Long projectId) {
+		return projectService.finalizeBook(projectId);
 	}
 
 	@Operation(summary = "Estimate order price")

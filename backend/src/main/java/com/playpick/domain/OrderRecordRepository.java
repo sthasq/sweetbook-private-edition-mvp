@@ -10,6 +10,8 @@ public interface OrderRecordRepository extends JpaRepository<OrderRecord, Long> 
 
 	Optional<OrderRecord> findByFanProjectId(Long fanProjectId);
 
+	Optional<OrderRecord> findBySweetbookOrderUid(String sweetbookOrderUid);
+
 	@EntityGraph(attributePaths = "fanProject")
 	List<OrderRecord> findByFanProjectIdIn(Collection<Long> fanProjectIds);
 }

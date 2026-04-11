@@ -4,52 +4,12 @@ import { getMyProjects } from "../api/me";
 import type { MyProjectSummary } from "../types/api";
 import Spinner from "../components/Spinner";
 import ErrorBox from "../components/ErrorBox";
-
-function statusLabel(status: string) {
-  switch (status) {
-    case "DRAFT":
-      return "개인화 작성 중";
-    case "PERSONALIZED":
-      return "미리보기 준비";
-    case "BOOK_CREATED":
-    case "FINALIZED":
-      return "주문 단계";
-    case "ORDERED":
-      return "주문 완료";
-    default:
-      return status;
-  }
-}
-
-function siteOrderLabel(status: string | null) {
-  switch (status) {
-    case "CREATED":
-      return "주문 접수됨";
-    case "PAID":
-      return "주문 확정";
-    case "CANCELLED":
-      return "주문 취소";
-    default:
-      return status;
-  }
-}
-
-function fulfillmentLabel(status: string | null) {
-  switch (status) {
-    case "PENDING_SUBMISSION":
-      return "제작 대기";
-    case "SUBMITTED":
-      return "제작 접수 완료";
-    case "SIMULATED":
-      return "데모 처리";
-    case "FAILED":
-      return "제작 요청 실패";
-    case "CANCELLED":
-      return "제작 취소";
-    default:
-      return status;
-  }
-}
+import {
+  fulfillmentEventLabel,
+  fulfillmentStatusLabel,
+  projectStageLabel,
+  siteOrderLabel,
+} from "../lib/sweetbookWorkflow";
 
 export default function MyProjectsPage() {
   const [projects, setProjects] = useState<MyProjectSummary[]>([]);
@@ -73,26 +33,26 @@ export default function MyProjectsPage() {
     <div className="page-shell">
       <div className="mx-auto max-w-7xl">
         <header className="mb-16">
-          <p className="editorial-label">내 프로젝트</p>
+          <p className="editorial-label">마이 라이브러리</p>
           <h1 className="mt-4 text-5xl font-bold tracking-tight text-brand-700 md:text-6xl">
-            저장해 둔 프로젝트를
+            나의 포토북
             <br />
-            <span className="italic font-normal">다시 펼쳐 보는 공간.</span>
+            <span className="italic font-normal">모아보기.</span>
           </h1>
           <p className="mt-5 max-w-3xl text-lg leading-relaxed text-warm-500">
-            작업 중인 개인화 초안, 주문 직전의 미리보기, 이미 보관된 주문 기록까지 한 곳에서
-            이어서 관리합니다.
+            작업 중인 포토북, 미리보기 확인 중인 포토북, 주문 완료된 포토북까지 한곳에서
+            관리할 수 있어요.
           </p>
         </header>
 
         {projects.length === 0 ? (
           <div className="editorial-card px-8 py-20 text-center">
-            <p className="font-headline text-3xl text-brand-700">아직 저장된 프로젝트가 없습니다.</p>
+            <p className="font-headline text-3xl text-brand-700">아직 만든 포토북이 없어요</p>
             <p className="mt-4 text-sm leading-relaxed text-warm-500">
-              드롭을 고르고 프로젝트를 시작하면 여기에 내 작업이 하나씩 쌓이기 시작합니다.
+              마음에 드는 에디션을 골라 나만의 포토북을 시작하면 여기에 하나씩 쌓여요.
             </p>
             <Link to="/" className="editorial-button-primary mt-8">
-              에디션 보러가기
+              에디션 둘러보기
             </Link>
           </div>
         ) : (
@@ -107,14 +67,14 @@ export default function MyProjectsPage() {
                           {projectModeLabel(featured.mode)}
                         </span>
                         <span className="rounded bg-white/75 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-warm-500">
-                          {statusLabel(featured.status)}
+                          {projectStageLabel(featured.status)}
                         </span>
                       </div>
                       <h2 className="mt-6 text-4xl font-bold leading-tight text-brand-700">
                         {featured.editionTitle}
                       </h2>
                       <p className="mt-4 text-sm leading-relaxed text-warm-500">
-                        마지막 업데이트: {new Date(featured.updatedAt).toLocaleString("ko-KR")}
+                        최근 수정 {new Date(featured.updatedAt).toLocaleString("ko-KR")}
                       </p>
                     </div>
 
@@ -148,11 +108,11 @@ export default function MyProjectsPage() {
             <aside className="editorial-card flex flex-col items-center justify-center px-8 py-12 text-center md:col-span-4">
               <p className="text-5xl font-bold text-brand-700">{projects.length}</p>
               <p className="mt-3 text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">
-                저장된 프로젝트
+                내 포토북
               </p>
               <div className="my-6 h-px w-14 bg-stone-200/80" />
               <Link to="/" className="editorial-button-link">
-                새 에디션 시작하기
+                새 포토북 만들기
               </Link>
             </aside>
 
@@ -167,9 +127,9 @@ export default function MyProjectsPage() {
                     alt={project.editionTitle}
                     className="aspect-[3/4] w-full rounded object-cover"
                   />
-                  <div className="absolute right-6 top-6 rounded bg-white/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-500">
-                    {statusLabel(project.status)}
-                  </div>
+                    <div className="absolute right-6 top-6 rounded bg-white/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-500">
+                      {projectStageLabel(project.status)}
+                    </div>
                 </div>
 
                 <div className="mt-6 flex flex-1 flex-col">
@@ -188,18 +148,23 @@ export default function MyProjectsPage() {
                     {project.editionTitle}
                   </h3>
                   <p className="mt-3 text-sm leading-relaxed text-warm-500">
-                    마지막 업데이트: {new Date(project.updatedAt).toLocaleString("ko-KR")}
+                    최근 수정 {new Date(project.updatedAt).toLocaleString("ko-KR")}
                   </p>
 
-                  {project.status === "ORDERED" && (
-                    <div className="mt-4 space-y-2 text-xs text-warm-500">
-                      <p>{siteOrderLabel(project.siteOrderStatus) ?? "주문 상태 확인 필요"}</p>
-                      <p>
-                        {fulfillmentLabel(project.fulfillmentStatus) ??
-                          "제작 상태 확인 필요"}
-                      </p>
-                    </div>
-                  )}
+                    {project.status === "ORDERED" && (
+                      <div className="mt-4 space-y-2 text-xs text-warm-500">
+                        <p>{siteOrderLabel(project.siteOrderStatus) ?? "주문 상태 확인 필요"}</p>
+                        <p>
+                          {fulfillmentStatusLabel(project.fulfillmentStatus) ??
+                            "제작 상태 확인 필요"}
+                        </p>
+                        {project.lastFulfillmentEvent && (
+                          <p>
+                            최근 이벤트: {fulfillmentEventLabel(project.lastFulfillmentEvent)}
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                   <div className="mt-6 flex flex-wrap gap-3 border-t border-stone-200/70 pt-5">
                     <Link to={project.continuePath} className="editorial-button-primary px-4 py-2.5">

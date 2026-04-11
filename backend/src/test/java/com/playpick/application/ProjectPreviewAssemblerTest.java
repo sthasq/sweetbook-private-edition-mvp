@@ -61,6 +61,9 @@ class ProjectPreviewAssemblerTest {
 				)
 			),
 			null,
+			null,
+			null,
+			null,
 			Instant.parse("2026-04-07T00:00:00Z"),
 			Instant.parse("2026-04-08T00:00:00Z")
 		);
@@ -111,6 +114,9 @@ class ProjectPreviewAssemblerTest {
 				"aiCollabSelectedUrl", "data:image/jpeg;base64,collab-demo",
 				"aiCollabTemplateLabel", "여행 동행 셀카"
 			),
+			null,
+			null,
+			null,
 			null,
 			Instant.parse("2026-04-07T00:00:00Z"),
 			Instant.parse("2026-04-08T00:00:00Z")

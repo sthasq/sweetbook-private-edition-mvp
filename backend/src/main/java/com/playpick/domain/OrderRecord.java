@@ -61,6 +61,12 @@ public class OrderRecord {
 	@Column(name = "ordered_at", nullable = false)
 	private Instant orderedAt;
 
+	@Column(name = "last_event_type", length = 80)
+	private String lastEventType;
+
+	@Column(name = "last_event_at")
+	private Instant lastEventAt;
+
 	@CreationTimestamp
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;

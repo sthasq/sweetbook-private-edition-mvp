@@ -28,4 +28,11 @@ public class SweetbookProperties {
 	public boolean isLiveEnabled() {
 		return enabled && !apiKey.isBlank();
 	}
+
+	public String integrationMode() {
+		if (!isLiveEnabled()) {
+			return "SIMULATED";
+		}
+		return baseUrl != null && baseUrl.toLowerCase().contains("sandbox") ? "SANDBOX" : "LIVE";
+	}
 }

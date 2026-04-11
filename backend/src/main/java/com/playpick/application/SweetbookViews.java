@@ -9,7 +9,8 @@ public final class SweetbookViews {
 		String uid,
 		String name,
 		Integer minPages,
-		Integer maxPages
+		Integer maxPages,
+		Integer pageIncrement
 	) {
 	}
 
@@ -19,6 +20,13 @@ public final class SweetbookViews {
 		String category,
 		String role,
 		String thumbnailUrl
+	) {
+	}
+
+	public record IntegrationStatus(
+		String mode,
+		boolean liveEnabled,
+		String label
 	) {
 	}
 }

@@ -12,6 +12,10 @@ public final class StudioViews {
 	public record OrderDashboard(
 		long totalOrders,
 		long paidOrders,
+		long productionOrders,
+		long shippingOrders,
+		long deliveredOrders,
+		long simulatedOrders,
 		BigDecimal totalRevenue,
 		List<OrderSummary> recentOrders
 	) {
@@ -30,6 +34,8 @@ public final class StudioViews {
 		String siteOrderUid,
 		String siteOrderStatus,
 		String fulfillmentStatus,
+		String lastEventType,
+		Instant lastEventAt,
 		String paymentProvider,
 		String paymentMethod,
 		boolean simulated,

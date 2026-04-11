@@ -16,10 +16,8 @@ import Spinner from "../components/Spinner";
 import ErrorBox from "../components/ErrorBox";
 import ProjectStepper from "../components/ProjectStepper";
 import { formatChannelHandle } from "../lib/channelHandle";
-import {
-  formatBookSpecLabel,
-  formatTemplateLabel,
-} from "../lib/sweetbookDisplay";
+import { formatBookSpecLabel, formatTemplateLabel } from "../lib/sweetbookDisplay";
+import { estimateEditionPricing } from "../lib/sweetbookWorkflow";
 
 export default function EditionDetailPage() {
   const { editionId } = useParams<{ editionId: string }>();
@@ -134,6 +132,7 @@ export default function EditionDetailPage() {
   const fanFields = snap?.personalizationFields ?? [];
   const imageAssets = officialAssets.filter((asset) => asset.assetType === "IMAGE");
   const textAssets = officialAssets.filter((asset) => asset.assetType !== "IMAGE");
+  const pricingHint = estimateEditionPricing(snap?.bookSpecUid);
 
   return (
     <div className="page-shell">
@@ -145,12 +144,12 @@ export default function EditionDetailPage() {
             <div className="paper-stack relative">
               <div className="relative overflow-hidden rounded bg-white p-3 shadow-editorial">
                 <div className="absolute right-6 top-6 z-10 rounded bg-gold-400/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-900">
-                  지금 공개 중
+                  NOW OPEN
                 </div>
                 <img
                   src={
                     edition.coverImageUrl ||
-                    `https://picsum.photos/seed/edition-detail-${edition.id}/900/1200`
+                    "/demo-assets/playpick-hero.svg"
                   }
                   alt={edition.title}
                   className="aspect-[4/5] w-full rounded object-cover"
@@ -177,7 +176,7 @@ export default function EditionDetailPage() {
               )}
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-warm-500">
-                  만든 사람
+                  크리에이터
                 </p>
                 <p className="mt-1 text-lg text-stone-900">{edition.creator.displayName}</p>
                 <p className="text-sm text-warm-500">
@@ -197,7 +196,7 @@ export default function EditionDetailPage() {
 
             {(introTitle || introBody) && (
               <div className="mt-8 rounded bg-surface-low px-6 py-6">
-                <p className="editorial-label">먼저 읽어보기</p>
+                <p className="editorial-label">크리에이터의 한마디</p>
                 {introTitle && (
                   <p className="mt-4 font-headline text-2xl text-brand-700">{introTitle}</p>
                 )}
@@ -213,32 +212,51 @@ export default function EditionDetailPage() {
                 onClick={() => startProject("demo")}
                 className="editorial-button-primary min-w-[220px]"
               >
-                내 버전 만들기
+                {creating ? "준비 중..." : "나만의 포토북 만들기"}
               </button>
               <button
                 disabled={creating || youtubeAvailabilityLoading || !youtubeEnabled}
                 onClick={() => startProject("youtube")}
                 className="editorial-button-secondary min-w-[220px] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                YouTube로 채워보기
+                YouTube 기반으로 시작하기
               </button>
             </div>
             <p className="mt-4 text-sm leading-relaxed text-warm-500">
               {youtubeAvailabilityLoading
-                ? "YouTube로 채울 수 있는지 확인 중이에요."
+                ? "YouTube 연동 가능 여부를 확인하고 있어요."
                 : youtubeEnabled
-                  ? "Google 계정을 연결하면 구독 채널 기준으로 초안을 바로 채울 수 있어요."
-                  : "지금은 Google 설정이 없어 YouTube로 채워보기를 쓸 수 없어요."}
+                  ? "Google 계정을 연결하면 구독 채널과 최근 영상을 바탕으로 빠르게 시작할 수 있어요."
+                  : "직접 입력해서 나만의 포토북을 만들어보세요."}
             </p>
             {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+
+            <div className="mt-8 grid gap-4 md:grid-cols-2">
+              <div className="rounded bg-surface-low px-5 py-5">
+                <p className="editorial-label text-brand-700">예상 가격</p>
+                <p className="mt-3 text-3xl font-semibold text-stone-900">
+                  {pricingHint.productPrice.toLocaleString("ko-KR")}원~
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-warm-500">
+                  1권 기준 예상 가격이에요. 배송비는 배송지 입력 시 자동으로 계산됩니다.
+                </p>
+              </div>
+              <div className="rounded bg-surface-low px-5 py-5">
+                <p className="editorial-label text-brand-700">제작 방식</p>
+                <p className="mt-3 text-lg font-semibold text-stone-900">직접 입력 또는 YouTube 연동</p>
+                <p className="mt-2 text-sm leading-relaxed text-warm-500">
+                  직접 이야기를 채워도 되고, YouTube 활동을 불러와 빠르게 시작할 수도 있어요.
+                </p>
+              </div>
+            </div>
           </div>
         </section>
 
         <section className="mt-20 grid gap-10 lg:grid-cols-12">
           <div className="editorial-panel p-8 lg:col-span-5">
-            <p className="font-headline text-2xl italic text-brand-700">이 드롭에 담긴 장면</p>
+            <p className="font-headline text-2xl italic text-brand-700">에디션에 담긴 장면</p>
             <p className="mt-3 text-sm leading-relaxed text-warm-500">
-              처음부터 담겨 있는 메시지와 이미지가 이 드롭의 분위기를 먼저 잡아줍니다.
+              크리에이터가 직접 고른 메시지와 이미지가 포토북의 분위기를 만들어줘요.
             </p>
 
             {officialAssets.length > 0 ? (
@@ -249,8 +267,7 @@ export default function EditionDetailPage() {
               </div>
             ) : (
               <p className="mt-8 text-sm text-warm-500">
-                아직 채워진 콘텐츠가 없어요. 스튜디오에서 메시지와 미디어를 추가하면 여기가
-                채워집니다.
+                크리에이터가 장면을 준비 중이에요. 곧 새로운 콘텐츠로 채워집니다.
               </p>
             )}
           </div>
@@ -262,11 +279,10 @@ export default function EditionDetailPage() {
                 <p className="editorial-label text-brand-700">여기서부터 내 버전</p>
               </div>
               <h2 className="mt-5 text-4xl font-bold leading-tight text-stone-900">
-                내 취향으로 채우기
+                내 이야기로 채우기
               </h2>
               <p className="mt-4 text-sm leading-relaxed text-warm-500">
-                몇 가지 질문에 답하면서 내 기억과 문장을 더하면, 같은 드롭도 완전히 다른 책이
-                됩니다.
+                몇 가지 질문에 나만의 답을 적으면, 같은 에디션도 완전히 다른 포토북이 됩니다.
               </p>
             </div>
 
@@ -309,16 +325,16 @@ export default function EditionDetailPage() {
           <section className="mt-20 bg-surface-low py-16">
             <div className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-12">
               <div className="lg:col-span-7">
-                <h2 className="text-3xl font-bold text-brand-700">이 드롭에 담긴 장면</h2>
+                <h2 className="text-3xl font-bold text-brand-700">포토북 미리보기</h2>
                 <p className="mt-4 text-sm leading-relaxed text-warm-500">
-                  기본으로 담긴 장면 위에 팬의 입력이 더해져 한 권의 분위기가 완성됩니다.
+                  크리에이터가 담은 장면 위에 나의 이야기가 더해져 한 권의 포토북이 완성돼요.
                 </p>
                 {imageAssets.length > 0 && (
                   <div className="mt-8 grid gap-4 md:grid-cols-2">
                     {imageAssets.slice(0, 2).map((asset) => (
                       <div key={asset.id} className="overflow-hidden rounded bg-white p-3 shadow-sm">
                         <img
-                          src={asset.content || `https://picsum.photos/seed/asset-${asset.id}/800/600`}
+                          src={asset.content || edition.coverImageUrl || "/demo-assets/playpick-hero.svg"}
                           alt={asset.title}
                           className="aspect-[4/3] w-full rounded object-cover"
                         />
@@ -369,9 +385,9 @@ export default function EditionDetailPage() {
 function AssetRow({ asset }: { asset: CuratedAsset }) {
   const summary =
     asset.assetType === "IMAGE"
-      ? "이 장면이 전체 톤과 온도를 먼저 잡아주는 기본 무드 이미지입니다."
+      ? "포토북 전체 분위기를 만들어주는 대표 이미지예요."
       : asset.assetType === "VIDEO"
-        ? "팬이 고를 장면의 기준점이 되는 대표 영상 레퍼런스입니다."
+        ? "이 에디션의 영감이 된 대표 영상이에요."
         : asset.content;
 
   return (

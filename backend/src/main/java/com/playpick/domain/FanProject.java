@@ -47,6 +47,15 @@ public class FanProject {
 	@Column(name = "sweetbook_book_uid", length = 120)
 	private String sweetbookBookUid;
 
+	@Column(name = "sweetbook_external_ref", length = 120)
+	private String sweetbookExternalRef;
+
+	@Column(name = "sweetbook_draft_created_at")
+	private Instant sweetbookDraftCreatedAt;
+
+	@Column(name = "sweetbook_finalized_at")
+	private Instant sweetbookFinalizedAt;
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 32)
 	private FanProjectStatus status = FanProjectStatus.DRAFT;

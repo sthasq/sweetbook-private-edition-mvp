@@ -6,16 +6,22 @@ import {
   estimateOrder,
   getPreview,
 } from "../api/projects";
+import { getSweetbookIntegrationStatus } from "../api/sweetbook";
 import type {
   EstimateResponse,
   PaymentSessionResponse,
   ProjectPreview,
   ShippingInput,
+  SweetbookIntegrationStatus,
 } from "../types/api";
 import Spinner from "../components/Spinner";
 import ErrorBox from "../components/ErrorBox";
 import ProjectStepper from "../components/ProjectStepper";
 import { loadTossPayments, type TossWidgetsInstance } from "../lib/tossPayments";
+import {
+  integrationTone,
+  projectStageLabel,
+} from "../lib/sweetbookWorkflow";
 
 const INITIAL_SHIPPING: ShippingInput = {
   recipientName: "",
@@ -41,6 +47,8 @@ export default function ShippingPage() {
   const [ordering, setOrdering] = useState(false);
   const [paymentUnavailable, setPaymentUnavailable] = useState(false);
   const [error, setError] = useState("");
+  const [integrationStatus, setIntegrationStatus] =
+    useState<SweetbookIntegrationStatus | null>(null);
   const widgetsRef = useRef<TossWidgetsInstance | null>(null);
 
   const pid = Number(projectId);
@@ -108,7 +116,17 @@ export default function ShippingPage() {
     };
   }, [paymentSession]);
 
+  useEffect(() => {
+    getSweetbookIntegrationStatus()
+      .then(setIntegrationStatus)
+      .catch(() => setIntegrationStatus(null));
+  }, []);
+
   async function handleEstimate() {
+    if (preview && preview.status !== "FINALIZED") {
+      setError("미리보기에서 인쇄 확정을 먼저 완료해주세요.");
+      return;
+    }
     setEstimating(true);
     setError("");
     try {
@@ -124,6 +142,10 @@ export default function ShippingPage() {
   }
 
   async function handlePreparePayment() {
+    if (preview && preview.status !== "FINALIZED") {
+      setError("미리보기에서 인쇄 확정을 먼저 완료해주세요.");
+      return;
+    }
     setPreparingPayment(true);
     setError("");
     try {
@@ -170,6 +192,10 @@ export default function ShippingPage() {
   }
 
   async function handleOrder() {
+    if (preview && preview.status !== "FINALIZED") {
+      setError("미리보기에서 인쇄 확정을 먼저 완료해주세요.");
+      return;
+    }
     setOrdering(true);
     setError("");
     try {
@@ -193,6 +219,45 @@ export default function ShippingPage() {
 
   if (loading) return <Spinner />;
   if (!preview) return <ErrorBox message="프로젝트 정보를 불러올 수 없습니다." />;
+  const orderReady = preview.status === "FINALIZED" || preview.status === "ORDERED";
+
+  if (!orderReady) {
+    return (
+      <div className="page-shell">
+        <div className="mx-auto max-w-3xl">
+          <ProjectStepper current="shipping" className="mb-10" />
+          <div className="editorial-card p-8 md:p-10">
+            <p className="editorial-label">배송 단계 전 확인</p>
+            <h1 className="mt-4 text-4xl font-bold leading-tight text-brand-700">
+              미리보기에서
+              <br />
+              인쇄 확정을 먼저 완료해주세요
+            </h1>
+            <p className="mt-5 text-sm leading-relaxed text-warm-500">
+              배송과 결제는 포토북이 인쇄용으로 확정된 뒤에 진행할 수 있어요.
+              미리보기 페이지에서 포토북 만들기를 먼저 완료해주세요.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => navigate(`/projects/${projectId}/preview`)}
+                className="editorial-button-primary"
+              >
+                미리보기로 돌아가기
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(`/projects/${projectId}/personalize`)}
+                className="editorial-button-secondary"
+              >
+                개인화 다시 수정하기
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-shell">
@@ -200,11 +265,11 @@ export default function ShippingPage() {
         <ProjectStepper current="shipping" className="mb-10" />
 
         <div className="mb-12">
-          <p className="editorial-label">이제 받는 곳 적기</p>
+          <p className="editorial-label">배송 정보</p>
           <h1 className="mt-4 text-5xl font-bold leading-tight tracking-tight text-brand-700 md:text-6xl">
-            주문 전에 배송 정보를
+            어디로 보내드릴까요?
             <br />
-            <span className="italic font-normal">정확하게 기록합니다.</span>
+            <span className="italic font-normal">배송 정보를 입력해주세요.</span>
           </h1>
         </div>
 
@@ -268,23 +333,27 @@ export default function ShippingPage() {
             </div>
 
             <div className="rounded bg-surface-low px-6 py-6">
-              <p className="editorial-label text-brand-700">이렇게 진행돼요</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="editorial-label text-brand-700">주문 안내</p>
+                {integrationStatus && (
+                  <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${integrationTone(integrationStatus)}`}>
+                    {integrationStatus.label}
+                  </span>
+                )}
+              </div>
               <p className="mt-3 text-sm leading-relaxed text-warm-500">
-                견적을 먼저 확인하면 배송비와 총 금액을 계산하고, 토스 테스트 결제를
-                완료한 뒤 최종 주문이 저장됩니다. 토스 키가 없는 환경에서는 기존 데모
-                주문 흐름으로도 확인할 수 있습니다.
+                배송 정보를 입력하고 예상 금액을 확인한 뒤 결제를 진행하면 포토북 제작이 시작됩니다.
               </p>
             </div>
 
             {estimate && paymentSession && (
               <div className="editorial-panel p-6 md:p-8">
-                <p className="editorial-label">토스 테스트 결제</p>
+                <p className="editorial-label">결제</p>
                 <h2 className="mt-3 text-2xl font-bold text-brand-700">
-                  결제 수단을 선택해 주세요
+                  결제 수단을 선택해주세요
                 </h2>
                 <p className="mt-3 text-sm leading-relaxed text-warm-500">
-                  결제위젯 성공 시 이 프로젝트 주문이 바로 확정되고, 이어서 제작 주문이
-                  연결됩니다.
+                  결제가 완료되면 주문이 확정되고 포토북 제작이 바로 시작됩니다.
                 </p>
 
                 <div className="mt-6 rounded-2xl border border-stone-200 bg-white/90 p-4">
@@ -316,7 +385,7 @@ export default function ShippingPage() {
                   onClick={handleEstimate}
                   className="editorial-button-primary min-w-[220px] disabled:opacity-50"
                 >
-                  {estimating ? "계산 중..." : "견적 보기"}
+                  {estimating ? "계산 중..." : "예상 금액 확인"}
                 </button>
               ) : paymentSession ? (
                 <button
@@ -336,7 +405,7 @@ export default function ShippingPage() {
                   onClick={handleOrder}
                   className="editorial-button-primary min-w-[220px] disabled:opacity-50"
                 >
-                  {ordering ? "주문 확정 중..." : "데모 주문하기"}
+                  {ordering ? "주문 확정 중..." : "주문 확정하기"}
                 </button>
               ) : (
                 <button
@@ -344,7 +413,7 @@ export default function ShippingPage() {
                   onClick={handlePreparePayment}
                   className="editorial-button-primary min-w-[220px] disabled:opacity-50"
                 >
-                  {preparingPayment ? "결제 준비 중..." : "토스 결제 준비하기"}
+                  {preparingPayment ? "결제 준비 중..." : "결제 진행하기"}
                 </button>
               )}
             </div>
@@ -352,7 +421,7 @@ export default function ShippingPage() {
             {error && <p className="text-sm text-red-600">{error}</p>}
             {paymentUnavailable && (
               <p className="text-sm text-amber-700">
-                토스 테스트 키가 아직 설정되지 않아 데모 주문 버튼으로 전환했습니다.
+                현재 간편결제를 이용할 수 없어 일반 주문으로 전환되었습니다.
               </p>
             )}
           </section>
@@ -360,7 +429,7 @@ export default function ShippingPage() {
           <aside className="lg:col-span-5 lg:sticky lg:top-28">
             <div className="editorial-panel p-8 md:p-10">
               <h2 className="border-b border-stone-200/70 pb-5 text-2xl font-bold text-brand-700">
-                주문할 굿즈
+                주문할 포토북
               </h2>
 
               <div className="mt-6 flex gap-5">
@@ -368,7 +437,7 @@ export default function ShippingPage() {
                   <img
                     src={
                       preview.edition.coverImageUrl ||
-                      `https://picsum.photos/seed/shipping-${preview.edition.id}/800/1200`
+                      "/demo-assets/playpick-hero.svg"
                     }
                     alt={preview.edition.title}
                     className="aspect-[3/4] w-full rounded object-cover"
@@ -382,12 +451,13 @@ export default function ShippingPage() {
                     {preview.edition.title}
                   </h3>
                   <p className="mt-2 text-sm text-warm-500">
-                    내가 채운 내용으로 제작되는 실물 굿즈
+                    나만의 이야기가 담긴 실물 포토북
                   </p>
                 </div>
               </div>
 
               <div className="mt-8 space-y-4 border-t border-stone-200/70 pt-6">
+                <SummaryRow label="진행 상태" value={projectStageLabel(preview.status)} />
                 <SummaryRow label="받는 분" value={form.recipientName || "입력 전"} />
                 <SummaryRow label="배송지" value={form.address1 || "입력 전"} />
                 <SummaryRow label="수량" value={`${form.quantity ?? 1}권`} />
@@ -406,29 +476,25 @@ export default function ShippingPage() {
                 <div className="mt-8 rounded bg-white/85 px-5 py-5 shadow-sm">
                   <p className="editorial-label text-brand-700">결제 준비 완료</p>
                   <p className="mt-3 text-sm leading-relaxed text-warm-500">
-                    왼쪽에서 결제 수단을 확인한 뒤 토스로 결제하기를 누르면 테스트
-                    결제가 진행됩니다.
+                    결제 수단을 확인한 뒤 결제하기 버튼을 눌러주세요.
                   </p>
                 </div>
               ) : estimate ? (
                 <div className="mt-8 rounded bg-white/85 px-5 py-5 shadow-sm">
-                  <p className="editorial-label text-brand-700">가격 확인 완료</p>
+                  <p className="editorial-label text-brand-700">금액 확인 완료</p>
                   <p className="mt-3 text-sm leading-relaxed text-warm-500">
-                    다음 단계에서 토스 결제 세션을 만들고 실제 테스트 결제를 이어서
-                    진행합니다.
+                    예상 금액을 확인했어요. 결제 진행하기를 눌러 주문을 완료하세요.
                   </p>
                   {estimate.simulated && (
                     <p className="mt-3 text-sm leading-relaxed text-gold-500">
-                      제작 견적 자체는 Sweetbook 데모 금액일 수 있어요. 결제 모듈
-                      테스트와 제작 연동 테스트가 서로 분리되어 동작할 수 있습니다.
+                      현재 체험 모드로 운영 중이라 실제 결제 금액과 다를 수 있어요.
                     </p>
                   )}
                 </div>
               ) : (
                 <div className="mt-8 rounded bg-white/85 px-5 py-5 shadow-sm">
                   <p className="text-sm leading-relaxed text-warm-500">
-                    필수 정보만 입력하고 견적 보기를 누르면 오른쪽에 예상 금액이 바로
-                    채워집니다.
+                    배송 정보를 입력하고 예상 금액 확인을 누르면 결제 금액이 표시됩니다.
                   </p>
                 </div>
               )}

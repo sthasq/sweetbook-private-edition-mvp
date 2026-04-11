@@ -44,6 +44,13 @@ public class EditionService {
 			.toList();
 	}
 
+	public List<EditionViews.Summary> listOwnedEditions() {
+		AppUser currentUser = currentUserService.requireCurrentAppUser(AppUserRole.CREATOR);
+		return editionRepository.findByCreatorUserIdOrderByUpdatedAtDesc(currentUser.getId()).stream()
+			.map(edition -> toSummary(edition, resolveOwnedSnapshot(edition)))
+			.toList();
+	}
+
 	public Long getDefaultPublishedEditionId() {
 		return editionRepository.findByStatusOrderByUpdatedAtDesc(EditionStatus.PUBLISHED).stream()
 			.findFirst()
@@ -59,6 +66,11 @@ public class EditionService {
 				.orElseGet(() -> editionVersionRepository.findTopByEditionIdOrderByVersionNumberDesc(editionId)
 					.orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Edition version not found for edition " + editionId)));
 		return toDetail(edition, snapshot);
+	}
+
+	public EditionViews.Detail getOwnedEdition(Long editionId) {
+		Edition edition = requireOwnedEdition(editionId);
+		return toDetail(edition, resolveOwnedSnapshot(edition));
 	}
 
 	public EditionVersion requirePublishedVersion(Long editionId) {
@@ -311,6 +323,16 @@ public class EditionService {
 			edition.getCreatedAt(),
 			edition.getUpdatedAt()
 		);
+	}
+
+	private EditionVersion resolveOwnedSnapshot(Edition edition) {
+		if (edition.getStatus() == EditionStatus.PUBLISHED) {
+			return requirePublishedVersion(edition.getId());
+		}
+
+		return editionVersionRepository.findTopByEditionIdAndApprovedAtIsNullOrderByIdDesc(edition.getId())
+			.orElseGet(() -> editionVersionRepository.findTopByEditionIdOrderByVersionNumberDesc(edition.getId())
+				.orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Edition version not found for edition " + edition.getId())));
 	}
 
 	private EditionViews.Creator toCreatorView(CreatorProfile creator) {

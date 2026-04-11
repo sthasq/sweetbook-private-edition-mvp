@@ -21,4 +21,6 @@ public class AppProperties {
 	private String frontendBaseUrl = "http://localhost:3000";
 
 	private String demoImageBaseUrl = "https://picsum.photos";
+
+	private String studioAssetDir = System.getProperty("java.io.tmpdir") + "/playpick-studio-assets";
 }
