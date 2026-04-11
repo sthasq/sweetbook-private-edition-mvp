@@ -3,9 +3,9 @@ import type { SweetbookBookSpec, SweetbookIntegrationStatus } from "../types/api
 const DEFAULT_TOTAL_PAGES = 24;
 const DEFAULT_INCREMENT = 2;
 const PRICE_HINTS: Record<string, { product: number; shipping: number }> = {
-  SQUAREBOOK_HC: { product: 9900, shipping: 2500 },
-  PHOTOBOOK_A5_SC: { product: 10900, shipping: 2500 },
-  PHOTOBOOK_A4_SC: { product: 12900, shipping: 3000 },
+  SQUAREBOOK_HC: { product: 22900, shipping: 3500 },
+  PHOTOBOOK_A5_SC: { product: 20900, shipping: 3500 },
+  PHOTOBOOK_A4_SC: { product: 28900, shipping: 4000 },
 };
 
 export function siteOrderLabel(status: string | null | undefined) {

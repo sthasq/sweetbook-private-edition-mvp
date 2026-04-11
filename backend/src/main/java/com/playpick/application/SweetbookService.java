@@ -203,11 +203,16 @@ public class SweetbookService {
 		try {
 			Map<String, Object> payload = buildOrderPayload(bookUid, normalizeShipping(shipping));
 			Map<String, Object> result = sweetbookClient.estimateOrder(payload);
+			BigDecimal vendorCost = asBigDecimal(result.get("totalAmount"), BigDecimal.ZERO);
 			return new ProjectViews.Estimate(
 				projectId,
 				asString(result.get("currency"), "KRW"),
-				asBigDecimal(result.get("totalAmount"), BigDecimal.ZERO),
+				vendorCost,
+				vendorCost,
 				asBigDecimal(result.get("shippingFee"), BigDecimal.ZERO),
+				BigDecimal.ZERO,
+				BigDecimal.ZERO,
+				BigDecimal.ZERO,
 				false,
 				result
 			);
@@ -385,11 +390,16 @@ public class SweetbookService {
 	}
 
 	private ProjectViews.Estimate buildDemoEstimate(Long projectId, String message) {
+		BigDecimal vendorCost = BigDecimal.valueOf(18900);
 		return new ProjectViews.Estimate(
 			projectId,
 			"KRW",
-			BigDecimal.valueOf(9900),
-			BigDecimal.valueOf(2500),
+			vendorCost,
+			vendorCost,
+			BigDecimal.valueOf(3500),
+			BigDecimal.ZERO,
+			BigDecimal.ZERO,
+			BigDecimal.ZERO,
 			true,
 			Map.of("message", message)
 		);

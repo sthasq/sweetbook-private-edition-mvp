@@ -84,7 +84,11 @@ public final class ProjectViews {
 		Long projectId,
 		String currency,
 		BigDecimal totalAmount,
+		BigDecimal vendorCost,
 		BigDecimal shippingFee,
+		BigDecimal marginAmount,
+		BigDecimal platformFee,
+		BigDecimal creatorPayout,
 		boolean simulated,
 		Map<String, Object> raw
 	) {

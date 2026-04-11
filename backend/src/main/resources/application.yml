@@ -31,6 +31,8 @@ app:
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:3000}
   demo-image-base-url: ${DEMO_IMAGE_BASE_URL:https://picsum.photos}
   studio-asset-dir: ${STUDIO_ASSET_DIR:${java.io.tmpdir}/playpick-studio-assets}
+  commission-rate: ${APP_COMMISSION_RATE:0.20}
+  margin-rate: ${APP_MARGIN_RATE:0.35}
 
 sweetbook:
   base-url: ${SWEETBOOK_BASE_URL:https://api-sandbox.sweetbook.com/v1}

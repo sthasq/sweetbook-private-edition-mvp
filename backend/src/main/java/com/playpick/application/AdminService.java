@@ -48,6 +48,8 @@ public class AdminService {
 
 		long totalOrders = allOrders.size();
 		BigDecimal totalRevenue = BigDecimal.ZERO;
+		BigDecimal vendorCosts = BigDecimal.ZERO;
+		BigDecimal grossMargin = BigDecimal.ZERO;
 		BigDecimal platformRevenue = BigDecimal.ZERO;
 		BigDecimal creatorPayouts = BigDecimal.ZERO;
 		long simulatedOrders = 0;
@@ -55,6 +57,8 @@ public class AdminService {
 		for (CustomerOrder order : allOrders) {
 			if (order.getStatus() == OrderStatus.PAID) {
 				totalRevenue = totalRevenue.add(order.getTotalAmount());
+				vendorCosts = vendorCosts.add(order.getVendorCost());
+				grossMargin = grossMargin.add(order.getMarginAmount());
 				platformRevenue = platformRevenue.add(order.getPlatformFee());
 				creatorPayouts = creatorPayouts.add(order.getCreatorPayout());
 			}
@@ -68,8 +72,9 @@ public class AdminService {
 		long totalCreators = creatorProfileRepository.count();
 
 		return new AdminViews.Dashboard(
-			totalOrders, totalRevenue, platformRevenue, creatorPayouts,
+			totalOrders, totalRevenue, vendorCosts, grossMargin, platformRevenue, creatorPayouts,
 			appProperties.getCommissionRate(),
+			appProperties.getMarginRate(),
 			activeEditions, totalUsers, totalCreators, simulatedOrders
 		);
 	}
@@ -88,11 +93,15 @@ public class AdminService {
 		return creators.stream().map(creator -> {
 			List<CustomerOrder> creatorOrders = ordersByCreatorId.getOrDefault(creator.getId(), List.of());
 			BigDecimal totalRevenue = BigDecimal.ZERO;
+			BigDecimal vendorCost = BigDecimal.ZERO;
+			BigDecimal grossMargin = BigDecimal.ZERO;
 			BigDecimal platformCommission = BigDecimal.ZERO;
 			BigDecimal creatorPayout = BigDecimal.ZERO;
 
 			for (CustomerOrder order : creatorOrders) {
 				totalRevenue = totalRevenue.add(order.getTotalAmount());
+				vendorCost = vendorCost.add(order.getVendorCost());
+				grossMargin = grossMargin.add(order.getMarginAmount());
 				platformCommission = platformCommission.add(order.getPlatformFee());
 				creatorPayout = creatorPayout.add(order.getCreatorPayout());
 			}
@@ -100,7 +109,7 @@ public class AdminService {
 			return new AdminViews.CreatorSettlement(
 				creator.getId(), creator.getDisplayName(), creator.getChannelHandle(),
 				creator.isVerified(), creatorOrders.size(),
-				totalRevenue, platformCommission, creatorPayout
+				totalRevenue, vendorCost, grossMargin, platformCommission, creatorPayout
 			);
 		}).toList();
 	}
@@ -123,9 +132,12 @@ public class AdminService {
 				order.getRecipientName(),
 				order.getQuantity(),
 				order.getTotalAmount(),
+				order.getVendorCost(),
+				order.getMarginAmount(),
 				order.getPlatformFee(),
 				order.getCreatorPayout(),
 				order.getCommissionRate(),
+				order.getMarginRate(),
 				order.getOrderUid(),
 				order.getStatus().name(),
 				record == null ? FulfillmentStatus.PENDING_SUBMISSION.name() : record.getStatus().name(),

@@ -28,7 +28,7 @@ export default function AdminDashboardPage() {
   return (
     <AdminShell
       title="대시보드"
-      description="플랫폼 전체 매출, 수수료, 주문 현황을 한눈에 확인하세요."
+      description="총매출, Sweetbook 원가, 분배 마진과 정산 흐름을 한눈에 확인하세요."
     >
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -42,9 +42,11 @@ export default function AdminDashboardPage() {
         <>
           <section>
             <p className="editorial-label">매출 현황</p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <MetricCard label="총 매출" value={formatCurrency(dashboard.totalRevenue)} hint="결제 완료 기준" accent />
-              <MetricCard label="플랫폼 수수료" value={formatCurrency(dashboard.platformRevenue)} hint={`수수료율 ${(dashboard.commissionRate * 100).toFixed(0)}%`} />
+              <MetricCard label="Sweetbook 원가" value={formatCurrency(dashboard.vendorCosts)} hint="제작·배송 기준 원가" />
+              <MetricCard label="분배 마진" value={formatCurrency(dashboard.grossMargin)} hint={`고객가 마진율 ${(dashboard.marginRate * 100).toFixed(0)}%`} />
+              <MetricCard label="플랫폼 몫" value={formatCurrency(dashboard.platformRevenue)} hint={`마진 중 ${(dashboard.commissionRate * 100).toFixed(0)}%`} />
               <MetricCard label="크리에이터 정산" value={formatCurrency(dashboard.creatorPayouts)} hint="정산 예정 합계" />
               <MetricCard label="총 주문" value={`${dashboard.totalOrders}건`} hint={dashboard.simulatedOrders > 0 ? `체험 ${dashboard.simulatedOrders}건 포함` : "전체 주문"} />
             </div>
@@ -56,7 +58,7 @@ export default function AdminDashboardPage() {
               <MetricCard label="공개 에디션" value={`${dashboard.activeEditions}개`} hint="현재 판매 중" />
               <MetricCard label="전체 회원" value={`${dashboard.totalUsers}명`} hint="팬 + 크리에이터 + 관리자" />
               <MetricCard label="크리에이터" value={`${dashboard.totalCreators}명`} hint="등록된 크리에이터" />
-              <MetricCard label="수수료율" value={`${(dashboard.commissionRate * 100).toFixed(0)}%`} hint="현재 적용 중" />
+              <MetricCard label="마진 설정" value={`${(dashboard.marginRate * 100).toFixed(0)}%`} hint={`플랫폼 몫 ${(dashboard.commissionRate * 100).toFixed(0)}%`} />
             </div>
           </section>
         </>

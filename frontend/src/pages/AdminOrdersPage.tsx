@@ -29,7 +29,7 @@ export default function AdminOrdersPage() {
   return (
     <AdminShell
       title="주문 관리"
-      description="플랫폼 전체 주문을 확인하고, 주문별 수수료 분배 내역을 조회합니다."
+      description="플랫폼 전체 주문을 확인하고, 주문별 원가·마진·정산 구조를 함께 조회합니다."
     >
       {loading ? (
         <div className="space-y-3">
@@ -81,15 +81,27 @@ function OrderCard({ order }: { order: AdminOrderSummary }) {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <div className="rounded-xl bg-white px-3 py-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">플랫폼 수수료</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Sweetbook 원가</p>
+          <p className="mt-2 font-medium text-stone-700">{fmt(order.vendorCost)}</p>
+        </div>
+        <div className="rounded-xl bg-white px-3 py-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">분배 마진</p>
+          <p className="mt-2 font-medium text-gold-600">{fmt(order.marginAmount)}</p>
+        </div>
+        <div className="rounded-xl bg-white px-3 py-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">플랫폼 몫</p>
           <p className="mt-2 font-medium text-rose-600">{fmt(order.platformFee)}</p>
         </div>
         <div className="rounded-xl bg-white px-3 py-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">크리에이터 몫</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">크리에이터 정산</p>
           <p className="mt-2 font-medium text-brand-700">{fmt(order.creatorPayout)}</p>
         </div>
         <div className="rounded-xl bg-white px-3 py-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">수수료율</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">고객가 마진율</p>
+          <p className="mt-2 font-medium text-stone-900">{(order.marginRate * 100).toFixed(0)}%</p>
+        </div>
+        <div className="rounded-xl bg-white px-3 py-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">플랫폼 몫 비율</p>
           <p className="mt-2 font-medium text-stone-900">{(order.commissionRate * 100).toFixed(0)}%</p>
         </div>
       </div>
