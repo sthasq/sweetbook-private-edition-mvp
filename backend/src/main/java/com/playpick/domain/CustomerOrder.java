@@ -67,6 +67,15 @@ public class CustomerOrder {
 	@Column(name = "commission_rate", nullable = false, precision = 5, scale = 4)
 	private BigDecimal commissionRate = new BigDecimal("0.2000");
 
+	@Column(name = "vendor_cost", nullable = false, precision = 10, scale = 2)
+	private BigDecimal vendorCost = BigDecimal.ZERO;
+
+	@Column(name = "margin_rate", nullable = false, precision = 5, scale = 4)
+	private BigDecimal marginRate = new BigDecimal("0.3500");
+
+	@Column(name = "margin_amount", nullable = false, precision = 10, scale = 2)
+	private BigDecimal marginAmount = BigDecimal.ZERO;
+
 	@Column(name = "platform_fee", nullable = false, precision = 10, scale = 2)
 	private BigDecimal platformFee = BigDecimal.ZERO;
 

@@ -26,4 +26,6 @@ public class AppProperties {
 	private String studioAssetDir = System.getProperty("java.io.tmpdir") + "/playpick-studio-assets";
 
 	private BigDecimal commissionRate = new BigDecimal("0.20");
+
+	private BigDecimal marginRate = new BigDecimal("0.35");
 }

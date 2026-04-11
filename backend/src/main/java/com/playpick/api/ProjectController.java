@@ -133,11 +133,23 @@ record CreateProjectResponse(
 
 record EstimateResponse(
 	BigDecimal totalAmount,
+	BigDecimal vendorCost,
 	BigDecimal shippingFee,
+	BigDecimal marginAmount,
+	BigDecimal platformFee,
+	BigDecimal creatorPayout,
 	boolean simulated
 ) {
 	static EstimateResponse from(ProjectViews.Estimate estimate) {
-		return new EstimateResponse(estimate.totalAmount(), estimate.shippingFee(), estimate.simulated());
+		return new EstimateResponse(
+			estimate.totalAmount(),
+			estimate.vendorCost(),
+			estimate.shippingFee(),
+			estimate.marginAmount(),
+			estimate.platformFee(),
+			estimate.creatorPayout(),
+			estimate.simulated()
+		);
 	}
 }
 

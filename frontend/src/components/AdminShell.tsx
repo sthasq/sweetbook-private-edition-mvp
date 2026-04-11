@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 
 const ADMIN_NAV_ITEMS = [
-  { to: "/admin/dashboard", label: "대시보드", description: "플랫폼 매출과 수수료 현황을 확인해요." },
+  { to: "/admin/dashboard", label: "대시보드", description: "매출, 원가, 분배 마진 현황을 확인해요." },
   { to: "/admin/settlements", label: "정산 현황", description: "크리에이터별 정산 예정 금액을 조회해요." },
   { to: "/admin/orders", label: "주문 관리", description: "전체 주문과 제작 상태를 확인해요." },
   { to: "/admin/webhooks", label: "Webhook 로그", description: "Sweetbook 이벤트 수신 이력이에요." },

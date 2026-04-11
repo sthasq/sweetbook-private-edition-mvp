@@ -14,6 +14,7 @@ import com.playpick.domain.OrderRecordRepository;
 import com.playpick.domain.OrderStatus;
 import com.playpick.security.CurrentUserService;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -258,7 +259,7 @@ public class ProjectService {
 	public ProjectViews.Estimate estimate(Long projectId, ProjectCommands.Shipping shipping) {
 		FanProject project = requireOwnedProject(projectId);
 		requireFinalizedBook(project);
-		return sweetbookService.estimateOrder(projectId, project.getSweetbookBookUid(), shipping);
+		return toPricedEstimate(sweetbookService.estimateOrder(projectId, project.getSweetbookBookUid(), shipping));
 	}
 
 	@Transactional
@@ -274,14 +275,14 @@ public class ProjectService {
 			throw new AppException(HttpStatus.CONFLICT, "Order already completed for this project");
 		}
 
-		ProjectViews.Estimate estimate = sweetbookService.estimateOrder(projectId, project.getSweetbookBookUid(), shipping);
+		ProjectViews.Estimate vendorEstimate = sweetbookService.estimateOrder(projectId, project.getSweetbookBookUid(), shipping);
+		OrderPricing pricing = calculatePricing(vendorEstimate.totalAmount());
 		AppUser currentUser = currentUserService.requireCurrentAppUser();
 		CustomerOrder customerOrder = existingOrder == null ? new CustomerOrder() : existingOrder;
 		customerOrder.setFanProject(project);
 		customerOrder.setOrderUid(newSiteOrderUid());
 		customerOrder.setStatus(OrderStatus.CREATED);
-		customerOrder.setTotalAmount(estimate.totalAmount());
-		customerOrder.setSimulated(estimate.simulated());
+		customerOrder.setSimulated(vendorEstimate.simulated());
 		customerOrder.setRecipientName(shipping.recipientName());
 		customerOrder.setRecipientPhone(shipping.recipientPhone());
 		customerOrder.setPostalCode(shipping.postalCode());
@@ -293,7 +294,7 @@ public class ProjectService {
 		customerOrder.setPaymentMethod(null);
 		customerOrder.setPaymentApprovedAt(null);
 		customerOrder.setOrderedAt(Instant.now());
-		applyCommission(customerOrder);
+		applyPricing(customerOrder, pricing);
 		customerOrder = customerOrderRepository.save(customerOrder);
 
 		return new ProjectViews.PaymentSession(
@@ -331,15 +332,15 @@ public class ProjectService {
 			);
 		}
 
-		ProjectViews.Estimate estimate = sweetbookService.estimateOrder(projectId, project.getSweetbookBookUid(), shipping);
+		ProjectViews.Estimate vendorEstimate = sweetbookService.estimateOrder(projectId, project.getSweetbookBookUid(), shipping);
+		OrderPricing pricing = calculatePricing(vendorEstimate.totalAmount());
 		Instant orderedAt = Instant.now();
 
 		CustomerOrder customerOrder = new CustomerOrder();
 		customerOrder.setFanProject(project);
 		customerOrder.setOrderUid(newSiteOrderUid());
 		customerOrder.setStatus(OrderStatus.PAID);
-		customerOrder.setTotalAmount(estimate.totalAmount());
-		customerOrder.setSimulated(estimate.simulated());
+		customerOrder.setSimulated(vendorEstimate.simulated());
 		customerOrder.setRecipientName(shipping.recipientName());
 		customerOrder.setRecipientPhone(shipping.recipientPhone());
 		customerOrder.setPostalCode(shipping.postalCode());
@@ -347,7 +348,7 @@ public class ProjectService {
 		customerOrder.setAddress2(shipping.address2());
 		customerOrder.setQuantity(Math.max(shipping.quantity(), 1));
 		customerOrder.setOrderedAt(orderedAt);
-		applyCommission(customerOrder);
+		applyPricing(customerOrder, pricing);
 		customerOrder = customerOrderRepository.save(customerOrder);
 
 		return finalizePaidOrder(projectId, project, shipping, customerOrder);
@@ -396,7 +397,9 @@ public class ProjectService {
 		customerOrder.setPaymentMethod(confirmedPayment.method());
 		customerOrder.setPaymentApprovedAt(confirmedPayment.approvedAt() == null ? Instant.now() : confirmedPayment.approvedAt());
 		customerOrder.setOrderedAt(customerOrder.getPaymentApprovedAt());
-		applyCommission(customerOrder);
+		if (customerOrder.getVendorCost() == null || customerOrder.getVendorCost().compareTo(BigDecimal.ZERO) <= 0) {
+			applyPricing(customerOrder, calculatePricing(customerOrder.getTotalAmount()));
+		}
 		customerOrder = customerOrderRepository.save(customerOrder);
 
 		return finalizePaidOrder(projectId, project, toShipping(customerOrder), customerOrder);
@@ -662,16 +665,82 @@ public class ProjectService {
 		);
 	}
 
-	private void applyCommission(CustomerOrder customerOrder) {
-		java.math.BigDecimal rate = appProperties.getCommissionRate();
-		java.math.BigDecimal total = customerOrder.getTotalAmount();
-		java.math.BigDecimal fee = total.multiply(rate).setScale(2, java.math.RoundingMode.HALF_UP);
-		customerOrder.setCommissionRate(rate);
-		customerOrder.setPlatformFee(fee);
-		customerOrder.setCreatorPayout(total.subtract(fee));
+	private ProjectViews.Estimate toPricedEstimate(ProjectViews.Estimate vendorEstimate) {
+		OrderPricing pricing = calculatePricing(vendorEstimate.totalAmount());
+		return new ProjectViews.Estimate(
+			vendorEstimate.projectId(),
+			vendorEstimate.currency(),
+			pricing.totalAmount(),
+			pricing.vendorCost(),
+			vendorEstimate.shippingFee(),
+			pricing.marginAmount(),
+			pricing.platformFee(),
+			pricing.creatorPayout(),
+			vendorEstimate.simulated(),
+			vendorEstimate.raw()
+		);
+	}
+
+	private void applyPricing(CustomerOrder customerOrder, OrderPricing pricing) {
+		customerOrder.setVendorCost(pricing.vendorCost());
+		customerOrder.setMarginRate(pricing.marginRate());
+		customerOrder.setMarginAmount(pricing.marginAmount());
+		customerOrder.setCommissionRate(pricing.commissionRate());
+		customerOrder.setPlatformFee(pricing.platformFee());
+		customerOrder.setCreatorPayout(pricing.creatorPayout());
+		customerOrder.setTotalAmount(pricing.totalAmount());
+	}
+
+	private OrderPricing calculatePricing(BigDecimal rawVendorCost) {
+		BigDecimal vendorCost = normalizeMoney(rawVendorCost);
+		BigDecimal marginRate = normalizeMarginRate(appProperties.getMarginRate());
+		BigDecimal commissionRate = normalizeRatio(appProperties.getCommissionRate());
+		BigDecimal marginAmount = vendorCost.multiply(marginRate).setScale(2, RoundingMode.HALF_UP);
+		BigDecimal platformFee = marginAmount.multiply(commissionRate).setScale(2, RoundingMode.HALF_UP);
+		BigDecimal creatorPayout = marginAmount.subtract(platformFee).setScale(2, RoundingMode.HALF_UP);
+		BigDecimal totalAmount = vendorCost.add(marginAmount).setScale(2, RoundingMode.HALF_UP);
+		return new OrderPricing(vendorCost, marginRate, marginAmount, commissionRate, platformFee, creatorPayout, totalAmount);
+	}
+
+	private BigDecimal normalizeMoney(BigDecimal value) {
+		if (value == null || value.compareTo(BigDecimal.ZERO) <= 0) {
+			return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+		}
+		return value.setScale(2, RoundingMode.HALF_UP);
+	}
+
+	private BigDecimal normalizeMarginRate(BigDecimal value) {
+		if (value == null || value.compareTo(BigDecimal.ZERO) < 0) {
+			return new BigDecimal("0.3500");
+		}
+		return value.setScale(4, RoundingMode.HALF_UP);
+	}
+
+	private BigDecimal normalizeRatio(BigDecimal value) {
+		if (value == null) {
+			return new BigDecimal("0.2000");
+		}
+		if (value.compareTo(BigDecimal.ZERO) < 0) {
+			return BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
+		}
+		if (value.compareTo(BigDecimal.ONE) > 0) {
+			return BigDecimal.ONE.setScale(4, RoundingMode.HALF_UP);
+		}
+		return value.setScale(4, RoundingMode.HALF_UP);
 	}
 
 	private boolean isSimulatedBook(String bookUid) {
 		return bookUid != null && bookUid.startsWith("demo-book-");
+	}
+
+	private record OrderPricing(
+		BigDecimal vendorCost,
+		BigDecimal marginRate,
+		BigDecimal marginAmount,
+		BigDecimal commissionRate,
+		BigDecimal platformFee,
+		BigDecimal creatorPayout,
+		BigDecimal totalAmount
+	) {
 	}
 }

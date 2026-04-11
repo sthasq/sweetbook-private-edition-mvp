@@ -22,6 +22,10 @@ yarn-error.log*
 .pnpm-debug.log*
 .playwright-cli/
 
+# generated artifacts
+/docs/sweetbookandroidappmp4.mp4
+/output/
+
 # editors / os
 .DS_Store
 *.pem

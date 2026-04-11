@@ -141,7 +141,11 @@ export interface AiCollabGenerationResponse {
 
 export interface EstimateResponse {
   totalAmount: number;
+  vendorCost: number;
   shippingFee: number;
+  marginAmount: number;
+  platformFee: number;
+  creatorPayout: number;
   simulated: boolean;
 }
 
@@ -373,9 +377,12 @@ export interface SweetbookIntegrationStatus {
 export interface AdminDashboard {
   totalOrders: number;
   totalRevenue: number;
+  vendorCosts: number;
+  grossMargin: number;
   platformRevenue: number;
   creatorPayouts: number;
   commissionRate: number;
+  marginRate: number;
   activeEditions: number;
   totalUsers: number;
   totalCreators: number;
@@ -389,6 +396,8 @@ export interface AdminCreatorSettlement {
   verified: boolean;
   totalOrders: number;
   totalRevenue: number;
+  vendorCost: number;
+  grossMargin: number;
   platformCommission: number;
   creatorPayout: number;
 }
@@ -402,9 +411,12 @@ export interface AdminOrderSummary {
   recipientName: string;
   quantity: number;
   totalAmount: number;
+  vendorCost: number;
+  marginAmount: number;
   platformFee: number;
   creatorPayout: number;
   commissionRate: number;
+  marginRate: number;
   siteOrderUid: string;
   siteOrderStatus: string;
   fulfillmentStatus: string;

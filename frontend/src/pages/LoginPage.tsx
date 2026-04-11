@@ -61,6 +61,9 @@ export default function LoginPage() {
                 creator: <code>creator@playpick.local</code> /{" "}
                 <code>Creator123!</code>
               </p>
+              <p>
+                admin: <code>admin@playpick.local</code> / <code>Admin12345!</code>
+              </p>
             </div>
           </div>
         </section>

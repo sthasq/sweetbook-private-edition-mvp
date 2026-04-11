@@ -26,13 +26,15 @@ export default function AdminSettlementsPage() {
   }, [navigate, location.pathname]);
 
   const totalRevenue = settlements.reduce((sum, s) => sum + s.totalRevenue, 0);
+  const totalVendorCost = settlements.reduce((sum, s) => sum + s.vendorCost, 0);
+  const totalMargin = settlements.reduce((sum, s) => sum + s.grossMargin, 0);
   const totalCommission = settlements.reduce((sum, s) => sum + s.platformCommission, 0);
   const totalPayout = settlements.reduce((sum, s) => sum + s.creatorPayout, 0);
 
   return (
     <AdminShell
       title="정산 현황"
-      description="크리에이터별 매출과 플랫폼 수수료, 정산 예정 금액을 조회합니다."
+      description="크리에이터별 총매출, Sweetbook 원가, 분배 마진과 정산 예정 금액을 조회합니다."
     >
       {loading ? (
         <div className="space-y-3">
@@ -44,9 +46,11 @@ export default function AdminSettlementsPage() {
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-5 text-sm text-rose-700">{error}</div>
       ) : (
         <>
-          <div className="mb-6 grid gap-4 sm:grid-cols-3">
+          <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <SummaryCard label="총 매출" value={fmt(totalRevenue)} />
-            <SummaryCard label="플랫폼 수수료 합계" value={fmt(totalCommission)} />
+            <SummaryCard label="Sweetbook 원가 합계" value={fmt(totalVendorCost)} />
+            <SummaryCard label="분배 마진 합계" value={fmt(totalMargin)} />
+            <SummaryCard label="플랫폼 몫 합계" value={fmt(totalCommission)} />
             <SummaryCard label="크리에이터 정산 합계" value={fmt(totalPayout)} />
           </div>
 
@@ -64,7 +68,9 @@ export default function AdminSettlementsPage() {
                     <th className="px-5 py-4 text-center">인증</th>
                     <th className="px-5 py-4 text-right">주문 수</th>
                     <th className="px-5 py-4 text-right">총 매출</th>
-                    <th className="px-5 py-4 text-right">플랫폼 수수료</th>
+                    <th className="px-5 py-4 text-right">Sweetbook 원가</th>
+                    <th className="px-5 py-4 text-right">분배 마진</th>
+                    <th className="px-5 py-4 text-right">플랫폼 몫</th>
                     <th className="px-5 py-4 text-right">정산 예정</th>
                   </tr>
                 </thead>
@@ -82,6 +88,8 @@ export default function AdminSettlementsPage() {
                       </td>
                       <td className="px-5 py-4 text-right text-stone-900">{s.totalOrders}건</td>
                       <td className="px-5 py-4 text-right font-medium text-stone-900">{fmt(s.totalRevenue)}</td>
+                      <td className="px-5 py-4 text-right text-stone-600">{fmt(s.vendorCost)}</td>
+                      <td className="px-5 py-4 text-right text-gold-600">{fmt(s.grossMargin)}</td>
                       <td className="px-5 py-4 text-right text-rose-600">{fmt(s.platformCommission)}</td>
                       <td className="px-5 py-4 text-right font-semibold text-brand-700">{fmt(s.creatorPayout)}</td>
                     </tr>

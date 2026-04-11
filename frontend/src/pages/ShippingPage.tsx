@@ -465,11 +465,11 @@ export default function ShippingPage() {
 
               <div className="mt-8 space-y-3 border-t border-stone-200/70 pt-6">
                 <PriceRow
-                  label="상품 소계"
-                  value={estimate ? estimate.totalAmount - estimate.shippingFee : null}
+                  label="Sweetbook 제작·배송 원가"
+                  value={estimate?.vendorCost ?? null}
                 />
-                <PriceRow label="배송비" value={estimate?.shippingFee ?? null} />
-                <PriceRow label="예상 총액" value={estimate?.totalAmount ?? null} total />
+                <PriceRow label="PlayPick 서비스 금액" value={estimate?.marginAmount ?? null} />
+                <PriceRow label="배송비 포함 총 결제액" value={estimate?.totalAmount ?? null} total />
               </div>
 
               {paymentSession ? (
@@ -483,7 +483,8 @@ export default function ShippingPage() {
                 <div className="mt-8 rounded bg-white/85 px-5 py-5 shadow-sm">
                   <p className="editorial-label text-brand-700">금액 확인 완료</p>
                   <p className="mt-3 text-sm leading-relaxed text-warm-500">
-                    예상 금액을 확인했어요. 결제 진행하기를 눌러 주문을 완료하세요.
+                    Sweetbook 제작 원가에 PlayPick 서비스 금액을 더한 최종 결제액이에요.
+                    결제 진행하기를 눌러 주문을 완료하세요.
                   </p>
                   {estimate.simulated && (
                     <p className="mt-3 text-sm leading-relaxed text-gold-500">
@@ -494,7 +495,7 @@ export default function ShippingPage() {
               ) : (
                 <div className="mt-8 rounded bg-white/85 px-5 py-5 shadow-sm">
                   <p className="text-sm leading-relaxed text-warm-500">
-                    배송 정보를 입력하고 예상 금액 확인을 누르면 결제 금액이 표시됩니다.
+                    배송 정보를 입력하면 제작 원가와 서비스 금액을 반영한 최종 결제액을 먼저 확인할 수 있어요.
                   </p>
                 </div>
               )}
