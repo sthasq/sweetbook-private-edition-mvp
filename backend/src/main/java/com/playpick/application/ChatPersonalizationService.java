@@ -102,13 +102,21 @@ public class ChatPersonalizationService {
 		try {
 			JsonNode root = objectMapper.readTree(body);
 			String assistantContent = extractAssistantContent(root);
-			JsonNode structured = parseStructuredPayload(assistantContent);
 
-			String reply = structured.path("reply").asText("").trim();
-			if (reply.isBlank()) {
-				throw new AppException(HttpStatus.BAD_GATEWAY, "OpenRouter chat reply was empty");
+			// Non-fatal JSON parse: if the LLM returned plain text, use it directly as the reply.
+			JsonNode structured = tryParseStructuredPayload(assistantContent);
+
+			if (structured == null) {
+				String plainReply = assistantContent.trim();
+				if (plainReply.isBlank()) {
+					log.warn("ChatPersonalization: LLM returned empty content, returning safe fallback");
+					return new ProjectViews.ChatPersonalization("잠시 후 다시 시도해 주세요.", null, false);
+				}
+				log.debug("ChatPersonalization: LLM returned plain text – using as reply directly");
+				return new ProjectViews.ChatPersonalization(plainReply, null, false);
 			}
 
+			String reply = extractReplyText(structured, assistantContent);
 			boolean done = structured.path("done").asBoolean(false);
 			Map<String, Object> proposal = normalizeProposal(structured.path("proposal"), fields);
 			boolean completed = done && proposal != null && !proposal.isEmpty();
@@ -116,6 +124,26 @@ public class ChatPersonalizationService {
 		} catch (IOException exception) {
 			throw new AppException(HttpStatus.BAD_GATEWAY, "Failed to parse OpenRouter chat response", exception);
 		}
+	}
+
+	/**
+	 * Tries "reply" first, then common alternative key names that LLMs sometimes use,
+	 * and finally falls back to the raw assistant content.
+	 */
+	private String extractReplyText(JsonNode structured, String rawContent) {
+		String reply = structured.path("reply").asText("").trim();
+		if (!reply.isBlank()) {
+			return reply;
+		}
+		for (String key : new String[]{"message", "text", "content", "answer", "response"}) {
+			String candidate = structured.path(key).asText("").trim();
+			if (!candidate.isBlank()) {
+				log.debug("ChatPersonalization: reply key missing, using '{}' as fallback", key);
+				return candidate;
+			}
+		}
+		String fallback = rawContent.trim();
+		return fallback.isBlank() ? "잠시 후 다시 시도해 주세요." : fallback;
 	}
 
 	private List<Map<String, Object>> buildOpenRouterMessages(
@@ -149,7 +177,7 @@ public class ChatPersonalizationService {
 			.orElse("fanNickname, favoriteMemory, fanMessage");
 
 		return """
-			You are a Korean assistant that helps a fan personalize a photobook edition.
+			You are a warm Korean assistant helping a fan personalize a photobook.
 			Edition title: %s
 			Edition subtitle: %s
 			Creator: %s
@@ -160,25 +188,26 @@ public class ChatPersonalizationService {
 			Available video picks (if any): %s
 
 			Conversation policy:
-			- Ask concise and warm Korean questions.
+			- Ask concise, warm, emotionally natural Korean questions.
 			- Ask one focused question per turn.
-			- Gather enough information in 2-4 questions when possible.
-			- On the very first turn, start with a brief warm greeting and the easiest welcoming question.
-			- Prefer emotionally natural questions over rigid form-like wording.
-			- Do not ask the fan to confirm saved values unless they already asked to revise them.
+			- Aim to gather enough information in 2-4 questions.
+			- On the very first turn (empty message history), start with a brief warm greeting and the easiest welcoming question.
+			- Do not ask the fan to re-confirm saved values unless they asked to revise.
+			- Accept user inputs in any natural Korean form (e.g., "2022년 7월 21일", "작년 여름", "3년 전") and internally convert them to the required format.
 			- If the user asks for revisions after a proposal, refine and return an updated proposal.
 
-			Output policy (critical):
-			- Reply with ONLY valid JSON.
-			- Never wrap in markdown.
-			- Use this shape exactly:
-			  {"reply":"...", "done":false, "proposal":null}
-			  or
-			  {"reply":"...", "done":true, "proposal":{"fieldKey":"value"}}
-			- proposal keys must be from: %s
-			- proposal values should be concise and natural Korean.
-			- For DATE, use YYYY-MM-DD.
-			- For IMAGE_URL, do not invent URLs. Use only user-provided URLs.
+			Output policy (MANDATORY – never violate):
+			- Your ENTIRE response must be a single valid JSON object with NO extra text before or after.
+			- Never wrap in markdown code fences.
+			- Always use exactly this shape:
+			  {"reply":"<Korean message to the fan>","done":false,"proposal":null}
+			  or, when you have collected enough information:
+			  {"reply":"<Korean message confirming proposal>","done":true,"proposal":{"fieldKey":"value",...}}
+			- "reply" must contain your conversational Korean message. It must NEVER be empty.
+			- proposal keys must only be from: %s
+			- For DATE fields, normalize any Korean/natural-language date the user provided to YYYY-MM-DD in the proposal value.
+			- For IMAGE_URL fields, never invent URLs. Use only user-provided URLs.
+			- Even if the user's input is unusual, ambiguous, or contains special characters, always output valid JSON.
 			""".formatted(
 			edition.title(),
 			nullToEmpty(edition.subtitle()),
@@ -328,45 +357,56 @@ public class ChatPersonalizationService {
 		return textValue;
 	}
 
-	private JsonNode parseStructuredPayload(String content) throws JsonProcessingException {
+	/**
+	 * Attempts to parse the LLM content as a JSON object using several strategies.
+	 * Returns null (instead of throwing) when all strategies fail, so the caller can
+	 * gracefully fall back to treating the raw text as a plain reply.
+	 */
+	private JsonNode tryParseStructuredPayload(String content) {
 		String trimmed = nullToEmpty(content).trim();
 		if (trimmed.isBlank()) {
-			throw new AppException(HttpStatus.BAD_GATEWAY, "OpenRouter chat message was empty");
+			return null;
 		}
 
-		JsonNode direct = readJsonObject(trimmed);
-		if (direct != null) {
-			return direct;
-		}
-
-		String unwrapped = trimmed
-			.replaceFirst("^```json\\s*", "")
-			.replaceFirst("^```\\s*", "")
-			.replaceFirst("\\s*```$", "")
-			.trim();
-
-		JsonNode unwrappedJson = readJsonObject(unwrapped);
-		if (unwrappedJson != null) {
-			return unwrappedJson;
-		}
-
-		int firstBrace = unwrapped.indexOf('{');
-		int lastBrace = unwrapped.lastIndexOf('}');
-		if (firstBrace >= 0 && lastBrace > firstBrace) {
-			JsonNode extracted = readJsonObject(unwrapped.substring(firstBrace, lastBrace + 1));
-			if (extracted != null) {
-				return extracted;
+		try {
+			JsonNode direct = readJsonObject(trimmed);
+			if (direct != null) {
+				return direct;
 			}
+
+			// Strip markdown code fences some models still emit despite response_format=json_object
+			String unwrapped = trimmed
+				.replaceFirst("^```json\\s*", "")
+				.replaceFirst("^```\\s*", "")
+				.replaceFirst("\\s*```$", "")
+				.trim();
+
+			JsonNode unwrappedJson = readJsonObject(unwrapped);
+			if (unwrappedJson != null) {
+				return unwrappedJson;
+			}
+
+			// Extract the first complete JSON object embedded in mixed text
+			int firstBrace = unwrapped.indexOf('{');
+			int lastBrace = unwrapped.lastIndexOf('}');
+			if (firstBrace >= 0 && lastBrace > firstBrace) {
+				JsonNode extracted = readJsonObject(unwrapped.substring(firstBrace, lastBrace + 1));
+				if (extracted != null) {
+					return extracted;
+				}
+			}
+		} catch (Exception exception) {
+			log.debug("ChatPersonalization: JSON parse attempt failed, will use plain-text fallback: {}", exception.getMessage());
 		}
 
-		throw new AppException(HttpStatus.BAD_GATEWAY, "OpenRouter did not return structured chat JSON");
+		return null;
 	}
 
-	private JsonNode readJsonObject(String raw) throws JsonProcessingException {
+	private JsonNode readJsonObject(String raw) {
 		try {
 			JsonNode node = objectMapper.readTree(raw);
 			return node != null && node.isObject() ? node : null;
-		} catch (JsonProcessingException exception) {
+		} catch (Exception exception) {
 			return null;
 		}
 	}
