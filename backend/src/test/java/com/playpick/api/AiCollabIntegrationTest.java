@@ -1,6 +1,7 @@
 package com.playpick.api;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -37,6 +38,7 @@ class AiCollabIntegrationTest {
 		String sampleImage = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2lm7kAAAAASUVORK5CYII=";
 
 		mockMvc.perform(post("/api/projects/{projectId}/ai-collab/generate", projectId)
+				.with(csrf())
 				.session(otherSession)
 				.contentType(APPLICATION_JSON)
 				.content("""
@@ -50,6 +52,7 @@ class AiCollabIntegrationTest {
 			.andExpect(jsonPath("$.detail").value("You do not have access to this project"));
 
 		mockMvc.perform(post("/api/projects/{projectId}/ai-collab/generate", projectId)
+				.with(csrf())
 				.session(ownerSession)
 				.contentType(APPLICATION_JSON)
 				.content("""
@@ -65,6 +68,7 @@ class AiCollabIntegrationTest {
 
 	private MockHttpSession signUp(String email, String displayName) throws Exception {
 		MvcResult result = mockMvc.perform(post("/api/auth/signup")
+				.with(csrf())
 				.contentType(APPLICATION_JSON)
 				.content("""
 					{
@@ -82,6 +86,7 @@ class AiCollabIntegrationTest {
 
 	private long createProject(MockHttpSession session, long editionId, String mode) throws Exception {
 		MvcResult result = mockMvc.perform(post("/api/projects")
+				.with(csrf())
 				.session(session)
 				.contentType(APPLICATION_JSON)
 				.content("""

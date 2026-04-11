@@ -1,5 +1,6 @@
 package com.playpick.application;
 
+import com.playpick.config.SweetbookProperties;
 import com.playpick.domain.CustomerOrder;
 import com.playpick.domain.CustomerOrderRepository;
 import com.playpick.domain.FulfillmentStatus;
@@ -13,6 +14,7 @@ import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,16 @@ public class SweetbookWebhookService {
 	private final SweetbookWebhookEventRepository sweetbookWebhookEventRepository;
 	private final OrderRecordRepository orderRecordRepository;
 	private final CustomerOrderRepository customerOrderRepository;
+	private final SweetbookProperties sweetbookProperties;
+
+	public void verifyWebhookSecret(String providedSecret) {
+		if (!sweetbookProperties.isWebhookSecretConfigured()) {
+			throw new AppException(HttpStatus.SERVICE_UNAVAILABLE, "Sweetbook webhook secret is not configured");
+		}
+		if (!sweetbookProperties.getWebhookSecret().equals(providedSecret)) {
+			throw new AppException(HttpStatus.UNAUTHORIZED, "Sweetbook webhook secret is invalid");
+		}
+	}
 
 	public Receipt accept(Map<String, Object> payload) {
 		Map<String, Object> normalizedPayload = payload == null ? new LinkedHashMap<>() : new LinkedHashMap<>(payload);

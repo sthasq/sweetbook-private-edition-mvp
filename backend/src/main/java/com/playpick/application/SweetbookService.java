@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -131,8 +132,8 @@ public class SweetbookService {
 				reused
 			);
 		} catch (RuntimeException exception) {
-			log.warn("Sweetbook live draft generation failed. Falling back to simulated response.", exception);
-			return buildDemoBookGeneration(preview, resolvedTemplates, pagePlan, "DRAFT", "BOOK_CREATED", reused, null);
+			log.warn("Sweetbook live draft generation failed.", exception);
+			throw liveFailure("draft generation", exception);
 		}
 	}
 
@@ -164,8 +165,8 @@ public class SweetbookService {
 				reused
 			);
 		} catch (RuntimeException exception) {
-			log.warn("Sweetbook live finalization failed. Falling back to simulated response.", exception);
-			return buildDemoBookGeneration(preview, resolvedTemplates, pagePlan, "FINALIZED", "FINALIZED", reused, bookUid);
+			log.warn("Sweetbook live finalization failed.", exception);
+			throw liveFailure("finalization", exception);
 		}
 	}
 
@@ -211,8 +212,8 @@ public class SweetbookService {
 				result
 			);
 		} catch (RuntimeException exception) {
-			log.warn("Sweetbook live estimate failed. Falling back to simulated response.", exception);
-			return buildDemoEstimate(projectId, "Sweetbook live estimate failed, returning demo estimate");
+			log.warn("Sweetbook live estimate failed.", exception);
+			throw liveFailure("estimate lookup", exception);
 		}
 	}
 
@@ -233,8 +234,8 @@ public class SweetbookService {
 				result
 			);
 		} catch (RuntimeException exception) {
-			log.warn("Sweetbook live order failed. Falling back to simulated response.", exception);
-			return buildDemoOrder(projectId, "Sweetbook live order failed, returning demo order");
+			log.warn("Sweetbook live order creation failed.", exception);
+			throw liveFailure("order creation", exception);
 		}
 	}
 
@@ -295,13 +296,17 @@ public class SweetbookService {
 		try {
 			return getTemplates(bookSpecUid);
 		} catch (RuntimeException exception) {
-			log.warn("Sweetbook live template lookup failed. Falling back to demo templates.", exception);
-			return List.of(
-				new SweetbookViews.Template("demo-cover-template", "기본 커버", "album", "cover", ""),
-				new SweetbookViews.Template("demo-publish-template", "발행면", "album", "publish", ""),
-				new SweetbookViews.Template("demo-content-template", "기본 펼침면", "album", "content", "")
-			);
+			log.warn("Sweetbook live template lookup failed.", exception);
+			throw liveFailure("template lookup", exception);
 		}
+	}
+
+	private AppException liveFailure(String operation, RuntimeException exception) {
+		return new AppException(
+			HttpStatus.BAD_GATEWAY,
+			"Sweetbook " + operation + " failed while live integration is enabled",
+			exception
+		);
 	}
 
 	private SweetbookViews.BookSpec resolveBookSpec(String bookSpecUid) {

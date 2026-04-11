@@ -1,6 +1,7 @@
 package com.playpick.api;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -21,7 +22,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest
+@SpringBootTest(properties = "sweetbook.webhook-secret=test-webhook-secret")
 @AutoConfigureMockMvc
 @ActiveProfiles("local")
 class AuthAndAccessIntegrationTest {
@@ -37,6 +38,7 @@ class AuthAndAccessIntegrationTest {
 		String email = uniqueEmail("member");
 
 		MvcResult signUpResult = mockMvc.perform(post("/api/auth/signup")
+				.with(csrf())
 				.contentType(APPLICATION_JSON)
 				.content("""
 					{
@@ -58,13 +60,14 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(jsonPath("$.email").value(email))
 			.andExpect(jsonPath("$.displayName").value("Member One"));
 
-		mockMvc.perform(post("/api/auth/logout").session(session))
+		mockMvc.perform(post("/api/auth/logout").with(csrf()).session(session))
 			.andExpect(status().isNoContent());
 
 		mockMvc.perform(get("/api/auth/me").session(session))
 			.andExpect(status().isUnauthorized());
 
 		mockMvc.perform(post("/api/auth/login")
+				.with(csrf())
 				.contentType(APPLICATION_JSON)
 				.content("""
 					{
@@ -76,6 +79,7 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(jsonPath("$.email").value(email));
 
 		mockMvc.perform(post("/api/auth/login")
+				.with(csrf())
 				.contentType(APPLICATION_JSON)
 				.content("""
 					{
@@ -91,6 +95,7 @@ class AuthAndAccessIntegrationTest {
 		String email = uniqueEmail("duplicate");
 
 		mockMvc.perform(post("/api/auth/signup")
+				.with(csrf())
 				.contentType(APPLICATION_JSON)
 				.content("""
 					{
@@ -103,6 +108,7 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(status().isOk());
 
 		mockMvc.perform(post("/api/auth/signup")
+				.with(csrf())
 				.contentType(APPLICATION_JSON)
 				.content("""
 					{
@@ -117,17 +123,35 @@ class AuthAndAccessIntegrationTest {
 	}
 
 	@Test
+	void csrfIsRequiredForStateChangingRequests() throws Exception {
+		mockMvc.perform(post("/api/auth/signup")
+				.contentType(APPLICATION_JSON)
+				.content("""
+					{
+					  "email": "%s",
+					  "password": "Fan12345!",
+					  "displayName": "No Csrf",
+					  "role": "FAN"
+					}
+					""".formatted(uniqueEmail("csrf-missing"))))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.detail").value("CSRF token is missing or invalid"));
+	}
+
+	@Test
 	void creatorCanManageStudioWhileFanCannot() throws Exception {
 		MockHttpSession creatorSession = signUpCreator(uniqueEmail("creator-studio"), "Studio Creator", "@studio_creator");
 		MockHttpSession fanSession = signUp(uniqueEmail("fan-studio"), "Fan Studio");
 
 		mockMvc.perform(post("/api/studio/editions")
+				.with(csrf())
 				.session(fanSession)
 				.contentType(APPLICATION_JSON)
 				.content(studioPayload("Fan Edition")))
 			.andExpect(status().isForbidden());
 
 		MvcResult createEditionResult = mockMvc.perform(post("/api/studio/editions")
+				.with(csrf())
 				.session(creatorSession)
 				.contentType(APPLICATION_JSON)
 				.content(studioPayload("Creator Edition")))
@@ -139,6 +163,7 @@ class AuthAndAccessIntegrationTest {
 		long editionId = readLong(createEditionResult, "id");
 
 		mockMvc.perform(patch("/api/studio/editions/{editionId}", editionId)
+				.with(csrf())
 				.session(creatorSession)
 				.contentType(APPLICATION_JSON)
 				.content(studioPayload("Creator Edition Updated")))
@@ -146,6 +171,7 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(jsonPath("$.title").value("Creator Edition Updated"));
 
 		mockMvc.perform(post("/api/studio/editions/{editionId}/publish", editionId)
+				.with(csrf())
 				.session(creatorSession))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.status").value("PUBLISHED"));
@@ -166,6 +192,7 @@ class AuthAndAccessIntegrationTest {
 		String email = uniqueEmail("creator");
 
 		MvcResult signUpResult = mockMvc.perform(post("/api/auth/signup")
+				.with(csrf())
 				.contentType(APPLICATION_JSON)
 				.content("""
 					{
@@ -184,6 +211,7 @@ class AuthAndAccessIntegrationTest {
 		MockHttpSession creatorSession = (MockHttpSession) signUpResult.getRequest().getSession(false);
 
 		mockMvc.perform(post("/api/studio/editions")
+				.with(csrf())
 				.session(creatorSession)
 				.contentType(APPLICATION_JSON)
 				.content(studioPayload("Fresh Creator Edition")))
@@ -196,6 +224,7 @@ class AuthAndAccessIntegrationTest {
 	@Test
 	void projectEndpointsRequireAuthentication() throws Exception {
 		mockMvc.perform(post("/api/projects")
+				.with(csrf())
 				.contentType(APPLICATION_JSON)
 				.content("""
 					{
@@ -236,17 +265,18 @@ class AuthAndAccessIntegrationTest {
 		MockHttpSession session = signUp(uniqueEmail("ordered"), "Ordered Fan");
 		long projectId = createProject(session, 1L, "demo");
 
-		mockMvc.perform(post("/api/projects/{projectId}/generate-book", projectId).session(session))
+		mockMvc.perform(post("/api/projects/{projectId}/generate-book", projectId).with(csrf()).session(session))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.status").value("DRAFT"))
 			.andExpect(jsonPath("$.projectStatus").value("BOOK_CREATED"));
 
-		mockMvc.perform(post("/api/projects/{projectId}/finalize-book", projectId).session(session))
+		mockMvc.perform(post("/api/projects/{projectId}/finalize-book", projectId).with(csrf()).session(session))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.status").value("FINALIZED"))
 			.andExpect(jsonPath("$.projectStatus").value("FINALIZED"));
 
 		mockMvc.perform(post("/api/projects/{projectId}/order", projectId)
+				.with(csrf())
 				.session(session)
 				.contentType(APPLICATION_JSON)
 				.content("""
@@ -326,6 +356,7 @@ class AuthAndAccessIntegrationTest {
 		String fulfillmentOrderUid = readString(summaryResult, "fulfillmentOrderUid");
 
 		mockMvc.perform(post("/api/sweetbook/webhooks/events")
+				.header("X-Sweetbook-Webhook-Secret", "test-webhook-secret")
 				.contentType(APPLICATION_JSON)
 				.content("""
 					{
@@ -345,8 +376,25 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(jsonPath("$.lastFulfillmentEvent").value("production.started"));
 	}
 
+	@Test
+	void sweetbookWebhookRejectsMissingSharedSecret() throws Exception {
+		mockMvc.perform(post("/api/sweetbook/webhooks/events")
+				.contentType(APPLICATION_JSON)
+				.content("""
+					{
+					  "event": "production.started",
+					  "data": {
+					    "orderUid": "demo-order"
+					  }
+					}
+					"""))
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.detail").value("Sweetbook webhook secret is invalid"));
+	}
+
 	private MockHttpSession login(String email, String password) throws Exception {
 		MvcResult result = mockMvc.perform(post("/api/auth/login")
+				.with(csrf())
 				.contentType(APPLICATION_JSON)
 				.content("""
 					{
@@ -362,6 +410,7 @@ class AuthAndAccessIntegrationTest {
 
 	private MockHttpSession signUp(String email, String displayName) throws Exception {
 		MvcResult result = mockMvc.perform(post("/api/auth/signup")
+				.with(csrf())
 				.contentType(APPLICATION_JSON)
 				.content("""
 					{
@@ -379,6 +428,7 @@ class AuthAndAccessIntegrationTest {
 
 	private MockHttpSession signUpCreator(String email, String displayName, String channelHandle) throws Exception {
 		MvcResult result = mockMvc.perform(post("/api/auth/signup")
+				.with(csrf())
 				.contentType(APPLICATION_JSON)
 				.content("""
 					{
@@ -397,6 +447,7 @@ class AuthAndAccessIntegrationTest {
 
 	private long createProject(MockHttpSession session, long editionId, String mode) throws Exception {
 		MvcResult result = mockMvc.perform(post("/api/projects")
+				.with(csrf())
 				.session(session)
 				.contentType(APPLICATION_JSON)
 				.content("""
@@ -413,6 +464,7 @@ class AuthAndAccessIntegrationTest {
 
 	private long createAndPublishEdition(MockHttpSession session, String title) throws Exception {
 		MvcResult createEditionResult = mockMvc.perform(post("/api/studio/editions")
+				.with(csrf())
 				.session(session)
 				.contentType(APPLICATION_JSON)
 				.content(studioPayload(title)))
@@ -422,6 +474,7 @@ class AuthAndAccessIntegrationTest {
 		long editionId = readLong(createEditionResult, "id");
 
 		mockMvc.perform(post("/api/studio/editions/{editionId}/publish", editionId)
+				.with(csrf())
 				.session(session))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.status").value("PUBLISHED"));
@@ -430,17 +483,18 @@ class AuthAndAccessIntegrationTest {
 	}
 
 	private void placeOrder(MockHttpSession session, long projectId, String recipientName, String recipientPhone) throws Exception {
-		mockMvc.perform(post("/api/projects/{projectId}/generate-book", projectId).session(session))
+		mockMvc.perform(post("/api/projects/{projectId}/generate-book", projectId).with(csrf()).session(session))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.status").value("DRAFT"))
 			.andExpect(jsonPath("$.projectStatus").value("BOOK_CREATED"));
 
-		mockMvc.perform(post("/api/projects/{projectId}/finalize-book", projectId).session(session))
+		mockMvc.perform(post("/api/projects/{projectId}/finalize-book", projectId).with(csrf()).session(session))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.status").value("FINALIZED"))
 			.andExpect(jsonPath("$.projectStatus").value("FINALIZED"));
 
 		mockMvc.perform(post("/api/projects/{projectId}/order", projectId)
+				.with(csrf())
 				.session(session)
 				.contentType(APPLICATION_JSON)
 				.content("""

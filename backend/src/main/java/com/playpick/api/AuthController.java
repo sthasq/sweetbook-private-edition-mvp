@@ -15,6 +15,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -56,6 +57,16 @@ public class AuthController {
 		return authService.currentUser();
 	}
 
+	@Operation(summary = "Issue a CSRF token for browser clients")
+	@GetMapping("/csrf")
+	public CsrfTokenResponse csrf(CsrfToken csrfToken) {
+		return new CsrfTokenResponse(
+			csrfToken.getHeaderName(),
+			csrfToken.getParameterName(),
+			csrfToken.getToken()
+		);
+	}
+
 	@Operation(summary = "Log out the current session")
 	@PostMapping("/logout")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
@@ -83,4 +94,11 @@ record LoginRequest(
 	AuthCommands.Login toCommand() {
 		return new AuthCommands.Login(email, password);
 	}
+}
+
+record CsrfTokenResponse(
+	String headerName,
+	String parameterName,
+	String token
+) {
 }

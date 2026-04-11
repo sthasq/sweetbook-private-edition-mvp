@@ -1,6 +1,15 @@
 const BASE = "/api";
 const responseCache = new Map<string, { expiresAt: number; data: unknown }>();
 const inflightRequests = new Map<string, Promise<unknown>>();
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"]);
+
+type CsrfState = {
+  headerName: string;
+  token: string;
+};
+
+let csrfState: CsrfState | null = null;
+let csrfRequest: Promise<CsrfState> | null = null;
 
 type CacheOptions = {
   ttlMs?: number;
@@ -20,13 +29,22 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const isFormData = typeof FormData !== "undefined" && init?.body instanceof FormData;
+  const method = (init?.method ?? "GET").toUpperCase();
+  const headers = new Headers(init?.headers ?? undefined);
+  if (!isFormData && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const requiresCsrf = !SAFE_METHODS.has(method) && path !== "/auth/csrf";
+  if (requiresCsrf) {
+    const csrf = await ensureCsrfToken();
+    headers.set(csrf.headerName, csrf.token);
+  }
+
   const res = await fetch(`${BASE}${path}`, {
     ...init,
     credentials: "include",
-    headers: {
-      ...(isFormData ? {} : { "Content-Type": "application/json" }),
-      ...(init?.headers ?? {}),
-    },
+    headers,
   });
   if (!res.ok) {
     const contentType = res.headers.get("content-type") ?? "";
@@ -55,6 +73,36 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     return undefined as T;
   }
   return res.json();
+}
+
+async function ensureCsrfToken(forceRefresh = false) {
+  if (!forceRefresh && csrfState) {
+    return csrfState;
+  }
+
+  if (!forceRefresh && csrfRequest) {
+    return csrfRequest;
+  }
+
+  const pendingRequest = request<{ headerName: string; token: string }>("/auth/csrf")
+    .then((payload) => {
+      csrfState = {
+        headerName: payload.headerName,
+        token: payload.token,
+      };
+      return csrfState;
+    })
+    .finally(() => {
+      csrfRequest = null;
+    });
+
+  csrfRequest = pendingRequest;
+  return pendingRequest;
+}
+
+export function clearCsrfToken() {
+  csrfState = null;
+  csrfRequest = null;
 }
 
 function getCacheKey(path: string) {
