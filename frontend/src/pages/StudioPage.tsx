@@ -4,7 +4,6 @@ import { ApiError } from "../api/client";
 import {
   createEdition,
   getStudioEdition,
-  importStudioYouTubeRecap,
   publishEdition,
   uploadStudioCover,
   updateEdition,
@@ -25,7 +24,6 @@ import type {
   SweetbookBookSpec,
   SweetbookIntegrationStatus,
   SweetbookTemplate,
-  YouTubeStudioRecapResult,
 } from "../types/api";
 import {
   computeBookPlan,
@@ -133,10 +131,6 @@ export default function StudioPage() {
   const [layoutTemplateError, setLayoutTemplateError] = useState("");
   const [integrationStatus, setIntegrationStatus] =
     useState<SweetbookIntegrationStatus | null>(null);
-  const [recapSource, setRecapSource] = useState("");
-  const [recapImportMode, setRecapImportMode] = useState<"replace" | "append">("replace");
-  const [recapLoading, setRecapLoading] = useState(false);
-  const [recapResult, setRecapResult] = useState<YouTubeStudioRecapResult | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [savedFingerprint, setSavedFingerprint] = useState<string | null>(null);
@@ -367,54 +361,6 @@ export default function StudioPage() {
         (current.curatedAssets ?? []).filter((_, assetIndex) => assetIndex !== index),
       ),
     }));
-  }
-
-  async function handleImportYouTubeRecap() {
-    const source = recapSource.trim();
-    if (!source) {
-      setError("유튜브 채널 링크, @핸들, 채널 ID, 또는 영상 링크를 입력해 주세요.");
-      setSuccess("");
-      return;
-    }
-
-    if (
-      recapImportMode === "replace" &&
-      assets.length > 0 &&
-      !window.confirm("현재 큐레이션 자산을 유튜브 리캡 자산으로 교체할까요?")
-    ) {
-      return;
-    }
-
-    setRecapLoading(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      const result = await importStudioYouTubeRecap(source);
-      setRecapResult(result);
-      setForm((current) => ({
-        ...current,
-        curatedAssets: resequenceAssets(buildImportedAssets(current.curatedAssets ?? [], result.curatedAssets, recapImportMode)),
-      }));
-      setSuccess(
-        recapImportMode === "append"
-          ? `"${result.channel.title}" 리캡 자산을 기존 큐레이션 뒤에 추가했습니다.`
-          : `"${result.channel.title}" 채널 기준으로 리캡 자산을 불러왔습니다.`,
-      );
-    } catch (e: unknown) {
-      if (e instanceof ApiError && e.status === 401) {
-        setError("세션이 만료되어 다시 로그인해 주세요.");
-        setSuccess("");
-        const next = `${location.pathname}${location.search}`;
-        navigate(`/login?next=${encodeURIComponent(next)}&reason=session-expired`, {
-          replace: true,
-        });
-        return;
-      }
-      setError(e instanceof Error ? e.message : "유튜브 리캡 자산 불러오기 실패");
-    } finally {
-      setRecapLoading(false);
-    }
   }
 
   function addField() {
@@ -684,7 +630,7 @@ export default function StudioPage() {
 
             <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
               <div className="grid gap-4">
-                <input value={form.title} onChange={(e) => setForm((current) => ({ ...current, title: e.target.value }))} className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="예: 2026 상반기 여행 리캡북" />
+                <input value={form.title} onChange={(e) => setForm((current) => ({ ...current, title: e.target.value }))} className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="예: 2026 상반기 여행 포토북" />
                 <input value={form.subtitle} onChange={(e) => setForm((current) => ({ ...current, subtitle: e.target.value }))} className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="팬이 처음 보게 될 짧은 소개" />
                 <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -780,7 +726,7 @@ export default function StudioPage() {
               <div>
                 <h2 className="text-lg font-semibold text-stone-900">템플릿 큐레이션</h2>
                 <p className="mt-1 text-sm text-stone-600">
-                  플레이픽 리캡북 컨셉에 맞는 추천 템플릿만 남겨 두었습니다.
+                  플레이픽 포토북 컨셉에 맞는 추천 템플릿만 남겨 두었습니다.
                 </p>
               </div>
               <p className="text-xs font-medium text-stone-500">
@@ -800,7 +746,7 @@ export default function StudioPage() {
               <div className="mt-5 space-y-5">
                 <SweetbookTemplateSection
                   title="표지 템플릿"
-                  description="플레이픽 리캡북 컨셉에 맞는 표지 4종만 추려서 보여줍니다."
+                  description="플레이픽 포토북 컨셉에 맞는 표지 4종만 추려서 보여줍니다."
                   templates={sweetbookTemplateGroups.cover}
                   selectedUid={form.sweetbookCoverTemplateUid ?? ""}
                   onSelect={(uid) => selectSweetbookTemplate("cover", uid)}
@@ -816,7 +762,7 @@ export default function StudioPage() {
                 />
                 <SweetbookTemplateSection
                   title="본문 템플릿"
-                  description="사진 리캡북에 잘 맞는 본문 6종만 남겨서 보여줍니다."
+                  description="사진 중심 포토북에 잘 맞는 본문 6종만 남겨서 보여줍니다."
                   templates={sweetbookTemplateGroups.content}
                   selectedUid={form.sweetbookContentTemplateUid ?? ""}
                   onSelect={(uid) => selectSweetbookTemplate("content", uid)}
@@ -851,142 +797,9 @@ export default function StudioPage() {
               <h2 className="text-lg font-semibold text-stone-900">큐레이션 자산</h2>
               <button type="button" onClick={addAsset} className="editorial-button-secondary px-4 py-2.5">자산 추가</button>
             </div>
-            <div className="mt-5 rounded-2xl border border-red-200 bg-red-50/50 p-4">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-                <div className="min-w-0 flex-1">
-                  <label htmlFor="youtube-recap-source" className="block text-sm font-medium text-stone-800 mb-1.5">
-                    유튜브 리캡 자산 불러오기
-                  </label>
-                  <input
-                    id="youtube-recap-source"
-                    value={recapSource}
-                    onChange={(e) => setRecapSource(e.target.value)}
-                    className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-                    placeholder="채널 링크, @핸들, 채널 ID, 또는 영상 링크"
-                  />
-                  <p className="mt-2 text-xs text-stone-500">
-                    예: `https://www.youtube.com/@ondolog`, `@ondolog`, `UC...`, 또는 해당 채널의 영상 링크
-                  </p>
-                  <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-stone-600">
-                    <label className="inline-flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="recap-import-mode"
-                        checked={recapImportMode === "replace"}
-                        onChange={() => setRecapImportMode("replace")}
-                        className="h-4 w-4 border-stone-300 text-brand-600 focus:ring-brand-500"
-                      />
-                      기존 자산 교체
-                    </label>
-                    <label className="inline-flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="recap-import-mode"
-                        checked={recapImportMode === "append"}
-                        onChange={() => setRecapImportMode("append")}
-                        className="h-4 w-4 border-stone-300 text-brand-600 focus:ring-brand-500"
-                      />
-                      기존 자산 뒤에 추가
-                    </label>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleImportYouTubeRecap}
-                  disabled={recapLoading}
-                  className="editorial-button-primary px-5 py-2.5 disabled:opacity-50"
-                >
-                  {recapLoading ? "불러오는 중..." : "리캡 자산 불러오기"}
-                </button>
-              </div>
-
-              {recapResult && (
-                  <div className="mt-4 rounded-2xl border border-red-100 bg-white/90 p-4">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={recapResult.channel.thumbnailUrl || "/demo-assets/playpick-hero.svg"}
-                        alt={recapResult.channel.title}
-                        className="h-12 w-12 rounded-full object-cover"
-                      />
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-stone-900">{recapResult.channel.title}</p>
-                      <p className="truncate text-xs text-stone-500">
-                        구독자 {formatCompactNumber(recapResult.channel.subscriberCount)} · 영상 {formatCompactNumber(recapResult.channel.videoCount)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 grid gap-3 md:grid-cols-3">
-                    <div className="rounded-xl border border-stone-200 bg-stone-50/80 p-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">최근 1년 업로드</p>
-                      <p className="mt-2 text-xl font-bold text-stone-900">{recapResult.yearlySummary.uploadCount}</p>
-                    </div>
-                    <div className="rounded-xl border border-stone-200 bg-stone-50/80 p-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">최근 1년 조회수</p>
-                      <p className="mt-2 text-xl font-bold text-stone-900">{formatCompactNumber(recapResult.yearlySummary.totalViews)}</p>
-                    </div>
-                    <div className="rounded-xl border border-stone-200 bg-stone-50/80 p-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">영상당 평균 조회수</p>
-                      <p className="mt-2 text-xl font-bold text-stone-900">{formatCompactNumber(recapResult.yearlySummary.averageViewsPerVideo)}</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs font-medium text-stone-700">월별 업로드/조회 추이</p>
-                      <p className="text-[11px] text-stone-500">{recapResult.yearlySummary.periodLabel}</p>
-                    </div>
-                    <div className="mt-3 grid grid-cols-3 gap-2 md:grid-cols-6 xl:grid-cols-12">
-                      {recapResult.yearlySummary.monthlyStats.map((stat) => (
-                        <div key={stat.month} className="rounded-xl border border-stone-200 bg-stone-50/80 p-2">
-                          <div className="flex h-20 items-end justify-center gap-1">
-                            <div
-                              className="w-3 rounded-full bg-brand-200"
-                              style={{ height: `${scaleStatHeight(stat.uploadCount, recapResult.yearlySummary.monthlyStats, "uploadCount")}%` }}
-                              title={`업로드 ${stat.uploadCount}개`}
-                            />
-                            <div
-                              className="w-3 rounded-full bg-red-300"
-                              style={{ height: `${scaleStatHeight(stat.totalViews, recapResult.yearlySummary.monthlyStats, "totalViews")}%` }}
-                              title={`조회수 ${stat.totalViews.toLocaleString("ko-KR")}회`}
-                            />
-                          </div>
-                          <p className="mt-2 text-center text-[11px] font-medium text-stone-600">
-                            {stat.month.slice(5).replace("-", ".")}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-stone-500">
-                      <span className="inline-flex items-center gap-1">
-                        <span className="h-2.5 w-2.5 rounded-full bg-brand-200" />
-                        업로드 수
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <span className="h-2.5 w-2.5 rounded-full bg-red-300" />
-                        조회수
-                      </span>
-                    </div>
-                  </div>
-
-                  {recapResult.topVideos.length > 0 && (
-                    <div className="mt-4">
-                      <p className="text-xs font-medium text-stone-700">대표 영상</p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {recapResult.topVideos.slice(0, 3).map((video) => (
-                          <span
-                            key={video.videoId}
-                            className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs text-stone-600"
-                          >
-                            {video.title}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <p className="mt-5 rounded-2xl border border-dashed border-stone-300 bg-stone-50/70 px-4 py-4 text-sm leading-relaxed text-stone-600">
+              공식 이미지, 영상 링크, 메시지를 직접 구성해 팬에게 보여줄 핵심 장면을 설계하세요.
+            </p>
             <div className="mt-5 space-y-4">
               {assets.length === 0 ? (
                 <p className="rounded-2xl border border-dashed border-stone-300 bg-stone-50/70 px-4 py-8 text-center text-sm text-stone-500">이미지, 영상 링크, 메시지를 추가해 팬용 템플릿을 구성하세요.</p>
@@ -2032,13 +1845,6 @@ function extractYouTubeVideoId(url: string) {
   return "";
 }
 
-function formatCompactNumber(value: number) {
-  return new Intl.NumberFormat("ko-KR", {
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(value);
-}
-
 function readEditModeName(mode: SweetbookEditModeId) {
   return SWEETBOOK_EDIT_MODES.find((item) => item.id === mode)?.title ?? mode;
 }
@@ -2115,25 +1921,3 @@ function buildSweetbookPagePlan({
   ];
 }
 
-function buildImportedAssets(
-  currentAssets: StudioCuratedAssetInput[],
-  importedAssets: StudioCuratedAssetInput[],
-  mode: "replace" | "append",
-) {
-  if (mode === "replace") {
-    return importedAssets.map((asset) => createAsset(asset));
-  }
-
-  const existing = currentAssets.map((asset) => createAsset(asset));
-  const imported = importedAssets.map((asset) => createAsset(asset));
-  return [...existing, ...imported];
-}
-
-function scaleStatHeight(
-  value: number,
-  stats: YouTubeStudioRecapResult["yearlySummary"]["monthlyStats"],
-  key: "uploadCount" | "totalViews",
-) {
-  const max = Math.max(...stats.map((item) => item[key]), 1);
-  return Math.max(12, Math.round((value / max) * 100));
-}

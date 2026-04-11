@@ -15,8 +15,8 @@ const STEPS = [
   {
     key: "personalize",
     number: "02",
-    label: "개인화",
-    description: "나만의 이야기 채우기",
+    label: "LLM 개인화",
+    description: "질문에 답하고 제안 받기",
   },
   {
     key: "preview",

@@ -10,6 +10,7 @@ import type { SweetbookIntegrationStatus } from "../types/api";
 import {
   estimateEditionPricing,
   integrationTone,
+  projectModeLabel,
   projectStageLabel,
 } from "../lib/sweetbookWorkflow";
 
@@ -138,7 +139,7 @@ export default function PreviewPage() {
                       이전
                     </button>
                     <div className="rounded-full bg-white/85 px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-warm-500 shadow-sm">
-                      페이지 {activeSpread + 1} / {pages.length}
+                      {activeSpread + 1}–{Math.min(activeSpread + 2, pages.length)} / {pages.length}p
                     </div>
                     <button
                       disabled={activeSpread + 2 >= pages.length}
@@ -310,15 +311,15 @@ export default function PreviewPage() {
                 )}
               </div>
 
-              <div className="mt-8 rounded bg-gold-400/15 px-4 py-4 text-sm leading-relaxed text-gold-500">
-                {preview.status === "BOOK_CREATED"
-                  ? "포토북이 준비됐어요! '인쇄용으로 확정하기'를 누르면 배송 · 결제 단계로 넘어갈 수 있어요."
-                  : preview.status === "FINALIZED"
-                    ? "모든 준비가 끝났어요. '배송 · 결제로 이동'을 눌러 주문을 완료해주세요."
-                    : preview.status === "ORDERED"
-                      ? ""
+              {preview.status !== "ORDERED" && (
+                <div className="mt-8 rounded bg-gold-400/15 px-4 py-4 text-sm leading-relaxed text-gold-500">
+                  {preview.status === "BOOK_CREATED"
+                    ? "포토북이 준비됐어요! '인쇄용으로 확정하기'를 누르면 배송 · 결제 단계로 넘어갈 수 있어요."
+                    : preview.status === "FINALIZED"
+                      ? "모든 준비가 끝났어요. '배송 · 결제로 이동'을 눌러 주문을 완료해주세요."
                       : "아래 '포토북 만들기' 버튼을 누르면 입력한 내용으로 포토북이 완성돼요."}
-              </div>
+                </div>
+              )}
             </div>
           </aside>
         </div>
@@ -395,17 +396,6 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
       <p className="mt-2 text-sm text-stone-900">{value}</p>
     </div>
   );
-}
-
-function projectModeLabel(mode: string) {
-  switch (mode.toUpperCase()) {
-    case "DEMO":
-      return "직접 입력";
-    case "YOUTUBE":
-      return "YouTube 기반";
-    default:
-      return mode;
-  }
 }
 
 type SummaryHighlight = {

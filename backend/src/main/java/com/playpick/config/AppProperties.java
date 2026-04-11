@@ -25,7 +25,19 @@ public class AppProperties {
 
 	private String studioAssetDir = System.getProperty("java.io.tmpdir") + "/playpick-studio-assets";
 
+	private String publicBaseUrl = "";
+
+	private String publicAssetBaseUrl = "";
+
+	private String publicAssetScpTarget = "";
+
+	private String publicAssetSshKeyPath = "";
+
 	private BigDecimal commissionRate = new BigDecimal("0.20");
 
 	private BigDecimal marginRate = new BigDecimal("0.35");
+
+	public String getEffectivePublicBaseUrl() {
+		return publicBaseUrl == null || publicBaseUrl.isBlank() ? frontendBaseUrl : publicBaseUrl;
+	}
 }

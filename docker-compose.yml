@@ -40,6 +40,8 @@ services:
         condition: service_healthy
     ports:
       - "8080:8080"
+    volumes:
+      - ${USERPROFILE}/.ssh:/root/.ssh:ro
     environment:
       SPRING_PROFILES_ACTIVE: docker,session-redis
       SERVER_PORT: 8080
@@ -50,6 +52,10 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:3000}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3000}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      PUBLIC_ASSET_BASE_URL: ${PUBLIC_ASSET_BASE_URL:-}
+      PUBLIC_ASSET_SCP_TARGET: ${PUBLIC_ASSET_SCP_TARGET:-}
+      PUBLIC_ASSET_SSH_KEY_PATH: /root/.ssh/oci_a1_free
       SWEETBOOK_ENABLED: ${SWEETBOOK_ENABLED:-true}
       SWEETBOOK_API_KEY: ${SWEETBOOK_API_KEY:-}
       SWEETBOOK_BASE_URL: ${SWEETBOOK_BASE_URL:-https://api-sandbox.sweetbook.com/v1}
@@ -59,6 +65,7 @@ services:
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:3000/oauth/google/callback}
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_CHAT_MODEL: ${OPENROUTER_CHAT_MODEL:-deepseek/deepseek-v3.2}
       OPENROUTER_IMAGE_MODEL: ${OPENROUTER_IMAGE_MODEL:-google/gemini-3.1-flash-image-preview}
       OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
       TOSS_PAYMENTS_ENABLED: ${TOSS_PAYMENTS_ENABLED:-false}

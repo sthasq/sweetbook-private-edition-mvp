@@ -204,7 +204,7 @@ function drawTravelSelfie(
   context.font = "700 56px Georgia";
   context.fillText("TRAVEL", 80, 120);
   context.font = "700 74px Georgia";
-  context.fillText("WITH PANI", 80, 198);
+  context.fillText("WITH ASTRA", 80, 198);
   context.font = "500 28px sans-serif";
   context.fillText("OFFICIAL COLLAB CUT", 82, 244);
 
@@ -216,9 +216,9 @@ function drawTravelSelfie(
     600,
   );
   context.font = "500 24px sans-serif";
-  context.fillText("빠니보틀 에디션 프로토타입", 98, 646);
+  context.fillText("Astra Vale edition prototype", 98, 646);
 
-  drawAvatarBadge(context, avatar, 92, 684, "PaniBottle");
+  drawAvatarBadge(context, avatar, 92, 684, "AstraVale");
 }
 
 function drawPassportPoster(
@@ -258,7 +258,7 @@ function drawPassportPoster(
 
   context.fillStyle = "#8b4a24";
   context.font = "700 52px Georgia";
-  context.fillText("PANI MEMORY", 118, 784);
+  context.fillText("ASTRA MEMORY", 118, 784);
   context.font = "500 24px sans-serif";
   context.fillText(
     variant === 0 ? "여행 포스터처럼 정리한 공식 콜라보 컷" : "티켓과 스탬프를 붙인 기념컷 무드",
@@ -268,7 +268,7 @@ function drawPassportPoster(
 
   drawStamp(context, 620, 76, variant === 0 ? "#d67644" : "#276f7a", "PASSPORT");
   drawStamp(context, 812, 108, "#c6a357", "TRAVEL");
-  drawAvatarBadge(context, avatar, 932, 736, "PaniBottle");
+  drawAvatarBadge(context, avatar, 932, 736, "AstraVale");
 }
 
 function drawNightTrain(
@@ -317,7 +317,7 @@ function drawNightTrain(
     792,
   );
 
-  drawAvatarBadge(context, avatar, 112, 692, "PaniBottle");
+  drawAvatarBadge(context, avatar, 112, 692, "AstraVale");
 }
 
 function drawAvatarBadge(

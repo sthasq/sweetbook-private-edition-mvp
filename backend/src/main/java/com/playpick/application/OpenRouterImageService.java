@@ -32,7 +32,7 @@ public class OpenRouterImageService {
 	private final ObjectMapper objectMapper;
 
 	public ProjectViews.AiCollabGeneration generatePaniCollab(ProjectCommands.GenerateAiCollab command) {
-		if (!properties.isReady()) {
+		if (!properties.isImageReady()) {
 			throw new AppException(HttpStatus.BAD_REQUEST, "OpenRouter is not configured");
 		}
 

@@ -37,6 +37,7 @@ public class EditionService {
 	private final PersonalizationSchemaRepository personalizationSchemaRepository;
 	private final SweetbookProperties sweetbookProperties;
 	private final CurrentUserService currentUserService;
+	private final PublicAssetUrlResolver publicAssetUrlResolver;
 
 	public List<EditionViews.Summary> listPublishedEditions() {
 		return editionRepository.findByStatusOrderByUpdatedAtDesc(EditionStatus.PUBLISHED).stream()
@@ -303,7 +304,7 @@ public class EditionService {
 			edition.getId(),
 			edition.getTitle(),
 			edition.getSubtitle(),
-			edition.getCoverImageUrl(),
+			publicAssetUrlResolver.resolve(edition.getCoverImageUrl()),
 			edition.getStatus().name(),
 			toCreatorView(edition.getCreator()),
 			edition.getUpdatedAt(),
@@ -316,7 +317,7 @@ public class EditionService {
 			edition.getId(),
 			edition.getTitle(),
 			edition.getSubtitle(),
-			edition.getCoverImageUrl(),
+			publicAssetUrlResolver.resolve(edition.getCoverImageUrl()),
 			edition.getStatus().name(),
 			toCreatorView(edition.getCreator()),
 			toSnapshotView(version),
@@ -340,7 +341,7 @@ public class EditionService {
 			creator.getId(),
 			creator.getDisplayName(),
 			creator.getChannelHandle(),
-			creator.getAvatarUrl(),
+			publicAssetUrlResolver.resolve(creator.getAvatarUrl()),
 			creator.isVerified()
 		);
 	}
@@ -351,7 +352,9 @@ public class EditionService {
 				asset.getId(),
 				asset.getAssetType().name(),
 				asset.getTitle(),
-				asset.getContent(),
+				asset.getAssetType() == com.playpick.domain.CuratedAssetType.IMAGE
+					? publicAssetUrlResolver.resolve(asset.getContent())
+					: asset.getContent(),
 				asset.getSortOrder()
 			))
 			.toList();

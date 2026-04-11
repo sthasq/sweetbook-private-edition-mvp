@@ -4,6 +4,8 @@ import type {
   ProjectPreview,
   BookGeneration,
   AiCollabGenerationResponse,
+  ChatMessage,
+  ChatPersonalizationResponse,
   EstimateResponse,
   PaymentSessionResponse,
   OrderResponse,
@@ -62,6 +64,10 @@ export function generateAiCollab(
   },
 ) {
   return post<AiCollabGenerationResponse>(`/projects/${id}/ai-collab/generate`, body);
+}
+
+export function chatPersonalization(id: number, messages: ChatMessage[]) {
+  return post<ChatPersonalizationResponse>(`/projects/${id}/chat`, { messages });
 }
 
 export function estimateOrder(id: number, shipping?: ShippingInput) {

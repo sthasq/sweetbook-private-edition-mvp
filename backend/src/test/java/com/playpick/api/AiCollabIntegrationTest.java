@@ -66,6 +66,41 @@ class AiCollabIntegrationTest {
 			.andExpect(jsonPath("$.detail").value("OpenRouter is not configured"));
 	}
 
+	@Test
+	void chatEndpointRequiresOwnershipAndConfiguredOpenRouter() throws Exception {
+		MockHttpSession ownerSession = signUp(uniqueEmail("owner-chat"), "채팅 주인");
+		MockHttpSession otherSession = signUp(uniqueEmail("other-chat"), "다른 팬");
+		long projectId = createProject(ownerSession, 1L, "demo");
+
+		mockMvc.perform(post("/api/projects/{projectId}/chat", projectId)
+				.with(csrf())
+				.session(otherSession)
+				.contentType(APPLICATION_JSON)
+				.content("""
+					{
+					  "messages": [
+					    {"role": "user", "content": "안녕하세요"}
+					  ]
+					}
+					"""))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.detail").value("You do not have access to this project"));
+
+		mockMvc.perform(post("/api/projects/{projectId}/chat", projectId)
+				.with(csrf())
+				.session(ownerSession)
+				.contentType(APPLICATION_JSON)
+				.content("""
+					{
+					  "messages": [
+					    {"role": "user", "content": "안녕하세요"}
+					  ]
+					}
+					"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.detail").value("OpenRouter is not configured"));
+	}
+
 	private MockHttpSession signUp(String email, String displayName) throws Exception {
 		MvcResult result = mockMvc.perform(post("/api/auth/signup")
 				.with(csrf())

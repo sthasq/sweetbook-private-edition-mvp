@@ -8,14 +8,19 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class ProjectPreviewAssembler {
+
+	private final PublicAssetUrlResolver publicAssetUrlResolver;
 
 	public ProjectViews.Preview assemble(ProjectViews.Snapshot project, EditionViews.Detail edition) {
 		Map<String, Object> personalization = new LinkedHashMap<>(project.personalizationData());
-		String mode = asString(personalization.get("mode"), "demo");
+		String mode = normalizeMode(asString(personalization.get("mode"), "demo"));
+		personalization.put("mode", mode);
 		String fanNickname = asNonBlankString(personalization.get("fanNickname"), "팬");
 		Map<String, Object> channel = asMap(personalization.get("channel"));
 		List<Map<String, Object>> topVideos = asListOfMaps(personalization.get("topVideos"));
@@ -49,7 +54,7 @@ public class ProjectPreviewAssembler {
 				? "처음 좋아한 그날부터"
 				: "함께 보기 시작한 날 · " + subscribedSince.substring(0, Math.min(10, subscribedSince.length())),
 			"함께한 " + daysTogether + "일 · " + asString(channel.get("title"), edition.creator().displayName()),
-			asString(channel.get("bannerUrl"), edition.coverImageUrl()),
+			resolveImageUrl(channel.get("bannerUrl"), edition.coverImageUrl()),
 			Map.of(
 				"daysTogether", daysTogether,
 				"subscribedSince", subscribedSince,
@@ -65,7 +70,7 @@ public class ProjectPreviewAssembler {
 				.map(video -> asNonBlankString(video.get("title"), "제목 없는 영상"))
 				.reduce((left, right) -> left + " · " + right)
 				.orElse("인기 영상 데이터를 불러오면 이 페이지가 채워집니다."),
-			topVideos.isEmpty() ? edition.coverImageUrl() : asString(topVideos.get(0).get("thumbnailUrl"), edition.coverImageUrl()),
+			topVideos.isEmpty() ? edition.coverImageUrl() : resolveImageUrl(topVideos.get(0).get("thumbnailUrl"), edition.coverImageUrl()),
 			Map.of("topVideos", topVideos)
 		));
 
@@ -73,7 +78,7 @@ public class ProjectPreviewAssembler {
 			"fan-pick",
 			"내가 고른 장면",
 			asNonBlankString(favoriteVideo.get("title"), "가장 좋아하는 장면"),
-			asString(favoriteVideo.get("thumbnailUrl"), edition.coverImageUrl()),
+			resolveImageUrl(favoriteVideo.get("thumbnailUrl"), edition.coverImageUrl()),
 			Map.of(
 				"favoriteVideo", favoriteVideo,
 				"favoriteReason", asString(personalization.get("favoriteReason"), ""),
@@ -82,15 +87,17 @@ public class ProjectPreviewAssembler {
 		));
 
 		boolean hasAiCollabCut = edition.id() == 1L && hasText(personalization.get("aiCollabSelectedUrl"));
-		String aiCollabImageUrl = asString(personalization.get("aiCollabSelectedUrl"), "");
+		String aiCollabImageUrl = resolveImageUrl(personalization.get("aiCollabSelectedUrl"), "");
 		String aiCollabTemplateLabel = asNonBlankString(personalization.get("aiCollabTemplateLabel"), "공식 콜라보 컷");
-		String memoryImageUrl = asString(personalization.get("uploadedImageUrl"),
-			asString(personalization.get("memoryImageUrl"), asString(channel.get("thumbnailUrl"), edition.coverImageUrl())));
+		String memoryImageUrl = resolveImageUrl(
+			personalization.get("uploadedImageUrl"),
+			resolveImageUrl(personalization.get("memoryImageUrl"), resolveImageUrl(channel.get("thumbnailUrl"), edition.coverImageUrl()))
+		);
 		pages.add(new ProjectViews.Page(
 			"fan-note",
-			hasAiCollabCut ? "빠니보틀과 남긴 " + aiCollabTemplateLabel : fanNickname + "님의 한마디",
+			hasAiCollabCut ? "Astra Vale과 남긴 " + aiCollabTemplateLabel : fanNickname + "님의 한마디",
 			hasAiCollabCut
-				? asNonBlankString(personalization.get("fanNote"), "빠니보틀 여행 무드로 정리한 공식 콜라보 컷입니다.")
+				? asNonBlankString(personalization.get("fanNote"), "Astra Vale 여행 무드로 정리한 공식 콜라보 컷입니다.")
 				: asNonBlankString(personalization.get("fanNote"), "좋아하는 마음을 한 줄로 남겨 보세요."),
 			hasAiCollabCut ? aiCollabImageUrl : memoryImageUrl,
 			Map.of(
@@ -150,7 +157,13 @@ public class ProjectPreviewAssembler {
 			.filter(asset -> "IMAGE".equals(asset.assetType()))
 			.findFirst()
 			.map(EditionViews.CuratedAsset::content)
-			.orElse(fallback);
+			.map(publicAssetUrlResolver::resolve)
+			.orElse(publicAssetUrlResolver.resolve(fallback));
+	}
+
+	private String resolveImageUrl(Object value, String fallback) {
+		String raw = asString(value, fallback);
+		return publicAssetUrlResolver.resolve(raw);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -176,6 +189,17 @@ public class ProjectPreviewAssembler {
 
 	private String asString(Object value, String fallback) {
 		return value == null ? fallback : String.valueOf(value);
+	}
+
+	private String normalizeMode(String rawMode) {
+		if (rawMode == null || rawMode.isBlank()) {
+			return "demo";
+		}
+		String normalized = rawMode.trim().toLowerCase();
+		if ("youtube".equals(normalized)) {
+			return "demo";
+		}
+		return normalized;
 	}
 
 	private String asNonBlankString(Object value, String fallback) {

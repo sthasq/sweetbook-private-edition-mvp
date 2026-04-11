@@ -1,7 +1,6 @@
 package com.playpick;
 
 import com.playpick.config.AppProperties;
-import com.playpick.config.GoogleProperties;
 import com.playpick.config.OpenRouterProperties;
 import com.playpick.config.SweetbookProperties;
 import com.playpick.config.TossPaymentsProperties;
@@ -13,7 +12,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 @EnableConfigurationProperties({
 	AppProperties.class,
 	SweetbookProperties.class,
-	GoogleProperties.class,
 	OpenRouterProperties.class,
 	TossPaymentsProperties.class
 })

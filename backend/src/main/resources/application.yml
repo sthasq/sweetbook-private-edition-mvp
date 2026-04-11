@@ -31,6 +31,10 @@ app:
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:3000}
   demo-image-base-url: ${DEMO_IMAGE_BASE_URL:https://picsum.photos}
   studio-asset-dir: ${STUDIO_ASSET_DIR:${java.io.tmpdir}/playpick-studio-assets}
+  public-base-url: ${PUBLIC_BASE_URL:}
+  public-asset-base-url: ${PUBLIC_ASSET_BASE_URL:}
+  public-asset-scp-target: ${PUBLIC_ASSET_SCP_TARGET:}
+  public-asset-ssh-key-path: ${PUBLIC_ASSET_SSH_KEY_PATH:}
   commission-rate: ${APP_COMMISSION_RATE:0.20}
   margin-rate: ${APP_MARGIN_RATE:0.35}
 
@@ -45,15 +49,10 @@ sweetbook:
   default-content-template-uid: ${SWEETBOOK_CONTENT_TEMPLATE_UID:46VqZhVNOfAp}
   webhook-secret: ${SWEETBOOK_WEBHOOK_SECRET:}
 
-google:
-  client-id: ${GOOGLE_CLIENT_ID:}
-  client-secret: ${GOOGLE_CLIENT_SECRET:}
-  redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:3000/oauth/google/callback}
-  api-key: ${YOUTUBE_API_KEY:}
-
 openrouter:
   base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
   api-key: ${OPENROUTER_API_KEY:}
+  chat-model: ${OPENROUTER_CHAT_MODEL:deepseek/deepseek-v3.2}
   image-model: ${OPENROUTER_IMAGE_MODEL:google/gemini-3.1-flash-image-preview}
 
 toss-payments:

@@ -20,13 +20,19 @@ public class StudioAssetService {
 	private static final long MAX_UPLOAD_BYTES = 10L * 1024L * 1024L;
 
 	private final AppProperties appProperties;
+	private final PublicAssetUrlResolver publicAssetUrlResolver;
+	private final PublicAssetPublishingService publicAssetPublishingService;
 
 	public String uploadCover(MultipartFile file) {
+		return uploadImage(file);
+	}
+
+	public String uploadImage(MultipartFile file) {
 		if (file == null || file.isEmpty()) {
-			throw new AppException(HttpStatus.BAD_REQUEST, "업로드할 커버 이미지를 선택해 주세요.");
+			throw new AppException(HttpStatus.BAD_REQUEST, "업로드할 이미지를 선택해 주세요.");
 		}
 		if (file.getSize() > MAX_UPLOAD_BYTES) {
-			throw new AppException(HttpStatus.BAD_REQUEST, "커버 이미지는 10MB 이하만 업로드할 수 있습니다.");
+			throw new AppException(HttpStatus.BAD_REQUEST, "이미지는 10MB 이하만 업로드할 수 있습니다.");
 		}
 
 		String contentType = file.getContentType() == null ? "" : file.getContentType().toLowerCase(Locale.ROOT);
@@ -44,10 +50,14 @@ public class StudioAssetService {
 				Files.copy(inputStream, root.resolve(fileName), StandardCopyOption.REPLACE_EXISTING);
 			}
 		} catch (IOException exception) {
-			throw new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "커버 이미지를 저장하지 못했습니다.");
+			throw new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "이미지를 저장하지 못했습니다.");
 		}
 
-		return "/api/assets/" + fileName;
+		if (publicAssetPublishingService.isConfigured()) {
+			return publicAssetPublishingService.publishFile(root.resolve(fileName), fileName);
+		}
+
+		return publicAssetUrlResolver.resolve("/api/assets/" + fileName);
 	}
 
 	public Path resolveAsset(String fileName) {

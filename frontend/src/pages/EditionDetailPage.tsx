@@ -3,7 +3,6 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { getEdition } from "../api/editions";
 import { createProject } from "../api/projects";
 import { listSweetbookBookSpecs, listSweetbookTemplates } from "../api/sweetbook";
-import { getAvailability as getYouTubeAvailability } from "../api/youtube";
 import type {
   CuratedAsset,
   EditionDetail,
@@ -28,9 +27,6 @@ export default function EditionDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
-  const [youtubeEnabled, setYouTubeEnabled] = useState(false);
-  const [youtubeAvailabilityLoading, setYouTubeAvailabilityLoading] =
-    useState(true);
   const [bookSpecs, setBookSpecs] = useState<SweetbookBookSpec[]>([]);
   const [templates, setTemplates] = useState<SweetbookTemplate[]>([]);
   const autoStartTriggered = useRef(false);
@@ -42,13 +38,6 @@ export default function EditionDetailPage() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [editionId]);
-
-  useEffect(() => {
-    getYouTubeAvailability()
-      .then((result) => setYouTubeEnabled(result.enabled))
-      .catch(() => setYouTubeEnabled(false))
-      .finally(() => setYouTubeAvailabilityLoading(false));
-  }, []);
 
   useEffect(() => {
     const bookSpecUid = edition?.snapshot?.bookSpecUid;
@@ -67,15 +56,12 @@ export default function EditionDetailPage() {
       .catch(() => setTemplates([]));
   }, [edition?.snapshot?.bookSpecUid]);
 
-  async function startProject(mode: "demo" | "youtube") {
-    if (mode === "youtube" && !youtubeEnabled) {
-      return;
-    }
-    return startProjectInternal(mode, false);
+  async function startProject() {
+    return startProjectInternal("demo", false);
   }
 
   async function startProjectInternal(
-    mode: "demo" | "youtube",
+    mode: "demo",
     fromRedirect: boolean,
   ) {
     if (!edition) return;
@@ -103,7 +89,7 @@ export default function EditionDetailPage() {
     }
   }
 
-  const handleAutoStart = useEffectEvent((mode: "demo" | "youtube") => {
+  const handleAutoStart = useEffectEvent((mode: "demo") => {
     void startProjectInternal(mode, true);
   });
 
@@ -112,7 +98,7 @@ export default function EditionDetailPage() {
     if (!edition || !user || autoStartTriggered.current) {
       return;
     }
-    if (startMode !== "demo" && startMode !== "youtube") {
+    if (startMode !== "demo") {
       return;
     }
 
@@ -209,25 +195,14 @@ export default function EditionDetailPage() {
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
               <button
                 disabled={creating}
-                onClick={() => startProject("demo")}
+                onClick={() => startProject()}
                 className="editorial-button-primary min-w-[220px]"
               >
-                {creating ? "준비 중..." : "나만의 포토북 만들기"}
-              </button>
-              <button
-                disabled={creating || youtubeAvailabilityLoading || !youtubeEnabled}
-                onClick={() => startProject("youtube")}
-                className="editorial-button-secondary min-w-[220px] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                YouTube 기반으로 시작하기
+                {creating ? "준비 중..." : "질문으로 포토북 만들기"}
               </button>
             </div>
             <p className="mt-4 text-sm leading-relaxed text-warm-500">
-              {youtubeAvailabilityLoading
-                ? "YouTube 연동 가능 여부를 확인하고 있어요."
-                : youtubeEnabled
-                  ? "Google 계정을 연결하면 구독 채널과 최근 영상을 바탕으로 빠르게 시작할 수 있어요."
-                  : "직접 입력해서 나만의 포토북을 만들어보세요."}
+              몇 가지 질문에 답하면 LLM이 개인화 내용을 제안하고, 바로 내 포토북 미리보기로 이어집니다.
             </p>
             {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
@@ -243,9 +218,9 @@ export default function EditionDetailPage() {
               </div>
               <div className="rounded bg-surface-low px-5 py-5">
                 <p className="editorial-label text-brand-700">제작 방식</p>
-                <p className="mt-3 text-lg font-semibold text-stone-900">직접 입력 또는 YouTube 연동</p>
+                <p className="mt-3 text-lg font-semibold text-stone-900">LLM 대화형 추천</p>
                 <p className="mt-2 text-sm leading-relaxed text-warm-500">
-                  직접 이야기를 채워도 되고, YouTube 활동을 불러와 빠르게 시작할 수도 있어요.
+                  질문-답변 기반으로 개인화 문구를 자동 제안받고, 필요하면 바로 수정할 수 있어요.
                 </p>
               </div>
             </div>

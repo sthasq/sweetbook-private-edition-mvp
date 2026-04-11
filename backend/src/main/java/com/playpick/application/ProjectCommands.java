@@ -26,6 +26,12 @@ public final class ProjectCommands {
 	) {
 	}
 
+	public record ChatMessage(
+		String role,
+		String content
+	) {
+	}
+
 	public record Shipping(
 		String recipientName,
 		String recipientPhone,

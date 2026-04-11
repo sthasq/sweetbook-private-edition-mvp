@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -57,6 +58,16 @@ public class ProjectController {
 		return AiCollabGenerateResponse.from(
 			projectService.generateAiCollab(projectId, request.toCommand())
 		);
+	}
+
+	@Operation(summary = "Chat-based personalization assistant")
+	@PostMapping("/{projectId}/chat")
+	public ChatPersonalizationResponse chatPersonalization(
+		@PathVariable Long projectId,
+		@RequestBody(required = false) ChatPersonalizationRequest request
+	) {
+		List<ProjectCommands.ChatMessage> messages = request == null ? List.of() : request.toMessages();
+		return ChatPersonalizationResponse.from(projectService.chatPersonalization(projectId, messages));
 	}
 
 	@Operation(summary = "Get order summary for a completed project")
@@ -193,6 +204,39 @@ record AiCollabCandidateResponse(
 			candidate.caption(),
 			candidate.imageUrl(),
 			candidate.source()
+		);
+	}
+}
+
+record ChatPersonalizationRequest(
+	List<ChatMessagePayload> messages
+) {
+	List<ProjectCommands.ChatMessage> toMessages() {
+		if (messages == null || messages.isEmpty()) {
+			return List.of();
+		}
+		return messages.stream()
+			.map(message -> new ProjectCommands.ChatMessage(message.role(), message.content()))
+			.toList();
+	}
+}
+
+record ChatMessagePayload(
+	@NotBlank String role,
+	@NotBlank String content
+) {
+}
+
+record ChatPersonalizationResponse(
+	String reply,
+	Map<String, Object> proposal,
+	boolean done
+) {
+	static ChatPersonalizationResponse from(ProjectViews.ChatPersonalization response) {
+		return new ChatPersonalizationResponse(
+			response.reply(),
+			response.proposal(),
+			response.done()
 		);
 	}
 }

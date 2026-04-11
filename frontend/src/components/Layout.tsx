@@ -245,9 +245,16 @@ export default function Layout() {
             <Link to="/" className="transition hover:text-brand-700">
               에디션 둘러보기
             </Link>
-            <Link to="/studio/orders" className="transition hover:text-brand-700">
-              크리에이터 스튜디오
-            </Link>
+            {user && (
+              <Link to="/me/projects" className="transition hover:text-brand-700">
+                내 프로젝트
+              </Link>
+            )}
+            {user?.role === "CREATOR" && (
+              <Link to="/studio/orders" className="transition hover:text-brand-700">
+                크리에이터 스튜디오
+              </Link>
+            )}
           </div>
         </div>
       </footer>

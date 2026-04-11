@@ -138,6 +138,15 @@ export function estimateEditionPricing(specUid: string | null | undefined) {
   };
 }
 
+export function projectModeLabel(mode: string) {
+  switch (mode.toUpperCase()) {
+    case "DEMO":
+      return "LLM 대화형 추천";
+    default:
+      return mode;
+  }
+}
+
 function positive(value: number | null | undefined, fallback: number) {
   if (typeof value !== "number" || value <= 0) {
     return fallback;
