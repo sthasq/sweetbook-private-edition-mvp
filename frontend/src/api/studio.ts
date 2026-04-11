@@ -3,7 +3,6 @@ import type {
   EditionDetail,
   StudioEditionSummary,
   StudioOrderDashboard,
-  YouTubeStudioRecapResult,
 } from "../types/api";
 
 export interface StudioCopyBlock {
@@ -78,12 +77,14 @@ export function getStudioOrderDashboard() {
   return get<StudioOrderDashboard>("/studio/orders");
 }
 
-export function importStudioYouTubeRecap(source: string) {
-  return post<YouTubeStudioRecapResult>("/studio/youtube-recap", { source });
-}
-
 export async function uploadStudioCover(file: File) {
   const formData = new FormData();
   formData.append("file", file);
   return postForm<{ url: string }>("/studio/assets/cover", formData);
+}
+
+export async function uploadStudioImage(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return postForm<{ url: string }>("/studio/assets/image", formData);
 }

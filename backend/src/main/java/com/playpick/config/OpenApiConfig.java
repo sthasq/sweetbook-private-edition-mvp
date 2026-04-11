@@ -14,7 +14,7 @@ public class OpenApiConfig {
 		return new OpenAPI().info(new Info()
 			.title("PlayPick Backend API")
 			.version("1.0.0")
-			.description("Creator-approved PlayPick MVP backend for Sweetbook Book Print and YouTube recap flows.")
+			.description("Creator-approved PlayPick backend for influencer-fan edition, personalization, printing, and order flows.")
 			.contact(new Contact().name("PlayPick MVP")));
 	}
 }

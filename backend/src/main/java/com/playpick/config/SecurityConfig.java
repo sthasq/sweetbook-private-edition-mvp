@@ -53,7 +53,7 @@ public class SecurityConfig {
 				.requestMatchers("/api/editions/**").permitAll()
 				.requestMatchers("/api/admin/**").hasRole("ADMIN")
 				.requestMatchers("/api/studio/**").hasRole("CREATOR")
-				.requestMatchers("/api/projects/**", "/api/me/**", "/api/youtube/**", "/api/auth/me").authenticated()
+				.requestMatchers("/api/projects/**", "/api/me/**", "/api/auth/me").authenticated()
 				.anyRequest().permitAll()
 			)
 			.exceptionHandling(exceptions -> exceptions
