@@ -8,4 +8,7 @@ public interface EditionRepository extends JpaRepository<Edition, Long> {
 
 	@EntityGraph(attributePaths = "creator")
 	List<Edition> findByStatusOrderByUpdatedAtDesc(EditionStatus status);
+
+	@EntityGraph(attributePaths = "creator")
+	List<Edition> findByCreatorUserIdOrderByUpdatedAtDesc(Long userId);
 }

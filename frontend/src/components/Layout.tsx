@@ -65,13 +65,25 @@ export default function Layout() {
   if (user) {
     navItems.push({ to: "/me/projects", label: "내 프로젝트" });
     if (user.role === "CREATOR") {
-      navItems.push({ to: "/studio", label: "크리에이터 스튜디오" });
+      navItems.push({ to: "/studio/orders", label: "크리에이터 스튜디오" });
     }
   }
 
+  const isNavActive = (to: string) => {
+    if (to === "/") {
+      return pathname === "/";
+    }
+
+    if (to.startsWith("/studio")) {
+      return pathname.startsWith("/studio");
+    }
+
+    return pathname === to || pathname.startsWith(`${to}/`);
+  };
+
   const desktopLinkClass = (to: string) =>
     `font-headline text-base tracking-tight transition-colors ${
-      pathname === to
+      isNavActive(to)
         ? "border-b-2 border-brand-700 pb-1 text-brand-700"
         : "text-warm-500 hover:text-brand-700"
     }`;
@@ -86,11 +98,11 @@ export default function Layout() {
                 PlayPick
               </span>
               <p className="mt-1 hidden text-[10px] font-semibold uppercase tracking-[0.22em] text-warm-500 md:block">
-                좋아하는 장면
+                크리에이터 포토북
               </p>
             </div>
             <span className="hidden rounded-sm bg-gold-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-500 lg:inline-flex">
-              픽
+              PICK
             </span>
           </Link>
 
@@ -157,7 +169,7 @@ export default function Layout() {
                   to={item.to}
                   onClick={() => setMenuOpen(false)}
                   className={`block font-headline text-base transition-colors ${
-                    pathname === item.to ? "text-brand-700" : "text-warm-500"
+                    isNavActive(item.to) ? "text-brand-700" : "text-warm-500"
                   }`}
                 >
                   {item.label}
@@ -219,14 +231,14 @@ export default function Layout() {
               PlayPick
             </p>
             <p className="mt-2 max-w-md text-sm leading-relaxed text-warm-500">
-              좋아했던 장면을 내 취향대로 남기는 굿즈 서비스.
+              좋아하는 크리에이터의 포토북에 나만의 이야기를 더해 한 권으로 완성하세요.
             </p>
           </div>
           <div className="flex flex-wrap gap-8 text-xs font-semibold uppercase tracking-[0.2em] text-warm-500">
             <Link to="/" className="transition hover:text-brand-700">
-              드롭 둘러보기
+              에디션 둘러보기
             </Link>
-            <Link to="/studio" className="transition hover:text-brand-700">
+            <Link to="/studio/orders" className="transition hover:text-brand-700">
               크리에이터 스튜디오
             </Link>
           </div>

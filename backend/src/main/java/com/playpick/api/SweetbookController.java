@@ -30,4 +30,10 @@ public class SweetbookController {
 	public List<SweetbookViews.Template> getTemplates(@RequestParam(defaultValue = "SQUAREBOOK_HC") String bookSpecUid) {
 		return sweetbookService.getTemplates(bookSpecUid);
 	}
+
+	@Operation(summary = "Get Sweetbook integration mode")
+	@GetMapping("/status")
+	public SweetbookViews.IntegrationStatus getIntegrationStatus() {
+		return sweetbookService.getIntegrationStatus();
+	}
 }

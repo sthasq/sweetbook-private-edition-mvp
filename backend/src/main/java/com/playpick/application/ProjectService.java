@@ -170,11 +170,16 @@ public class ProjectService {
 	@Transactional
 	public ProjectViews.Snapshot updateProject(Long projectId, ProjectCommands.UpdateProject command) {
 		FanProject project = requireOwnedProject(projectId);
+		if (project.getStatus() == FanProjectStatus.ORDERED) {
+			throw new AppException(HttpStatus.CONFLICT, "Ordered projects can no longer be edited");
+		}
+
 		Map<String, Object> personalizationData = new LinkedHashMap<>(project.getPersonalizationData());
 		if (command.personalizationData() != null) {
 			personalizationData.putAll(command.personalizationData());
 		}
 		project.setPersonalizationData(personalizationData);
+		resetPreparedBook(project);
 		project.setStatus(FanProjectStatus.PERSONALIZED);
 		return toSnapshot(fanProjectRepository.save(project));
 	}
@@ -197,9 +202,54 @@ public class ProjectService {
 	@Transactional
 	public ProjectViews.BookGeneration generateBook(Long projectId) {
 		FanProject project = requireOwnedProject(projectId);
+		if (project.getStatus() == FanProjectStatus.ORDERED) {
+			throw new AppException(HttpStatus.CONFLICT, "This project has already been ordered");
+		}
 		ProjectViews.Preview preview = getPreview(projectId);
-		ProjectViews.BookGeneration generation = sweetbookService.generateBook(preview);
+		if (project.getSweetbookBookUid() != null
+			&& !project.getSweetbookBookUid().isBlank()
+			&& project.getStatus() == FanProjectStatus.BOOK_CREATED) {
+			return toBookGeneration(project, preview, "DRAFT", "BOOK_CREATED", true);
+		}
+		if (project.getSweetbookBookUid() != null
+			&& !project.getSweetbookBookUid().isBlank()
+			&& project.getStatus() == FanProjectStatus.FINALIZED) {
+			return toBookGeneration(project, preview, "FINALIZED", "FINALIZED", true);
+		}
+
+		String externalRef = buildSweetbookExternalRef(project);
+		ProjectViews.BookGeneration generation = sweetbookService.prepareBookDraft(
+			preview,
+			externalRef,
+			buildDraftIdempotencyKey(project, externalRef),
+			false
+		);
+		project.setSweetbookExternalRef(externalRef);
 		project.setSweetbookBookUid(generation.bookUid());
+		project.setSweetbookDraftCreatedAt(Instant.now());
+		project.setSweetbookFinalizedAt(null);
+		project.setStatus(FanProjectStatus.BOOK_CREATED);
+		fanProjectRepository.save(project);
+		return generation;
+	}
+
+	@Transactional
+	public ProjectViews.BookGeneration finalizeBook(Long projectId) {
+		FanProject project = requireOwnedProject(projectId);
+		if (project.getStatus() == FanProjectStatus.ORDERED) {
+			return toBookGeneration(project, getPreview(projectId), "FINALIZED", "FINALIZED", true);
+		}
+		if (project.getSweetbookBookUid() == null || project.getSweetbookBookUid().isBlank()) {
+			throw new AppException(HttpStatus.BAD_REQUEST, "Create the Sweetbook draft before finalizing");
+		}
+
+		ProjectViews.Preview preview = getPreview(projectId);
+		if (project.getStatus() == FanProjectStatus.FINALIZED) {
+			return toBookGeneration(project, preview, "FINALIZED", "FINALIZED", true);
+		}
+
+		ProjectViews.BookGeneration generation = sweetbookService.finalizeBook(preview, project.getSweetbookBookUid(), false);
+		project.setSweetbookFinalizedAt(Instant.now());
 		project.setStatus(FanProjectStatus.FINALIZED);
 		fanProjectRepository.save(project);
 		return generation;
@@ -207,18 +257,14 @@ public class ProjectService {
 
 	public ProjectViews.Estimate estimate(Long projectId, ProjectCommands.Shipping shipping) {
 		FanProject project = requireOwnedProject(projectId);
-		if (project.getSweetbookBookUid() == null || project.getSweetbookBookUid().isBlank()) {
-			throw new AppException(HttpStatus.BAD_REQUEST, "Generate the Sweetbook book before requesting an estimate");
-		}
+		requireFinalizedBook(project);
 		return sweetbookService.estimateOrder(projectId, project.getSweetbookBookUid(), shipping);
 	}
 
 	@Transactional
 	public ProjectViews.PaymentSession preparePayment(Long projectId, ProjectCommands.Shipping shipping) {
 		FanProject project = requireOwnedProject(projectId);
-		if (project.getSweetbookBookUid() == null || project.getSweetbookBookUid().isBlank()) {
-			throw new AppException(HttpStatus.BAD_REQUEST, "Generate the Sweetbook book before requesting payment");
-		}
+		requireFinalizedBook(project);
 		if (!tossPaymentsProperties.isReady()) {
 			throw new AppException(HttpStatus.BAD_REQUEST, "Toss Payments is not configured");
 		}
@@ -269,9 +315,7 @@ public class ProjectService {
 	@Transactional
 	public ProjectViews.OrderResult order(Long projectId, ProjectCommands.Shipping shipping) {
 		FanProject project = requireOwnedProject(projectId);
-		if (project.getSweetbookBookUid() == null || project.getSweetbookBookUid().isBlank()) {
-			throw new AppException(HttpStatus.BAD_REQUEST, "Generate the Sweetbook book before ordering");
-		}
+		requireFinalizedBook(project);
 		if (tossPaymentsProperties.isReady()) {
 			throw new AppException(HttpStatus.BAD_REQUEST, "Use payment confirmation flow when Toss Payments is enabled");
 		}
@@ -310,6 +354,7 @@ public class ProjectService {
 	@Transactional
 	public ProjectViews.OrderResult confirmPayment(Long projectId, ProjectCommands.PaymentConfirmation confirmation) {
 		FanProject project = requireOwnedProject(projectId);
+		requireFinalizedBook(project);
 		if (!tossPaymentsProperties.isReady()) {
 			throw new AppException(HttpStatus.BAD_REQUEST, "Toss Payments is not configured");
 		}
@@ -368,6 +413,8 @@ public class ProjectService {
 			customerOrder.getOrderUid(),
 			resolveFulfillmentStatus(orderRecord),
 			orderRecord == null ? null : orderRecord.getSweetbookOrderUid(),
+			orderRecord == null ? null : orderRecord.getLastEventType(),
+			orderRecord == null ? null : orderRecord.getLastEventAt(),
 			customerOrder.getTotalAmount(),
 			customerOrder.isSimulated(),
 			customerOrder.getOrderedAt(),
@@ -415,6 +462,9 @@ public class ProjectService {
 			project.getStatus().name(),
 			new LinkedHashMap<>(project.getPersonalizationData()),
 			project.getSweetbookBookUid(),
+			project.getSweetbookExternalRef(),
+			project.getSweetbookDraftCreatedAt(),
+			project.getSweetbookFinalizedAt(),
 			project.getCreatedAt(),
 			project.getUpdatedAt()
 		);
@@ -433,6 +483,8 @@ public class ProjectService {
 			resolveMode(project),
 			customerOrder == null ? null : customerOrder.getStatus().name(),
 			resolveFulfillmentStatus(fulfillmentOrder),
+			fulfillmentOrder == null ? null : fulfillmentOrder.getLastEventType(),
+			fulfillmentOrder == null ? null : fulfillmentOrder.getLastEventAt(),
 			project.getUpdatedAt(),
 			resolveContinuePath(project)
 		);
@@ -455,8 +507,26 @@ public class ProjectService {
 		};
 	}
 
+	private void requireFinalizedBook(FanProject project) {
+		if (project.getSweetbookBookUid() == null || project.getSweetbookBookUid().isBlank()) {
+			throw new AppException(HttpStatus.BAD_REQUEST, "Create the Sweetbook draft before continuing");
+		}
+		if (project.getStatus() != FanProjectStatus.FINALIZED && project.getStatus() != FanProjectStatus.ORDERED) {
+			throw new AppException(HttpStatus.BAD_REQUEST, "Finalize the Sweetbook book before continuing");
+		}
+	}
+
 	private String newSiteOrderUid() {
 		return "site-order-" + UUID.randomUUID();
+	}
+
+	private String buildSweetbookExternalRef(FanProject project) {
+		long revisionSeed = project.getUpdatedAt() == null ? Instant.now().toEpochMilli() : project.getUpdatedAt().toEpochMilli();
+		return "playpick-project-" + project.getId() + "-" + revisionSeed;
+	}
+
+	private String buildDraftIdempotencyKey(FanProject project, String externalRef) {
+		return externalRef + "-v" + project.getEditionVersion().getId();
 	}
 
 	private String buildOrderName(FanProject project, ProjectCommands.Shipping shipping) {
@@ -521,6 +591,8 @@ public class ProjectService {
 			orderRecord.setAddress1(customerOrder.getAddress1());
 			orderRecord.setAddress2(customerOrder.getAddress2());
 			orderRecord.setOrderedAt(orderedAt);
+			orderRecord.setLastEventType(result.simulated() ? "simulation.ready" : "order.created");
+			orderRecord.setLastEventAt(Instant.now());
 			return orderRecordRepository.save(orderRecord);
 		} catch (RuntimeException exception) {
 			return null;
@@ -558,5 +630,36 @@ public class ProjectService {
 			customerOrder.isSimulated(),
 			raw
 		);
+	}
+
+	private void resetPreparedBook(FanProject project) {
+		if (project.getSweetbookBookUid() == null || project.getSweetbookBookUid().isBlank()) {
+			return;
+		}
+		project.setSweetbookBookUid(null);
+		project.setSweetbookExternalRef(null);
+		project.setSweetbookDraftCreatedAt(null);
+		project.setSweetbookFinalizedAt(null);
+	}
+
+	private ProjectViews.BookGeneration toBookGeneration(
+		FanProject project,
+		ProjectViews.Preview preview,
+		String sweetbookStatus,
+		String projectStatus,
+		boolean reused
+	) {
+		return sweetbookService.describeBook(
+			preview,
+			project.getSweetbookBookUid(),
+			sweetbookStatus,
+			projectStatus,
+			isSimulatedBook(project.getSweetbookBookUid()),
+			reused
+		);
+	}
+
+	private boolean isSimulatedBook(String bookUid) {
+		return bookUid != null && bookUid.startsWith("demo-book-");
 	}
 }

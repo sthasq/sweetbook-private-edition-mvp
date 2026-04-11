@@ -1,14 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ApiError } from "../api/client";
 import {
   createEdition,
-  getStudioOrderDashboard,
+  getStudioEdition,
   importStudioYouTubeRecap,
   publishEdition,
+  uploadStudioCover,
   updateEdition,
 } from "../api/studio";
-import { listSweetbookBookSpecs, listSweetbookTemplates } from "../api/sweetbook";
+import {
+  getSweetbookIntegrationStatus,
+  listSweetbookBookSpecs,
+  listSweetbookTemplates,
+} from "../api/sweetbook";
+import StudioShell from "../components/StudioShell";
 import type {
   StudioCuratedAssetInput,
   StudioEditionInput,
@@ -16,12 +22,15 @@ import type {
 } from "../api/studio";
 import type {
   EditionDetail,
-  StudioOrderDashboard,
-  StudioOrderSummary,
   SweetbookBookSpec,
+  SweetbookIntegrationStatus,
   SweetbookTemplate,
   YouTubeStudioRecapResult,
 } from "../types/api";
+import {
+  computeBookPlan,
+  estimateEditionPricing,
+} from "../lib/sweetbookWorkflow";
 
 const ASSET_TYPES = ["IMAGE", "VIDEO", "MESSAGE"] as const;
 const FIELD_TYPES = ["TEXT", "TEXTAREA", "DATE", "VIDEO_PICKER", "IMAGE_URL"] as const;
@@ -29,96 +38,180 @@ const STUDIO_STEPS = [
   {
     id: "structure",
     badge: "1",
-    title: "템플릿 선택",
-    description: "Sweetbook 레이아웃과 출력 규격을 먼저 고릅니다.",
+    title: "기본 정보",
+    description: "에디션 제목, 커버 이미지, 소개 문구를 입력해요.",
   },
   {
     id: "details",
     badge: "2",
-    title: "기본 정보",
-    description: "드롭 제목, 커버, 메시지를 채웁니다.",
+    title: "레이아웃 설정",
+    description: "조판 방식과 템플릿, 크리에이터 메시지를 설정해요.",
   },
   {
     id: "assets",
     badge: "3",
-    title: "자산 구성",
-    description: "큐레이션 자산과 팬 입력 항목을 구성합니다.",
+    title: "콘텐츠 구성",
+    description: "페이지에 들어갈 콘텐츠와 팬 입력 항목을 구성해요.",
   },
   {
     id: "review",
     badge: "4",
-    title: "검토 및 발행",
-    description: "전체 구성을 확인하고 저장하거나 퍼블리시합니다.",
+    title: "검토 및 공개",
+    description: "최종 검토 후 저장하거나 팬에게 공개해요.",
   },
 ] as const;
 
+const SWEETBOOK_EDIT_MODES = [
+  {
+    id: "auto",
+    badge: "추천",
+    title: "자동 조판 우선",
+    description: "대표 장면과 메시지를 빠르게 묶어 인쇄용 초안을 먼저 만들 때 적합합니다.",
+    summary: "핵심 자산 위주로 먼저 인쇄용 초안을 만들고, 이후 보정 포인트만 확인하는 흐름입니다.",
+  },
+  {
+    id: "manual",
+    badge: "직접",
+    title: "출력 규칙 직접 제어",
+    description: "페이지마다 사진 수와 레이아웃 규칙을 세밀하게 맞출 때 적합합니다.",
+    summary: "사진 선택과 배치 규칙을 페이지 단위로 더 세밀하게 설계하는 흐름입니다.",
+  },
+] as const;
+
+const SWEETBOOK_EDITOR_TOOLS = [
+  { key: "cover", label: "표지 파라미터", description: "커버 이미지와 제목처럼 표지 템플릿에 바로 바인딩될 값을 준비합니다." },
+  { key: "publish", label: "발행면 파라미터", description: "제목, 발행일, 저자 정보처럼 오프닝 페이지에 들어갈 값을 정리합니다." },
+  { key: "content", label: "본문 파라미터", description: "사진과 캡션을 반복 배치할 본문 템플릿 규칙을 정합니다." },
+  { key: "page-rule", label: "페이지 규칙", description: "최소 페이지 수와 증분 단위에 맞는 자동 생성 분량을 확인합니다." },
+  { key: "fallback", label: "실패 대비", description: "시뮬레이션 모드와 실제 샌드박스 모드가 언제 쓰이는지 구분합니다." },
+  { key: "webhook", label: "주문 추적", description: "출력 후에는 주문 웹훅 기준으로 제작/배송 단계를 추적합니다." },
+] as const;
+
+const PLAYPICK_COVER_TEMPLATE_LIMIT = 4;
+const PLAYPICK_PUBLISH_TEMPLATE_LIMIT = 3;
+const PLAYPICK_CONTENT_TEMPLATE_LIMIT = 6;
+const PLAYPICK_COVER_TEMPLATE_CATEGORY_PRIORITY = [
+  "구글포토북A",
+  "구글포토북B",
+  "구글포토북C",
+  "일기장A",
+  "일기장B",
+] as const;
+const PLAYPICK_PUBLISH_TEMPLATE_CATEGORY_PRIORITY = [
+  "구글포토북A",
+  "구글포토북B",
+  "구글포토북C",
+  "일기장A",
+  "일기장B",
+] as const;
+const PLAYPICK_CONTENT_TEMPLATE_CATEGORY_PRIORITY = [
+  "구글포토북C",
+  "구글포토북A",
+  "구글포토북B",
+  "일기장A",
+  "일기장B",
+] as const;
+
 type StudioStepId = (typeof STUDIO_STEPS)[number]["id"];
+type SweetbookEditModeId = (typeof SWEETBOOK_EDIT_MODES)[number]["id"];
 
 export default function StudioPage() {
+  const { editionId } = useParams<{ editionId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState<StudioEditionInput>(createInitialForm);
   const [created, setCreated] = useState<EditionDetail | null>(null);
+  const [loadingEdition, setLoadingEdition] = useState(Boolean(editionId));
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
   const [bookSpecs, setBookSpecs] = useState<SweetbookBookSpec[]>([]);
   const [bookSpecsLoading, setBookSpecsLoading] = useState(true);
   const [bookSpecError, setBookSpecError] = useState("");
   const [layoutTemplates, setLayoutTemplates] = useState<SweetbookTemplate[]>([]);
   const [layoutTemplatesLoading, setLayoutTemplatesLoading] = useState(true);
   const [layoutTemplateError, setLayoutTemplateError] = useState("");
+  const [integrationStatus, setIntegrationStatus] =
+    useState<SweetbookIntegrationStatus | null>(null);
   const [recapSource, setRecapSource] = useState("");
   const [recapImportMode, setRecapImportMode] = useState<"replace" | "append">("replace");
   const [recapLoading, setRecapLoading] = useState(false);
   const [recapResult, setRecapResult] = useState<YouTubeStudioRecapResult | null>(null);
-  const [orderDashboard, setOrderDashboard] = useState<StudioOrderDashboard | null>(null);
-  const [orderDashboardLoading, setOrderDashboardLoading] = useState(true);
-  const [orderDashboardError, setOrderDashboardError] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [savedFingerprint, setSavedFingerprint] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState<StudioStepId>("structure");
+  const [sweetbookEditMode, setSweetbookEditMode] = useState<SweetbookEditModeId>("auto");
 
   const intro = form.officialIntro ?? createCopyBlock();
   const closing = form.officialClosing ?? createCopyBlock();
   const assets = form.curatedAssets ?? [];
   const fields = form.personalizationFields ?? [];
-  const validationMessages = useMemo(() => validateForm(form), [form]);
+  const selectedBookSpec =
+    bookSpecs.find((spec) => spec.uid === form.bookSpecUid) ?? null;
+  const bookPlan = computeBookPlan(selectedBookSpec);
+  const pricingHint = estimateEditionPricing(form.bookSpecUid);
+  const validationMessages = useMemo(() => validateForm(form, bookPlan), [bookPlan, form]);
   const fingerprint = serializeForm(form);
   const hasUnsavedChanges = savedFingerprint != null && savedFingerprint !== fingerprint;
   const currentStepIndex = STUDIO_STEPS.findIndex((step) => step.id === activeStep);
   const currentStep = STUDIO_STEPS[currentStepIndex] ?? STUDIO_STEPS[0];
+  const pagePlanningItems = useMemo(
+    () =>
+      buildSweetbookPagePlan({
+        form,
+        assetCount: assets.length,
+        fieldCount: fields.length,
+        mode: sweetbookEditMode,
+        layoutTemplates,
+        bookPlan,
+      }),
+    [assets.length, bookPlan, fields.length, form, layoutTemplates, sweetbookEditMode],
+  );
   const sweetbookTemplateGroups = useMemo(
     () => ({
-      cover: groupTemplatesByRole(layoutTemplates, "cover"),
-      publish: groupTemplatesByRole(layoutTemplates, "publish"),
-      content: groupTemplatesByRole(layoutTemplates, "content"),
+      cover: curateCoverTemplatesForPlayPick(layoutTemplates),
+      publish: curatePublishTemplatesForPlayPick(layoutTemplates),
+      content: curateContentTemplatesForPlayPick(layoutTemplates),
     }),
     [layoutTemplates],
   );
 
   useEffect(() => {
-    setOrderDashboardLoading(true);
-    setOrderDashboardError("");
+    if (!editionId) {
+      setCreated(null);
+      setForm(createInitialForm());
+      setSavedFingerprint(null);
+      setLoadingEdition(false);
+      return;
+    }
 
-    getStudioOrderDashboard()
-      .then(setOrderDashboard)
+    setLoadingEdition(true);
+    getStudioEdition(Number(editionId))
+      .then((edition) => {
+        const normalized = normalizeEditionToForm(edition);
+        setCreated(edition);
+        setForm(normalized);
+        setSavedFingerprint(serializeForm(normalized));
+      })
       .catch((e: unknown) => {
         if (e instanceof ApiError && e.status === 401) {
-          setError("세션이 만료되어 다시 로그인해 주세요.");
-          setSuccess("");
           const next = `${location.pathname}${location.search}`;
           navigate(`/login?next=${encodeURIComponent(next)}&reason=session-expired`, {
             replace: true,
           });
           return;
         }
-        setOrderDashboardError(
-          e instanceof Error ? e.message : "크리에이터 주문 현황을 불러오지 못했습니다.",
-        );
+        setError(e instanceof Error ? e.message : "에디션 편집 정보를 불러오지 못했습니다.");
       })
-      .finally(() => setOrderDashboardLoading(false));
-  }, [location.pathname, location.search, navigate]);
+      .finally(() => setLoadingEdition(false));
+  }, [editionId, location.pathname, location.search, navigate]);
+
+  useEffect(() => {
+    getSweetbookIntegrationStatus()
+      .then(setIntegrationStatus)
+      .catch(() => setIntegrationStatus(null));
+  }, []);
 
   useEffect(() => {
     listSweetbookBookSpecs()
@@ -139,7 +232,7 @@ export default function StudioPage() {
           });
           return;
         }
-        setBookSpecError(e instanceof Error ? e.message : "Sweetbook 규격 목록을 불러오지 못했습니다.");
+        setBookSpecError(e instanceof Error ? e.message : "인쇄 규격 목록을 불러오지 못했어요.");
       })
       .finally(() => setBookSpecsLoading(false));
   }, [form.bookSpecUid, location.pathname, location.search, navigate]);
@@ -167,7 +260,7 @@ export default function StudioPage() {
           });
           return;
         }
-        setLayoutTemplateError(e instanceof Error ? e.message : "Sweetbook 템플릿 목록을 불러오지 못했습니다.");
+        setLayoutTemplateError(e instanceof Error ? e.message : "레이아웃 템플릿 목록을 불러오지 못했어요.");
         setLayoutTemplates([]);
       })
       .finally(() => setLayoutTemplatesLoading(false));
@@ -348,7 +441,41 @@ export default function StudioPage() {
     setCreated(null);
     setSavedFingerprint(null);
     setError("");
-    setSuccess("새 에디션 작성을 시작합니다.");
+    setSuccess("새 에디션을 시작합니다.");
+    navigate("/studio/editions/new");
+  }
+
+  async function handleCoverUpload(file: File | null) {
+    if (!file) {
+      return;
+    }
+
+    setUploadingCover(true);
+    setError("");
+    setSuccess("");
+    try {
+      const uploaded = await uploadStudioCover(file);
+      setForm((current) => ({ ...current, coverImageUrl: uploaded.url }));
+      setSuccess("커버 이미지를 업로드했습니다.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "커버 이미지를 업로드하지 못했습니다.");
+    } finally {
+      setUploadingCover(false);
+    }
+  }
+
+  async function handleCopyShareLink() {
+    if (!created) {
+      return;
+    }
+
+    const shareUrl = `${window.location.origin}/editions/${created.id}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setSuccess("팬에게 공유할 링크를 복사했습니다.");
+    } catch {
+      setError("공유 링크를 복사하지 못했습니다.");
+    }
   }
 
   async function handleSave() {
@@ -412,7 +539,7 @@ export default function StudioPage() {
       }
 
       await publishEdition(editionId);
-      setSuccess("에디션이 퍼블리시되었습니다!");
+      setSuccess("에디션이 공개되었습니다!");
       setTimeout(() => navigate(`/editions/${editionId}`), 1500);
     } catch (e: unknown) {
       if (e instanceof ApiError && e.status === 401) {
@@ -444,18 +571,25 @@ export default function StudioPage() {
     setActiveStep(STUDIO_STEPS[currentStepIndex + 1]?.id ?? "review");
   }
 
+  if (loadingEdition) {
+    return (
+      <StudioShell
+        title="에디션 제작"
+        description="저장해 둔 에디션을 불러오는 중입니다."
+      >
+        <section className="editorial-card p-10 text-center text-sm text-warm-500">
+          저장된 에디션을 불러오는 중입니다.
+        </section>
+      </StudioShell>
+    );
+  }
+
   return (
-    <div className="studio-page page-shell">
-      <div className="mx-auto max-w-screen-2xl">
-      <div className="flex flex-col gap-4 border-b border-stone-200/70 pb-8 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
-          <div>
-            <p className="editorial-label">스튜디오</p>
-            <h1 className="mt-3 text-4xl font-bold text-brand-700 md:text-5xl">크리에이터 스튜디오</h1>
-          </div>
-          <span className="rounded bg-gold-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-500">
-            크리에이터
-          </span>
+    <StudioShell
+      title={created ? "에디션 편집" : "에디션 제작"}
+      description="에디션을 단계별로 구성하고, 초안을 저장한 뒤 팬에게 공개할 수 있는 제작 전용 화면이에요."
+      meta={
+        <>
           {created && (
             <span className="rounded bg-surface-low px-3 py-1 text-[11px] font-medium text-warm-500">
               {created.status} · #{created.id}
@@ -466,99 +600,20 @@ export default function StudioPage() {
               저장되지 않은 변경사항
             </span>
           )}
-        </div>
+        </>
+      }
+      actions={
         <button
           type="button"
           onClick={resetToNewEdition}
-          className="editorial-button-secondary self-start px-4 py-2.5"
+          className="editorial-button-secondary px-4 py-2.5"
         >
           새 에디션 시작
         </button>
-      </div>
+      }
+    >
 
-      <section className="mt-8 grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
-        <div className="editorial-card p-6 md:p-7">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="editorial-label">주문 현황</p>
-              <h2 className="mt-3 text-2xl font-semibold text-stone-900">팬 주문 대시보드</h2>
-            </div>
-            <p className="text-sm text-warm-500">
-              결제된 주문과 최근 배송 정보를 한눈에 확인할 수 있습니다.
-            </p>
-          </div>
-
-          {orderDashboardLoading ? (
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              {[0, 1, 2].map((item) => (
-                <div
-                  key={item}
-                  className="h-28 animate-pulse rounded-2xl border border-stone-200 bg-stone-100/70"
-                />
-              ))}
-            </div>
-          ) : orderDashboardError ? (
-            <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-5 text-sm text-rose-700">
-              {orderDashboardError}
-            </div>
-          ) : (
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <StudioMetricCard
-                label="전체 주문"
-                value={`${orderDashboard?.totalOrders ?? 0}건`}
-                hint="내 에디션 기준"
-              />
-              <StudioMetricCard
-                label="결제 완료"
-                value={`${orderDashboard?.paidOrders ?? 0}건`}
-                hint="실제 승인된 주문"
-              />
-              <StudioMetricCard
-                label="누적 매출"
-                value={formatStudioCurrency(orderDashboard?.totalRevenue ?? 0)}
-                hint="테스트 주문 포함"
-              />
-            </div>
-          )}
-        </div>
-
-        <section className="editorial-card p-6 md:p-7">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="editorial-label">최근 주문</p>
-              <h2 className="mt-3 text-2xl font-semibold text-stone-900">새로 들어온 주문</h2>
-            </div>
-            <p className="text-sm text-warm-500">최근 12건까지 표시합니다.</p>
-          </div>
-
-          {orderDashboardLoading ? (
-            <div className="mt-5 space-y-3">
-              {[0, 1, 2].map((item) => (
-                <div
-                  key={item}
-                  className="h-28 animate-pulse rounded-2xl border border-stone-200 bg-stone-100/70"
-                />
-              ))}
-            </div>
-          ) : orderDashboardError ? (
-            <div className="mt-5 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-5 text-sm text-stone-600">
-              주문 목록을 아직 불러오지 못했습니다.
-            </div>
-          ) : (orderDashboard?.recentOrders.length ?? 0) === 0 ? (
-            <div className="mt-5 rounded-2xl border border-dashed border-stone-300 bg-stone-50/80 px-4 py-8 text-center text-sm text-stone-500">
-              아직 팬 주문이 없습니다. 첫 주문이 들어오면 여기에서 바로 확인할 수 있어요.
-            </div>
-          ) : (
-            <div className="mt-5 space-y-3">
-              {orderDashboard?.recentOrders.map((order) => (
-                <StudioRecentOrderCard key={order.siteOrderUid} order={order} />
-              ))}
-            </div>
-          )}
-        </section>
-      </section>
-
-      <section className="editorial-card mt-8 p-4 md:p-6">
+      <section className="editorial-card p-4 md:p-6">
         <div className="flex flex-wrap gap-3">
           {STUDIO_STEPS.map((step, index) => {
             const isActive = step.id === activeStep;
@@ -617,56 +672,120 @@ export default function StudioPage() {
           <section className="editorial-card p-6 md:p-8">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-stone-900">Sweetbook 레이아웃 템플릿</h2>
+                <h2 className="text-lg font-semibold text-stone-900">에디션 기본 정보</h2>
                 <p className="mt-1 text-sm text-stone-600">
-                  실제 출력 시 사용할 Sweetbook 표지, 발행면, 본문 레이아웃을 선택합니다.
+                  팬이 처음 보게 될 제목과 커버 이미지를 설정해주세요. 인쇄 규격과 레이아웃은 이후 단계에서 설정할 수 있어요.
+                </p>
+              </div>
+              <div className="rounded-full bg-surface-low px-3 py-1 text-[11px] font-medium text-warm-500">
+                예상 제작가 {pricingHint.productPrice.toLocaleString("ko-KR")}원부터
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="grid gap-4">
+                <input value={form.title} onChange={(e) => setForm((current) => ({ ...current, title: e.target.value }))} className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="예: 2026 상반기 여행 리캡북" />
+                <input value={form.subtitle} onChange={(e) => setForm((current) => ({ ...current, subtitle: e.target.value }))} className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="팬이 처음 보게 될 짧은 소개" />
+                <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-stone-900">커버 이미지</p>
+                      <p className="mt-1 text-sm text-warm-500">
+                        파일 업로드를 우선으로 쓰고, 필요하면 아래 URL을 직접 붙여 넣을 수도 있습니다.
+                      </p>
+                    </div>
+                    <label className="editorial-button-secondary cursor-pointer px-4 py-2.5">
+                      {uploadingCover ? "업로드 중..." : "파일 업로드"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          void handleCoverUpload(e.target.files?.[0] ?? null);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <input value={form.coverImageUrl} onChange={(e) => setForm((current) => ({ ...current, coverImageUrl: e.target.value }))} className="mt-4 w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="커버 이미지 URL" />
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-stone-200 bg-stone-50/80 p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-500">미리보기</p>
+                <div className="mt-4 overflow-hidden rounded-2xl border border-stone-200 bg-white p-3">
+                  <img
+                    src={form.coverImageUrl || "/demo-assets/playpick-hero.svg"}
+                    alt={form.title || "커버 미리보기"}
+                    className="aspect-[4/5] w-full rounded-xl object-cover"
+                  />
+                </div>
+                <p className="mt-4 text-lg font-semibold text-stone-900">
+                  {form.title || "아직 제목이 없습니다"}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-warm-500">
+                  {form.subtitle || "부제목을 적으면 팬이 에디션을 이해하기 쉬워집니다."}
+                </p>
+              </div>
+            </div>
+          </section>
+            </>
+          )}
+
+          {activeStep === "details" && (
+            <>
+          <section className="editorial-card p-6 md:p-8">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-stone-900">자동 조판 전략</h2>
+                <p className="mt-1 text-sm text-stone-600">
+                  공개 API 기준으로는 호스팅 에디터 대신 자동 조판 전략과 템플릿 조합을 먼저 정하고, 이후 팬 입력이 그 위에 들어갑니다.
                 </p>
               </div>
               <p className="text-xs font-medium text-stone-500">
-                이 단계에서는 출력 규격과 인쇄 레이아웃만 고르면 됩니다.
+                현재 선택: {readEditModeName(sweetbookEditMode)}
               </p>
             </div>
 
-            <div className="mt-5 rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
-              <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-center">
-                <div>
-                  <label
-                    htmlFor="bookSpecUid"
-                    className="block text-sm font-medium text-stone-700 mb-1.5"
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              {SWEETBOOK_EDIT_MODES.map((mode) => {
+                const isSelected = sweetbookEditMode === mode.id;
+                return (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    onClick={() => setSweetbookEditMode(mode.id)}
+                    className={`rounded-3xl border p-5 text-left transition-colors ${
+                      isSelected
+                        ? "border-brand-400 bg-brand-50/70"
+                        : "border-stone-200 bg-stone-50/70 hover:border-brand-300"
+                    }`}
                   >
-                    Sweetbook 규격
-                  </label>
-                  <select
-                    id="bookSpecUid"
-                    value={form.bookSpecUid ?? ""}
-                    onChange={(e) => updateBookSpecUid(e.target.value)}
-                    className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-                    disabled={bookSpecsLoading}
-                  >
-                    {bookSpecs.map((spec) => (
-                      <option key={spec.uid} value={spec.uid}>
-                        {spec.name}
-                      </option>
-                    ))}
-                  </select>
-                  {bookSpecError && (
-                    <p className="mt-2 text-xs text-red-500">{bookSpecError}</p>
-                  )}
-                </div>
-                <div className="rounded-2xl border border-stone-200 bg-white/90 px-4 py-3 text-sm text-stone-600">
-                  {bookSpecsLoading ? (
-                    <p>Sweetbook 규격 정보를 불러오는 중입니다.</p>
-                  ) : (
-                    <p>
-                      현재 선택 규격:
-                      {" "}
-                      <span className="font-semibold text-stone-900">
-                        {bookSpecs.find((spec) => spec.uid === form.bookSpecUid)?.name ?? form.bookSpecUid}
-                      </span>
+                    <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-gold-500">
+                      {mode.badge}
+                    </span>
+                    <h3 className="mt-4 text-2xl font-semibold text-stone-900">{mode.title}</h3>
+                    <p className="mt-3 text-sm leading-relaxed text-warm-500">{mode.description}</p>
+                    <p className="mt-4 rounded-2xl bg-white/80 px-4 py-3 text-sm text-stone-700">
+                      {mode.summary}
                     </p>
-                  )}
-                </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="editorial-card p-6 md:p-8">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-stone-900">템플릿 큐레이션</h2>
+                <p className="mt-1 text-sm text-stone-600">
+                  플레이픽 리캡북 컨셉에 맞는 추천 템플릿만 남겨 두었습니다.
+                </p>
               </div>
+              <p className="text-xs font-medium text-stone-500">
+                규격 {selectedBookSpec?.name ?? form.bookSpecUid}
+              </p>
             </div>
 
             {layoutTemplateError ? (
@@ -675,13 +794,13 @@ export default function StudioPage() {
               </p>
             ) : layoutTemplatesLoading ? (
               <p className="mt-5 rounded-2xl border border-dashed border-stone-300 bg-stone-50/70 px-4 py-8 text-center text-sm text-stone-500">
-                Sweetbook 레이아웃 템플릿을 불러오는 중입니다.
+                레이아웃 템플릿을 불러오는 중이에요.
               </p>
             ) : (
               <div className="mt-5 space-y-5">
                 <SweetbookTemplateSection
                   title="표지 템플릿"
-                  description="책의 커버와 첫인상을 결정하는 표지 레이아웃입니다."
+                  description="플레이픽 리캡북 컨셉에 맞는 표지 4종만 추려서 보여줍니다."
                   templates={sweetbookTemplateGroups.cover}
                   selectedUid={form.sweetbookCoverTemplateUid ?? ""}
                   onSelect={(uid) => selectSweetbookTemplate("cover", uid)}
@@ -689,7 +808,7 @@ export default function StudioPage() {
                 />
                 <SweetbookTemplateSection
                   title="발행면 템플릿"
-                  description="제목, 발행 정보, 오프닝 페이지 구성을 담당합니다."
+                  description="오프닝 톤에 맞는 발행면 3종만 추려서 보여줍니다."
                   templates={sweetbookTemplateGroups.publish}
                   selectedUid={form.sweetbookPublishTemplateUid ?? ""}
                   onSelect={(uid) => selectSweetbookTemplate("publish", uid)}
@@ -697,7 +816,7 @@ export default function StudioPage() {
                 />
                 <SweetbookTemplateSection
                   title="본문 템플릿"
-                  description="반복되는 본문 페이지의 사진/텍스트 배치를 결정합니다."
+                  description="사진 리캡북에 잘 맞는 본문 6종만 남겨서 보여줍니다."
                   templates={sweetbookTemplateGroups.content}
                   selectedUid={form.sweetbookContentTemplateUid ?? ""}
                   onSelect={(uid) => selectSweetbookTemplate("content", uid)}
@@ -705,19 +824,6 @@ export default function StudioPage() {
                 />
               </div>
             )}
-          </section>
-            </>
-          )}
-
-          {activeStep === "details" && (
-            <>
-          <section className="editorial-card p-6 md:p-8">
-            <h2 className="text-lg font-semibold text-stone-900">기본 정보</h2>
-            <div className="mt-5 grid gap-4">
-              <input value={form.title} onChange={(e) => setForm((current) => ({ ...current, title: e.target.value }))} className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="에디션 제목" />
-              <input value={form.subtitle} onChange={(e) => setForm((current) => ({ ...current, subtitle: e.target.value }))} className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="부제목" />
-              <input value={form.coverImageUrl} onChange={(e) => setForm((current) => ({ ...current, coverImageUrl: e.target.value }))} className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="커버 이미지 URL" />
-            </div>
           </section>
 
           <section className="editorial-card p-6 md:p-8">
@@ -795,13 +901,13 @@ export default function StudioPage() {
               </div>
 
               {recapResult && (
-                <div className="mt-4 rounded-2xl border border-red-100 bg-white/90 p-4">
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={recapResult.channel.thumbnailUrl || "https://picsum.photos/seed/studio-youtube-channel/120/120"}
-                      alt={recapResult.channel.title}
-                      className="h-12 w-12 rounded-full object-cover"
-                    />
+                  <div className="mt-4 rounded-2xl border border-red-100 bg-white/90 p-4">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={recapResult.channel.thumbnailUrl || "/demo-assets/playpick-hero.svg"}
+                        alt={recapResult.channel.title}
+                        className="h-12 w-12 rounded-full object-cover"
+                      />
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-stone-900">{recapResult.channel.title}</p>
                       <p className="truncate text-xs text-stone-500">
@@ -951,14 +1057,62 @@ export default function StudioPage() {
             <section className="rounded-3xl border border-stone-200 bg-white/88 p-6 shadow-sm shadow-brand-100/30">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-stone-900">검토 및 발행</h2>
+                  <h2 className="text-lg font-semibold text-stone-900">검토 및 공개</h2>
                   <p className="mt-1 text-sm text-stone-600">
-                    지금까지 고른 템플릿과 입력한 내용을 확인한 뒤 초안을 저장하거나 퍼블리시하세요.
+                    설정한 템플릿과 입력 내용을 최종 확인한 뒤, 초안을 저장하거나 팬에게 공개하세요.
                   </p>
                 </div>
                 <p className="text-xs font-medium text-stone-500">
-                  오른쪽 요약 카드에서 현재 상태를 바로 확인할 수 있습니다.
+                  저장 후에는 팬 시점 링크를 바로 확인하고 다시 편집할 수 있습니다.
                 </p>
+              </div>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-5">
+                <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4 md:col-span-2">
+                  <label htmlFor="review-bookSpecUid" className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
+                    인쇄 규격
+                  </label>
+                  <select
+                    id="review-bookSpecUid"
+                    value={form.bookSpecUid ?? ""}
+                    onChange={(e) => updateBookSpecUid(e.target.value)}
+                    className="mt-3 w-full rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                    disabled={bookSpecsLoading}
+                  >
+                    {bookSpecs.map((spec) => (
+                      <option key={spec.uid} value={spec.uid}>
+                        {spec.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-2 text-sm text-warm-500">
+                    최소 {bookPlan.minimumPages}p · 최대 {bookPlan.maximumPages}p
+                  </p>
+                  {bookSpecError && <p className="mt-2 text-xs text-red-500">{bookSpecError}</p>}
+                </div>
+                <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">자동 계획 분량</p>
+                  <p className="mt-2 text-lg font-semibold text-stone-900">{bookPlan.plannedTotalPages}p</p>
+                  <p className="mt-2 text-sm text-warm-500">
+                    발행면 {bookPlan.publishPages}p · 본문 {bookPlan.contentPages}p
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">규칙 검증</p>
+                  <p className="mt-2 text-lg font-semibold text-stone-900">
+                    {bookPlan.isValid ? "통과" : "보완 필요"}
+                  </p>
+                  <p className="mt-2 text-sm text-warm-500">{bookPlan.pageIncrement}p 단위 증감</p>
+                </div>
+                <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">연동 모드</p>
+                  <p className="mt-2 text-lg font-semibold text-stone-900">
+                    {integrationStatus?.label ?? "확인 중"}
+                  </p>
+                  <p className="mt-2 text-sm text-warm-500">
+                    예상 제작가 {pricingHint.productPrice.toLocaleString("ko-KR")}원부터
+                  </p>
+                </div>
               </div>
 
               <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -978,6 +1132,44 @@ export default function StudioPage() {
                     <p>발행면: <span className="font-medium text-stone-900">{readTemplateName(layoutTemplates, form.sweetbookPublishTemplateUid)}</span></p>
                     <p>본문: <span className="font-medium text-stone-900">{readTemplateName(layoutTemplates, form.sweetbookContentTemplateUid)}</span></p>
                   </div>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-stone-200 bg-white/80 p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
+                    인쇄 규칙 체크
+                  </p>
+                  <p className="text-sm font-medium text-stone-700">
+                    조판 전략: {readEditModeName(sweetbookEditMode)}
+                  </p>
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  {pagePlanningItems.map((item) => (
+                    <div key={`review-${item.title}`} className="rounded-2xl border border-stone-200 bg-stone-50/70 px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold text-stone-900">{item.title}</p>
+                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${item.tone}`}>
+                          {item.status}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm text-warm-500">{item.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-500">
+                  출력 파라미터 맵
+                </p>
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {SWEETBOOK_EDITOR_TOOLS.map((tool) => (
+                    <div key={tool.key} className="rounded-2xl border border-stone-200 bg-white/80 px-4 py-3">
+                      <p className="text-sm font-semibold text-stone-900">{tool.label}</p>
+                      <p className="mt-1 text-sm text-warm-500">{tool.description}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -1063,6 +1255,31 @@ export default function StudioPage() {
               )}
               {error && <p className="text-sm text-red-500">{error}</p>}
               {success && <p className="text-sm text-emerald-600">{success}</p>}
+              {created && (
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/studio/editions/${created.id}/edit`)}
+                    className="editorial-button-secondary px-4 py-2.5"
+                  >
+                    다시 편집 링크 열기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.open(`/editions/${created.id}`, "_blank", "noopener,noreferrer")}
+                    className="editorial-button-secondary px-4 py-2.5"
+                  >
+                    팬 시점 미리보기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleCopyShareLink()}
+                    className="editorial-button-link"
+                  >
+                    공유 링크 복사
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="flex w-full flex-col gap-3 lg:w-auto lg:min-w-[240px]">
@@ -1070,14 +1287,13 @@ export default function StudioPage() {
                 {saving ? "저장 중..." : created ? "초안 저장" : "에디션 초안 생성"}
               </button>
               <button type="button" disabled={!created || saving || publishing || validationMessages.length > 0} onClick={handlePublish} className="rounded-full bg-emerald-600 px-8 py-3 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors disabled:opacity-50">
-                {publishing ? "퍼블리시 중..." : hasUnsavedChanges ? "저장 후 퍼블리시" : "퍼블리시하기"}
+                {publishing ? "공개 중..." : hasUnsavedChanges ? "저장 후 공개하기" : "공개하기"}
               </button>
             </div>
           </div>
         </section>
       </div>
-      </div>
-    </div>
+    </StudioShell>
   );
 }
 
@@ -1085,7 +1301,7 @@ function createInitialForm(): StudioEditionInput {
   return {
     title: "",
     subtitle: "",
-    coverImageUrl: "https://picsum.photos/seed/studio/900/900",
+    coverImageUrl: "/demo-assets/playpick-hero.svg",
     bookSpecUid: "SQUAREBOOK_HC",
     sweetbookCoverTemplateUid: "",
     sweetbookPublishTemplateUid: "",
@@ -1160,7 +1376,10 @@ function readCopyBlock(data: Record<string, unknown> | null | undefined) {
   });
 }
 
-function validateForm(form: StudioEditionInput) {
+function validateForm(
+  form: StudioEditionInput,
+  bookPlan: ReturnType<typeof computeBookPlan>,
+) {
   const payload = buildSubmitPayload(form);
   const messages: string[] = [];
   if (!payload.title) messages.push("에디션 제목을 입력해 주세요.");
@@ -1168,6 +1387,7 @@ function validateForm(form: StudioEditionInput) {
   if (!payload.officialIntro?.title || !payload.officialIntro.message) messages.push("인트로 메시지의 제목과 내용을 모두 입력해 주세요.");
   if (!payload.officialClosing?.title || !payload.officialClosing.message) messages.push("클로징 메시지의 제목과 내용을 모두 입력해 주세요.");
   if ((payload.personalizationFields ?? []).length === 0) messages.push("팬 입력 항목을 최소 1개 이상 추가해 주세요.");
+  if (!bookPlan.isValid) messages.push("현재 선택한 인쇄 규격의 페이지 수 규칙을 다시 확인해주세요.");
 
   const fieldKeys = new Set<string>();
   for (const field of payload.personalizationFields ?? []) {
@@ -1197,6 +1417,153 @@ function serializeForm(form: StudioEditionInput) {
 
 function groupTemplatesByRole(templates: SweetbookTemplate[], role: "cover" | "publish" | "content") {
   return templates.filter((template) => template.role.toLowerCase().includes(role));
+}
+
+function curateCoverTemplatesForPlayPick(templates: SweetbookTemplate[]) {
+  const coverTemplates = groupTemplatesByRole(templates, "cover");
+  if (coverTemplates.length <= PLAYPICK_COVER_TEMPLATE_LIMIT) {
+    return coverTemplates;
+  }
+
+  return [...coverTemplates]
+    .sort((left, right) => {
+      const priorityDiff = readPlayPickCoverPriority(left) - readPlayPickCoverPriority(right);
+      if (priorityDiff !== 0) {
+        return priorityDiff;
+      }
+
+      const categoryDiff = (left.category ?? "").localeCompare(right.category ?? "", "ko");
+      if (categoryDiff !== 0) {
+        return categoryDiff;
+      }
+
+      return (left.name ?? "").localeCompare(right.name ?? "", "ko");
+    })
+    .slice(0, PLAYPICK_COVER_TEMPLATE_LIMIT);
+}
+
+function curatePublishTemplatesForPlayPick(templates: SweetbookTemplate[]) {
+  const publishTemplates = groupTemplatesByRole(templates, "publish");
+  if (publishTemplates.length <= PLAYPICK_PUBLISH_TEMPLATE_LIMIT) {
+    return publishTemplates;
+  }
+
+  return [...publishTemplates]
+    .sort((left, right) => {
+      const priorityDiff = readTemplateCategoryPriority(left, PLAYPICK_PUBLISH_TEMPLATE_CATEGORY_PRIORITY)
+        - readTemplateCategoryPriority(right, PLAYPICK_PUBLISH_TEMPLATE_CATEGORY_PRIORITY);
+      if (priorityDiff !== 0) {
+        return priorityDiff;
+      }
+
+      return compareTemplateIdentity(left, right);
+    })
+    .slice(0, PLAYPICK_PUBLISH_TEMPLATE_LIMIT);
+}
+
+function curateContentTemplatesForPlayPick(templates: SweetbookTemplate[]) {
+  const contentTemplates = groupTemplatesByRole(templates, "content");
+  if (contentTemplates.length <= PLAYPICK_CONTENT_TEMPLATE_LIMIT) {
+    return contentTemplates;
+  }
+
+  return [...contentTemplates]
+    .sort((left, right) => {
+      const categoryDiff = readTemplateCategoryPriority(left, PLAYPICK_CONTENT_TEMPLATE_CATEGORY_PRIORITY)
+        - readTemplateCategoryPriority(right, PLAYPICK_CONTENT_TEMPLATE_CATEGORY_PRIORITY);
+      if (categoryDiff !== 0) {
+        return categoryDiff;
+      }
+
+      const layoutDiff = readPlayPickContentPriority(left) - readPlayPickContentPriority(right);
+      if (layoutDiff !== 0) {
+        return layoutDiff;
+      }
+
+      return compareTemplateIdentity(left, right);
+    })
+    .slice(0, PLAYPICK_CONTENT_TEMPLATE_LIMIT);
+}
+
+function readPlayPickCoverPriority(template: SweetbookTemplate) {
+  return readTemplateCategoryPriority(template, PLAYPICK_COVER_TEMPLATE_CATEGORY_PRIORITY);
+}
+
+function readPlayPickContentPriority(template: SweetbookTemplate) {
+  const normalizedName = normalizeTemplateIdentity(template.name);
+
+  if (normalizedName.includes("photo")) {
+    return 0;
+  }
+  if (normalizedName.includes("gallery")) {
+    return 10;
+  }
+  if (normalizedName.includes("datea")) {
+    return 20;
+  }
+  if (normalizedName.includes("dateb")) {
+    return 21;
+  }
+  if (normalizedName.includes("monthheader") || normalizedName.includes("월시작")) {
+    return 30;
+  }
+  if (normalizedName.includes("contain")) {
+    return 40;
+  }
+  if (normalizedName.includes("cover")) {
+    return 45;
+  }
+  if (normalizedName.includes("내지") || normalizedName === "content") {
+    return 50;
+  }
+  if (normalizedName.includes("a")) {
+    return 60;
+  }
+  if (normalizedName.includes("b")) {
+    return 61;
+  }
+  if (normalizedName.includes("빈내지") || normalizedName.includes("blank")) {
+    return 80;
+  }
+  return 70;
+}
+
+function readTemplateCategoryPriority(
+  template: SweetbookTemplate,
+  priorities: readonly string[],
+) {
+  const category = normalizeTemplateIdentity(template.category);
+  const preferredIndex = priorities.findIndex((item) => normalizeTemplateIdentity(item) === category);
+
+  if (preferredIndex >= 0) {
+    return preferredIndex;
+  }
+  if (category.includes("구글포토북")) {
+    return 20;
+  }
+  if (category.includes("일기장")) {
+    return 30;
+  }
+  if (category.includes("알림장")) {
+    return 80;
+  }
+  if (category.includes("공용")) {
+    return 90;
+  }
+  return 50;
+}
+
+function compareTemplateIdentity(left: SweetbookTemplate, right: SweetbookTemplate) {
+  const categoryDiff = (left.category ?? "").localeCompare(right.category ?? "", "ko");
+  if (categoryDiff !== 0) {
+    return categoryDiff;
+  }
+
+  return (left.name ?? "").localeCompare(right.name ?? "", "ko");
+}
+
+function normalizeTemplateIdentity(value: string | undefined) {
+  return (value ?? "").replace(/\s+/g, "").toLowerCase();
 }
 
 function resolveTemplateSelection(templates: SweetbookTemplate[], currentUid: string | undefined) {
@@ -1631,103 +1998,6 @@ function AssetPreview({ asset }: { asset: StudioCuratedAssetInput }) {
   );
 }
 
-function StudioMetricCard({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gold-500">{label}</p>
-      <p className="mt-3 text-3xl font-semibold text-stone-900">{value}</p>
-      <p className="mt-2 text-sm text-warm-500">{hint}</p>
-    </div>
-  );
-}
-
-function StudioRecentOrderCard({ order }: { order: StudioOrderSummary }) {
-  return (
-    <article className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-base font-semibold text-stone-900">{order.editionTitle}</p>
-            <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-warm-500">
-              주문 #{order.projectId}
-            </span>
-            {order.simulated && (
-              <span className="rounded-full bg-gold-400/15 px-2.5 py-1 text-[11px] font-medium text-gold-600">
-                테스트
-              </span>
-            )}
-          </div>
-          <p className="mt-2 text-sm text-stone-600">
-            팬 <span className="font-medium text-stone-900">{order.fanDisplayName}</span>님이{" "}
-            <span className="font-medium text-stone-900">{order.recipientName}</span> 앞으로 주문했습니다.
-          </p>
-        </div>
-        <div className="text-left lg:text-right">
-          <p className="text-lg font-semibold text-stone-900">
-            {formatStudioCurrency(order.totalAmount)}
-          </p>
-          <p className="mt-1 text-xs text-stone-500">{formatStudioDateTime(order.orderedAt)}</p>
-        </div>
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        <StatusPill label={formatSiteOrderStatus(order.siteOrderStatus)} tone="emerald" />
-        <StatusPill
-          label={formatFulfillmentStatus(order.fulfillmentStatus)}
-          tone={order.fulfillmentStatus === "FAILED" ? "rose" : "stone"}
-        />
-        <StatusPill
-          label={`${order.quantity}권`}
-          tone="stone"
-        />
-        {order.paymentMethod && (
-          <StatusPill label={order.paymentMethod} tone="stone" />
-        )}
-      </div>
-
-      <dl className="mt-4 grid gap-3 text-sm text-stone-600 sm:grid-cols-2">
-        <div className="rounded-xl bg-white px-3 py-3">
-          <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">연락처</dt>
-          <dd className="mt-2 font-medium text-stone-900">{order.recipientPhoneMasked || "-"}</dd>
-        </div>
-        <div className="rounded-xl bg-white px-3 py-3">
-          <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">배송지</dt>
-          <dd className="mt-2 text-stone-900">{order.addressSummary || "-"}</dd>
-        </div>
-      </dl>
-    </article>
-  );
-}
-
-function StatusPill({
-  label,
-  tone,
-}: {
-  label: string;
-  tone: "emerald" | "rose" | "stone";
-}) {
-  const toneClass =
-    tone === "emerald"
-      ? "bg-emerald-50 text-emerald-700"
-      : tone === "rose"
-        ? "bg-rose-50 text-rose-700"
-        : "bg-white text-stone-600";
-
-  return (
-    <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${toneClass}`}>
-      {label}
-    </span>
-  );
-}
-
 function parseVideoPreview(url: string) {
   const trimmed = url.trim();
   if (!trimmed) {
@@ -1769,46 +2039,80 @@ function formatCompactNumber(value: number) {
   }).format(value);
 }
 
-function formatStudioCurrency(value: number) {
-  return `${Math.round(value).toLocaleString("ko-KR")}원`;
+function readEditModeName(mode: SweetbookEditModeId) {
+  return SWEETBOOK_EDIT_MODES.find((item) => item.id === mode)?.title ?? mode;
 }
 
-function formatStudioDateTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleString("ko-KR");
-}
+function buildSweetbookPagePlan({
+  form,
+  assetCount,
+  fieldCount,
+  mode,
+  layoutTemplates,
+  bookPlan,
+}: {
+  form: StudioEditionInput;
+  assetCount: number;
+  fieldCount: number;
+  mode: SweetbookEditModeId;
+  layoutTemplates: SweetbookTemplate[];
+  bookPlan: ReturnType<typeof computeBookPlan>;
+}) {
+  const introReady = Boolean(form.officialIntro?.title?.trim() && form.officialIntro?.message?.trim());
+  const closingReady = Boolean(form.officialClosing?.title?.trim() && form.officialClosing?.message?.trim());
+  const coverReady = Boolean(form.coverImageUrl.trim() && form.title.trim());
+  const contentTemplateName = readTemplateName(layoutTemplates, form.sweetbookContentTemplateUid);
 
-function formatSiteOrderStatus(status: string) {
-  switch (status) {
-    case "PAID":
-      return "결제 완료";
-    case "CANCELLED":
-      return "취소됨";
-    case "CREATED":
-      return "생성됨";
-    default:
-      return status;
-  }
-}
-
-function formatFulfillmentStatus(status: string) {
-  switch (status) {
-    case "PENDING_SUBMISSION":
-      return "제작 대기";
-    case "SUBMITTED":
-      return "제작 접수";
-    case "SIMULATED":
-      return "시뮬레이션";
-    case "FAILED":
-      return "제작 실패";
-    case "CANCELLED":
-      return "제작 취소";
-    default:
-      return status;
-  }
+  return [
+    {
+      title: "1p 표지",
+      status: coverReady ? "준비됨" : "보완 필요",
+      tone: coverReady ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
+      description: coverReady
+        ? "커버 이미지와 제목이 준비되어 표지 템플릿에 바로 적용할 수 있어요."
+        : "커버 이미지와 제목을 먼저 채우면 표지 생성 단계로 자연스럽게 이어집니다.",
+    },
+    {
+      title: "오프닝 페이지",
+      status: introReady ? "준비됨" : "보완 필요",
+      tone: introReady ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
+      description: introReady
+        ? "인트로 메시지가 있어 발행면과 첫 페이지에서 세계관을 설명할 수 있습니다."
+        : "인트로 제목과 메시지를 채우면 발행면과 첫 페이지의 맥락이 더 선명해집니다.",
+    },
+    {
+      title: "본문 사진 배치",
+      status: assetCount > 0 ? `${assetCount}개 준비` : "자산 필요",
+      tone: assetCount > 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
+      description:
+        mode === "manual"
+          ? `직접 제어 전략에서는 본문 템플릿(${contentTemplateName}) 기준으로 페이지마다 몇 장씩 넣을지 미리 잡아두는 게 좋습니다.`
+          : `자동 조판 전략에서는 대표 자산 ${assetCount}개를 중심으로 먼저 인쇄용 초안을 만들고, 이후 보정 포인트만 확인하는 흐름이 잘 맞습니다.`,
+    },
+    {
+      title: "팬 참여 페이지",
+      status: fieldCount > 0 ? `${fieldCount}개 항목` : "항목 필요",
+      tone: fieldCount > 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
+      description:
+        fieldCount > 0
+          ? "팬 입력 항목이 준비되어 있어 후반부 참여형 페이지나 주문 개인화 영역으로 연결할 수 있습니다."
+          : "팬 입력 항목을 추가하면 텍스트/메시지 중심 페이지를 설계하기 쉬워집니다.",
+    },
+    {
+      title: "페이지 수 규칙",
+      status: bookPlan.isValid ? `${bookPlan.plannedTotalPages}p 통과` : "규칙 점검 필요",
+      tone: bookPlan.isValid ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
+      description: `현재 자동 조판 계획은 ${bookPlan.plannedTotalPages}p이며, 최소 ${bookPlan.minimumPages}p에서 ${bookPlan.pageIncrement}p 단위로 증감하는 규칙을 기준으로 검토합니다.`,
+    },
+    {
+      title: "엔딩 페이지",
+      status: closingReady ? "준비됨" : "보완 필요",
+      tone: closingReady ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
+      description: closingReady
+        ? "클로징 메시지가 있어 마지막 장과 최종화 직전 검수 포인트가 분명합니다."
+        : "클로징 제목과 메시지를 채우면 마지막 페이지 감정선을 더 잘 닫을 수 있습니다.",
+    },
+  ];
 }
 
 function buildImportedAssets(

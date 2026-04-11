@@ -238,7 +238,13 @@ class AuthAndAccessIntegrationTest {
 
 		mockMvc.perform(post("/api/projects/{projectId}/generate-book", projectId).session(session))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.status").value("FINALIZED"));
+			.andExpect(jsonPath("$.status").value("DRAFT"))
+			.andExpect(jsonPath("$.projectStatus").value("BOOK_CREATED"));
+
+		mockMvc.perform(post("/api/projects/{projectId}/finalize-book", projectId).session(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("FINALIZED"))
+			.andExpect(jsonPath("$.projectStatus").value("FINALIZED"));
 
 		mockMvc.perform(post("/api/projects/{projectId}/order", projectId)
 				.session(session)
@@ -305,6 +311,38 @@ class AuthAndAccessIntegrationTest {
 
 		mockMvc.perform(get("/api/studio/orders").session(fanSession))
 			.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void sweetbookWebhookUpdatesFulfillmentStatus() throws Exception {
+		MockHttpSession session = signUp(uniqueEmail("webhook-fan"), "Webhook Fan");
+		long projectId = createProject(session, 1L, "demo");
+		placeOrder(session, projectId, "Webhook Fan", "010-9999-1111");
+
+		MvcResult summaryResult = mockMvc.perform(get("/api/projects/{projectId}/order-summary", projectId).session(session))
+			.andExpect(status().isOk())
+			.andReturn();
+
+		String fulfillmentOrderUid = readString(summaryResult, "fulfillmentOrderUid");
+
+		mockMvc.perform(post("/api/sweetbook/webhooks/events")
+				.contentType(APPLICATION_JSON)
+				.content("""
+					{
+					  "event": "production.started",
+					  "data": {
+					    "orderUid": "%s",
+					    "occurredAt": "2026-04-11T10:00:00Z"
+					  }
+					}
+					""".formatted(fulfillmentOrderUid)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.linked").value(true));
+
+		mockMvc.perform(get("/api/projects/{projectId}/order-summary", projectId).session(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.fulfillmentStatus").value("PRODUCTION_STARTED"))
+			.andExpect(jsonPath("$.lastFulfillmentEvent").value("production.started"));
 	}
 
 	private MockHttpSession login(String email, String password) throws Exception {
@@ -394,7 +432,13 @@ class AuthAndAccessIntegrationTest {
 	private void placeOrder(MockHttpSession session, long projectId, String recipientName, String recipientPhone) throws Exception {
 		mockMvc.perform(post("/api/projects/{projectId}/generate-book", projectId).session(session))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.status").value("FINALIZED"));
+			.andExpect(jsonPath("$.status").value("DRAFT"))
+			.andExpect(jsonPath("$.projectStatus").value("BOOK_CREATED"));
+
+		mockMvc.perform(post("/api/projects/{projectId}/finalize-book", projectId).session(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("FINALIZED"))
+			.andExpect(jsonPath("$.projectStatus").value("FINALIZED"));
 
 		mockMvc.perform(post("/api/projects/{projectId}/order", projectId)
 				.session(session)

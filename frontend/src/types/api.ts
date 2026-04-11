@@ -62,6 +62,17 @@ export interface EditionDetail {
   updatedAt: string;
 }
 
+export interface StudioEditionSummary {
+  id: number;
+  title: string;
+  subtitle: string;
+  coverImageUrl: string;
+  status: string;
+  creator: Creator;
+  updatedAt: string;
+  snapshot: EditionSnapshot | null;
+}
+
 /* ── Projects ── */
 
 export interface ProjectSnapshot {
@@ -71,6 +82,9 @@ export interface ProjectSnapshot {
   status: string;
   personalizationData: Record<string, unknown>;
   sweetbookBookUid: string | null;
+  sweetbookExternalRef: string | null;
+  sweetbookDraftCreatedAt: string | null;
+  sweetbookFinalizedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -89,6 +103,10 @@ export interface ProjectPreview {
   mode: string;
   edition: EditionDetail;
   personalizationData: Record<string, unknown>;
+  sweetbookBookUid: string | null;
+  sweetbookExternalRef: string | null;
+  sweetbookDraftCreatedAt: string | null;
+  sweetbookFinalizedAt: string | null;
   pages: PreviewPage[];
 }
 
@@ -96,10 +114,14 @@ export interface BookGeneration {
   projectId: number;
   bookUid: string;
   status: string;
+  projectStatus: string;
   bookSpecUid: string;
   coverTemplateUid: string;
+  publishTemplateUid: string;
   contentTemplateUid: string;
+  plannedPageCount: number;
   simulated: boolean;
+  reused: boolean;
 }
 
 export interface AiCollabCandidateResponse {
@@ -168,6 +190,8 @@ export interface ProjectOrderSummary {
   siteOrderUid: string;
   fulfillmentStatus: string;
   fulfillmentOrderUid: string | null;
+  lastFulfillmentEvent: string | null;
+  lastFulfillmentEventAt: string | null;
   totalAmount: number;
   simulated: boolean;
   orderedAt: string;
@@ -193,6 +217,8 @@ export interface MyProjectSummary {
   mode: string;
   siteOrderStatus: string | null;
   fulfillmentStatus: string | null;
+  lastFulfillmentEvent: string | null;
+  lastFulfillmentEventAt: string | null;
   updatedAt: string;
   continuePath: string;
 }
@@ -210,6 +236,8 @@ export interface StudioOrderSummary {
   siteOrderUid: string;
   siteOrderStatus: string;
   fulfillmentStatus: string;
+  lastEventType: string | null;
+  lastEventAt: string | null;
   paymentProvider: string | null;
   paymentMethod: string | null;
   simulated: boolean;
@@ -219,6 +247,10 @@ export interface StudioOrderSummary {
 export interface StudioOrderDashboard {
   totalOrders: number;
   paidOrders: number;
+  productionOrders: number;
+  shippingOrders: number;
+  deliveredOrders: number;
+  simulatedOrders: number;
   totalRevenue: number;
   recentOrders: StudioOrderSummary[];
 }
@@ -319,6 +351,7 @@ export interface SweetbookBookSpec {
   name: string;
   minPages: number | null;
   maxPages: number | null;
+  pageIncrement: number | null;
 }
 
 export interface SweetbookTemplate {
@@ -327,4 +360,10 @@ export interface SweetbookTemplate {
   category: string;
   role: string;
   thumbnailUrl: string;
+}
+
+export interface SweetbookIntegrationStatus {
+  mode: "SIMULATED" | "SANDBOX" | "LIVE";
+  liveEnabled: boolean;
+  label: string;
 }

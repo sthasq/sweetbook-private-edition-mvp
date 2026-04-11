@@ -46,6 +46,13 @@ export async function generateBook(id: number) {
   return result;
 }
 
+export async function finalizeBook(id: number) {
+  const result = await post<BookGeneration>(`/projects/${id}/finalize-book`);
+  invalidateApiCache(`/projects/${id}/preview`);
+  invalidateApiCache("/me/projects");
+  return result;
+}
+
 export function generateAiCollab(
   id: number,
   body: {

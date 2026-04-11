@@ -37,6 +37,7 @@ public class SecurityConfig {
 					"/h2-console/**"
 				).permitAll()
 				.requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/logout").permitAll()
+				.requestMatchers("/api/assets/**").permitAll()
 				.requestMatchers("/api/editions/**").permitAll()
 				.requestMatchers("/api/studio/**").hasRole("CREATOR")
 				.requestMatchers("/api/projects/**", "/api/me/**", "/api/youtube/**", "/api/auth/me").authenticated()

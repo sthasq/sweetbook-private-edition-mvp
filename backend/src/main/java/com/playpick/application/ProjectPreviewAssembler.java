@@ -115,6 +115,10 @@ public class ProjectPreviewAssembler {
 			mode,
 			edition,
 			personalization,
+			project.sweetbookBookUid(),
+			project.sweetbookExternalRef(),
+			project.sweetbookDraftCreatedAt(),
+			project.sweetbookFinalizedAt(),
 			pages
 		);
 	}

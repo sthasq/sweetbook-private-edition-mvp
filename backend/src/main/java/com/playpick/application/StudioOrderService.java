@@ -32,7 +32,7 @@ public class StudioOrderService {
 		AppUser currentUser = currentUserService.requireCurrentAppUser(AppUserRole.CREATOR);
 		List<CustomerOrder> orders = customerOrderRepository.findAllByCreatorUserIdOrderByOrderedAtDesc(currentUser.getId());
 		if (orders.isEmpty()) {
-			return new StudioViews.OrderDashboard(0, 0, BigDecimal.ZERO, List.of());
+			return new StudioViews.OrderDashboard(0, 0, 0, 0, 0, 0, BigDecimal.ZERO, List.of());
 		}
 
 		Map<Long, OrderRecord> orderRecordsByProjectId = orderRecordRepository.findByFanProjectIdIn(
@@ -55,6 +55,22 @@ public class StudioOrderService {
 			.filter(order -> order.getStatus() == OrderStatus.PAID)
 			.count();
 
+		long productionOrders = orders.stream()
+			.filter(order -> isProductionStage(orderRecordsByProjectId.get(order.getFanProject().getId())))
+			.count();
+
+		long shippingOrders = orders.stream()
+			.filter(order -> isShippingStage(orderRecordsByProjectId.get(order.getFanProject().getId())))
+			.count();
+
+		long deliveredOrders = orders.stream()
+			.filter(order -> hasFulfillmentStatus(orderRecordsByProjectId.get(order.getFanProject().getId()), FulfillmentStatus.SHIPPING_DELIVERED))
+			.count();
+
+		long simulatedOrders = orders.stream()
+			.filter(CustomerOrder::isSimulated)
+			.count();
+
 		List<StudioViews.OrderSummary> recentOrders = orders.stream()
 			.limit(RECENT_ORDER_LIMIT)
 			.map(order -> toOrderSummary(order, orderRecordsByProjectId.get(order.getFanProject().getId())))
@@ -63,6 +79,10 @@ public class StudioOrderService {
 		return new StudioViews.OrderDashboard(
 			orders.size(),
 			paidOrders,
+			productionOrders,
+			shippingOrders,
+			deliveredOrders,
+			simulatedOrders,
 			totalRevenue,
 			recentOrders
 		);
@@ -82,6 +102,8 @@ public class StudioOrderService {
 			order.getOrderUid(),
 			order.getStatus().name(),
 			resolveFulfillmentStatus(orderRecord),
+			orderRecord == null ? null : orderRecord.getLastEventType(),
+			orderRecord == null ? null : orderRecord.getLastEventAt(),
 			blankToNull(order.getPaymentProvider()),
 			blankToNull(order.getPaymentMethod()),
 			order.isSimulated(),
@@ -94,6 +116,24 @@ public class StudioOrderService {
 			return FulfillmentStatus.PENDING_SUBMISSION.name();
 		}
 		return orderRecord.getStatus().name();
+	}
+
+	private boolean isProductionStage(OrderRecord orderRecord) {
+		if (orderRecord == null || orderRecord.getStatus() == null) {
+			return false;
+		}
+		return switch (orderRecord.getStatus()) {
+			case SUBMITTED, PRODUCTION_CONFIRMED, PRODUCTION_STARTED, PRODUCTION_COMPLETED -> true;
+			default -> false;
+		};
+	}
+
+	private boolean isShippingStage(OrderRecord orderRecord) {
+		return hasFulfillmentStatus(orderRecord, FulfillmentStatus.SHIPPING_DEPARTED);
+	}
+
+	private boolean hasFulfillmentStatus(OrderRecord orderRecord, FulfillmentStatus status) {
+		return orderRecord != null && orderRecord.getStatus() == status;
 	}
 
 	private String maskPhoneNumber(String phoneNumber) {

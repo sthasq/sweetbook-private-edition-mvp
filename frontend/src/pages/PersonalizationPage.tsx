@@ -302,7 +302,7 @@ export default function PersonalizationPage() {
   const previewTitle = preview.edition.title;
   const previewSubtitle =
     resolvePreviewSubtitle(values) ??
-    "당신의 기억과 문장이 이 굿즈의 마지막 분위기를 완성합니다.";
+    "나의 이야기가 이 포토북의 마지막 분위기를 완성해요.";
   const selectedCollabImage = readStringValue(values.aiCollabSelectedUrl);
   const selectedCollabLabel = readStringValue(values.aiCollabTemplateLabel);
 
@@ -314,13 +314,12 @@ export default function PersonalizationPage() {
         <div className="grid gap-10 lg:grid-cols-2 lg:items-start">
           <section className="min-w-0">
             <div className="mb-10">
-              <p className="editorial-label">이제 내 얘기 넣기</p>
+              <p className="editorial-label">개인화</p>
               <h1 className="mt-4 text-4xl font-bold leading-tight text-brand-700 md:text-5xl">
-                이제 내 이야기를 넣을 차례
+                나만의 이야기를 담아주세요
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-warm-500">
-                좋아하는 장면에 내 이야기를 더해 주세요. 입력 내용은 미리보기 단계에서 한 권의
-                구성으로 합쳐집니다.
+                아래 항목을 채우면 크리에이터의 장면과 합쳐져 세상에 하나뿐인 포토북이 만들어져요.
               </p>
             </div>
 
@@ -328,14 +327,14 @@ export default function PersonalizationPage() {
               <div className="editorial-card mb-8 p-6">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <p className="editorial-label text-brand-700">YouTube로 먼저 채우기</p>
+                    <p className="editorial-label text-brand-700">YouTube 연동</p>
                     <p className="mt-3 text-lg font-semibold text-stone-900">
-                      구독 채널과 대표 영상을 바탕으로 초안을 먼저 채울 수 있어요.
+                      YouTube 활동을 바탕으로 빠르게 채워보세요
                     </p>
                     <p className="mt-2 text-sm leading-relaxed text-warm-500">
                       {youtubeConnected
-                        ? "채널과 영상을 먼저 불러오고, 닉네임은 마지막에 다듬어도 괜찮아요."
-                        : "Google 계정을 연결하면 YouTube 데이터를 가져올 수 있어요."}
+                        ? "채널과 영상을 먼저 불러온 뒤, 나머지는 자유롭게 수정하면 돼요."
+                        : "Google 계정을 연결하면 구독 채널과 영상 정보를 가져올 수 있어요."}
                     </p>
                   </div>
                   <button onClick={handleYouTubeConnect} className="editorial-button-secondary">
@@ -344,7 +343,7 @@ export default function PersonalizationPage() {
                 </div>
 
                 {youtubeSyncing && (
-                  <p className="mt-4 text-sm text-warm-500">YouTube 연결 상태 확인 중이에요.</p>
+                  <p className="mt-4 text-sm text-warm-500">YouTube 연결 상태를 확인하고 있어요.</p>
                 )}
 
                 {youtubeConnected && (
@@ -414,7 +413,7 @@ export default function PersonalizationPage() {
                       내 사진을 빠니보틀 여행 무드에 맞춰 한 장의 기념컷으로 바꿔볼 수 있어요.
                     </p>
                     <p className="mt-2 text-sm leading-relaxed text-warm-500">
-                      과제용 MVP라서 지금은 빠니보틀 에디션에서만 열리고, 포토리얼 합성 대신
+                      지금은 빠니보틀 에디션에서만 열리고, 포토리얼 합성 대신 여행 무드에 맞춘
                       스타일 컷으로 정리해 줍니다.
                     </p>
                   </div>
@@ -709,7 +708,7 @@ export default function PersonalizationPage() {
                 onClick={handleSave}
                 className="editorial-button-primary min-w-[220px] disabled:opacity-50"
               >
-                {saving ? "저장 중..." : "다음으로 넘어가기"}
+                {saving ? "저장 중..." : "미리보기로 이동"}
               </button>
             </div>
           </section>
@@ -718,7 +717,7 @@ export default function PersonalizationPage() {
             <div className="editorial-panel overflow-hidden p-6 md:p-8">
               <div className="mb-6 flex items-center justify-between">
                 <div>
-                  <p className="editorial-label text-gold-500">옆에서 바로 보기</p>
+                  <p className="editorial-label text-gold-500">실시간 미리보기</p>
                   <p className="mt-2 text-sm text-warm-500">{preview.edition.title}</p>
                 </div>
                 <div className="rounded bg-white/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-700">
@@ -729,10 +728,10 @@ export default function PersonalizationPage() {
               <div className="editorial-card bg-[linear-gradient(180deg,#fffefb_0%,#f7f3ec_100%)] p-8">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-gold-500">
-                    지금 초안
+                    작성 중
                   </span>
                   <span className="rounded bg-gold-400/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-gold-500">
-                    기본 드롭
+                    공식 에디션
                   </span>
                 </div>
                 <h2 className="mt-8 text-3xl font-bold leading-tight text-brand-700">
@@ -740,16 +739,16 @@ export default function PersonalizationPage() {
                 </h2>
                 <p className="mt-3 text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">
                   {readStringValue(values.fanNickname)
-                    ? `${readStringValue(values.fanNickname)}님을 위한 미리보기`
-                    : "당신을 위한 미리보기"}
+                    ? `${readStringValue(values.fanNickname)}님의 포토북`
+                    : "나만의 포토북"}
                 </p>
 
                 <div className="mt-8 overflow-hidden rounded">
                   <img
-                    src={
-                      preview.edition.coverImageUrl ||
-                      `https://picsum.photos/seed/personalization-${preview.edition.id}/800/520`
-                    }
+                      src={
+                        preview.edition.coverImageUrl ||
+                      "/demo-assets/playpick-hero.svg"
+                      }
                     alt={preview.edition.title}
                     className="aspect-[4/3] w-full object-cover"
                   />
@@ -791,7 +790,7 @@ export default function PersonalizationPage() {
                   ))}
                   {summaryEntries.length === 0 && (
                     <p className="text-sm leading-relaxed text-warm-500">
-                      입력이 시작되면 이 영역에 실제 미리보기용 문장이 차곡차곡 정리됩니다.
+                      항목을 채우기 시작하면 여기에 내용이 하나씩 정리돼요.
                     </p>
                   )}
                 </div>

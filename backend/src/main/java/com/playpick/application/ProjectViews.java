@@ -17,6 +17,9 @@ public final class ProjectViews {
 		String status,
 		Map<String, Object> personalizationData,
 		String sweetbookBookUid,
+		String sweetbookExternalRef,
+		Instant sweetbookDraftCreatedAt,
+		Instant sweetbookFinalizedAt,
 		Instant createdAt,
 		Instant updatedAt
 	) {
@@ -28,6 +31,10 @@ public final class ProjectViews {
 		String mode,
 		EditionViews.Detail edition,
 		Map<String, Object> personalizationData,
+		String sweetbookBookUid,
+		String sweetbookExternalRef,
+		Instant sweetbookDraftCreatedAt,
+		Instant sweetbookFinalizedAt,
 		List<Page> pages
 	) {
 	}
@@ -45,10 +52,14 @@ public final class ProjectViews {
 		Long projectId,
 		String bookUid,
 		String status,
+		String projectStatus,
 		String bookSpecUid,
 		String coverTemplateUid,
+		String publishTemplateUid,
 		String contentTemplateUid,
-		boolean simulated
+		int plannedPageCount,
+		boolean simulated,
+		boolean reused
 	) {
 	}
 
@@ -125,6 +136,8 @@ public final class ProjectViews {
 		String siteOrderUid,
 		String fulfillmentStatus,
 		String fulfillmentOrderUid,
+		String lastFulfillmentEvent,
+		Instant lastFulfillmentEventAt,
 		BigDecimal totalAmount,
 		boolean simulated,
 		Instant orderedAt,
@@ -158,6 +171,8 @@ public final class ProjectViews {
 		String mode,
 		String siteOrderStatus,
 		String fulfillmentStatus,
+		String lastFulfillmentEvent,
+		Instant lastFulfillmentEventAt,
 		Instant updatedAt,
 		String continuePath
 	) {

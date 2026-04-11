@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import RequireAuth from "./components/RequireAuth";
 import RequireRole from "./components/RequireRole";
@@ -12,6 +12,7 @@ import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import PaymentFailPage from "./pages/PaymentFailPage";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import StudioPage from "./pages/StudioPage";
+import StudioOrdersPage from "./pages/StudioOrdersPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import MyProjectsPage from "./pages/MyProjectsPage";
@@ -48,7 +49,10 @@ export default function App() {
           </Route>
           <Route path="oauth/google/callback" element={<OAuthCallbackPage />} />
           <Route element={<RequireRole role="CREATOR" />}>
-            <Route path="studio" element={<StudioPage />} />
+            <Route path="studio" element={<Navigate to="/studio/orders" replace />} />
+            <Route path="studio/orders" element={<StudioOrdersPage />} />
+            <Route path="studio/editions/new" element={<StudioPage />} />
+            <Route path="studio/editions/:editionId/edit" element={<StudioPage />} />
           </Route>
         </Route>
       </Routes>
