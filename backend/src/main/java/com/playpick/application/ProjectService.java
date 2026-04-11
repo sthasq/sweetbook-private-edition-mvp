@@ -38,6 +38,7 @@ public class ProjectService {
 	private final SweetbookService sweetbookService;
 	private final TossPaymentsService tossPaymentsService;
 	private final OpenRouterImageService openRouterImageService;
+	private final ChatPersonalizationService chatPersonalizationService;
 	private final CurrentUserService currentUserService;
 	private final AppProperties appProperties;
 	private final TossPaymentsProperties tossPaymentsProperties;
@@ -47,12 +48,13 @@ public class ProjectService {
 		AppUser currentUser = currentUserService.requireCurrentAppUser();
 		Long editionId = command.editionId() == null ? editionService.getDefaultPublishedEditionId() : command.editionId();
 		var publishedVersion = editionService.requirePublishedVersion(editionId);
+		String mode = normalizeMode(command.mode());
 		FanProject project = new FanProject();
 		project.setEditionVersion(publishedVersion);
 		project.setOwnerUser(currentUser);
 
 		Map<String, Object> personalizationData = new LinkedHashMap<>();
-		if ("demo".equalsIgnoreCase(command.mode()) || command.mode() == null || command.mode().isBlank()) {
+		if ("demo".equals(mode)) {
 			personalizationData.putAll(createDemoPersonalization(
 				publishedVersion.getEdition().getId(),
 				publishedVersion.getEdition().getCreator().getDisplayName(),
@@ -63,7 +65,7 @@ public class ProjectService {
 		if (command.personalizationData() != null) {
 			personalizationData.putAll(command.personalizationData());
 		}
-		personalizationData.putIfAbsent("mode", command.mode() == null || command.mode().isBlank() ? "demo" : command.mode());
+		personalizationData.put("mode", normalizeMode(asString(personalizationData.get("mode"), mode)));
 
 		project.setPersonalizationData(personalizationData);
 		project.setStatus(FanProjectStatus.DRAFT);
@@ -75,14 +77,8 @@ public class ProjectService {
 		Map<String, Object> data = new LinkedHashMap<>();
 		data.put("mode", "demo");
 		if (editionId == 1L) {
-			data.put("fanNickname", "연두");
-			data.put("subscribedSince", "2023-07-14T00:00:00Z");
-			data.put("daysTogether", 1002);
-			data.put("favoriteVideoId", "pani-demo-2");
-			data.put("uploadedImageUrl", "/demo-assets/panibottle-landscape.jpg");
-			data.put("fanNote", "밤기차 창밖이 까맣게 흘러가는데도 계속 말을 이어가던 장면이 이상하게 오래 남았어요. 언젠가 저도 그런 식으로 낯선 도시를 건너보고 싶어요.");
 			data.put("channel", Map.of(
-				"channelId", "UC_DEMO_PANIBOTTLE",
+				"channelId", "VC_ASTRA_VALE",
 				"title", creatorName,
 				"subscriberCount", "2500000",
 				"thumbnailUrl", "/demo-assets/panibottle-avatar.jpg",
@@ -91,22 +87,22 @@ public class ProjectService {
 			));
 			data.put("topVideos", List.of(
 				Map.of(
-					"videoId", "pani-demo-1",
-					"title", "처음 내려본 사막 도시의 오후",
+					"videoId", "astra-demo-1",
+					"title", "사막 도시의 첫 오후",
 					"thumbnailUrl", "/demo-assets/panibottle-cover.jpg",
 					"viewCount", 630000,
 					"publishedAt", "2024-06-01T00:00:00Z"
 				),
 				Map.of(
-					"videoId", "pani-demo-2",
-					"title", "야간열차 타고 국경 넘기",
+					"videoId", "astra-demo-2",
+					"title", "야간열차 플랫폼의 기록",
 					"thumbnailUrl", "/demo-assets/panibottle-landscape.jpg",
 					"viewCount", 520000,
 					"publishedAt", "2024-10-01T00:00:00Z"
 				),
 				Map.of(
-					"videoId", "pani-demo-3",
-					"title", "로컬 야시장 한 바퀴",
+					"videoId", "astra-demo-3",
+					"title", "창밖으로 흘러가던 황금빛 사막",
 					"thumbnailUrl", "/demo-assets/panibottle-landscape.jpg",
 					"viewCount", 410000,
 					"publishedAt", "2025-01-01T00:00:00Z"
@@ -116,11 +112,8 @@ public class ProjectService {
 		}
 
 		if (editionId == 2L) {
-			data.put("fanNickname", "소연");
-			data.put("favoriteMemory", "처음 보는 골목에서 멈칫하다가도 결국 웃으면서 들어가던 장면이 제일 곽튜브답다고 느꼈어요.");
-			data.put("fanMessage", "영상 속 어색함이 오히려 용기가 되는 순간이 있더라고요. 이 북에는 그때마다 저장해 두고 싶었던 문장들을 편지처럼 모아보고 싶어요.");
 			data.put("channel", Map.of(
-				"channelId", "UC_DEMO_JBKWAK",
+				"channelId", "VC_MINA_LOOP",
 				"title", creatorName,
 				"subscriberCount", "2100000",
 				"thumbnailUrl", "/demo-assets/jbkwak-avatar.jpg",
@@ -130,12 +123,8 @@ public class ProjectService {
 			return data;
 		}
 
-		data.put("fanNickname", "주은");
-		data.put("favoriteVideoId", "chim-demo-2");
-		data.put("uploadedImageUrl", "/demo-assets/chimchakman-landscape.jpg");
-		data.put("fanNote", "말이 빙 돌아가다가도 마지막에 툭 정리되는 순간이 좋아요. 웃다가도 메모하고 싶어지는 장면들만 따로 접어두고 싶었습니다.");
 		data.put("channel", Map.of(
-			"channelId", "UC_DEMO_CHIMCHAKMAN",
+			"channelId", "VC_NOAH_REED",
 			"title", creatorName,
 			"subscriberCount", "3100000",
 			"thumbnailUrl", "/demo-assets/chimchakman-avatar.jpg",
@@ -144,22 +133,22 @@ public class ProjectService {
 		));
 		data.put("topVideos", List.of(
 			Map.of(
-				"videoId", "chim-demo-1",
-				"title", "괜히 다시 켜보게 되는 토크",
+				"videoId", "noah-demo-1",
+				"title", "정적이 먼저 흐르는 오프닝 토크",
 				"thumbnailUrl", "/demo-assets/chimchakman-cover.jpg",
 				"viewCount", 980000,
 				"publishedAt", "2024-05-01T00:00:00Z"
 			),
 			Map.of(
-				"videoId", "chim-demo-2",
-				"title", "먹방과 잡담 하이라이트",
+				"videoId", "noah-demo-2",
+				"title", "노트 위에 남겨둔 대화의 잔상",
 				"thumbnailUrl", "/demo-assets/chimchakman-landscape.jpg",
 				"viewCount", 870000,
 				"publishedAt", "2024-11-01T00:00:00Z"
 			),
 			Map.of(
-				"videoId", "chim-demo-3",
-				"title", "팬이 자주 꺼내보는 하이라이트",
+				"videoId", "noah-demo-3",
+				"title", "늦은 밤 스튜디오 메모",
 				"thumbnailUrl", "/demo-assets/chimchakman-landscape.jpg",
 				"viewCount", 790000,
 				"publishedAt", "2025-02-01T00:00:00Z"
@@ -179,6 +168,7 @@ public class ProjectService {
 		if (command.personalizationData() != null) {
 			personalizationData.putAll(command.personalizationData());
 		}
+		personalizationData.put("mode", normalizeMode(asString(personalizationData.get("mode"), "demo")));
 		project.setPersonalizationData(personalizationData);
 		resetPreparedBook(project);
 		project.setStatus(FanProjectStatus.PERSONALIZED);
@@ -195,9 +185,22 @@ public class ProjectService {
 		FanProject project = requireOwnedProject(projectId);
 		Long editionId = project.getEditionVersion().getEdition().getId();
 		if (editionId != 1L) {
-			throw new AppException(HttpStatus.BAD_REQUEST, "AI collab is only enabled for the PaniBottle edition");
+			throw new AppException(HttpStatus.BAD_REQUEST, "AI collab is only enabled for the Astra Vale edition");
 		}
 		return openRouterImageService.generatePaniCollab(command);
+	}
+
+	public ProjectViews.ChatPersonalization chatPersonalization(
+		Long projectId,
+		List<ProjectCommands.ChatMessage> messages
+	) {
+		FanProject project = requireOwnedProject(projectId);
+		EditionViews.Detail edition = editionService.getEdition(project.getEditionVersion().getEdition().getId());
+		return chatPersonalizationService.chat(
+			edition,
+			new LinkedHashMap<>(project.getPersonalizationData()),
+			messages
+		);
 	}
 
 	@Transactional
@@ -497,11 +500,22 @@ public class ProjectService {
 	}
 
 	private String resolveMode(FanProject project) {
-		Object mode = project.getPersonalizationData().get("mode");
-		if (mode instanceof String text && !text.isBlank()) {
-			return text;
+		return normalizeMode(asString(project.getPersonalizationData().get("mode"), "demo"));
+	}
+
+	private String normalizeMode(String rawMode) {
+		if (rawMode == null || rawMode.isBlank()) {
+			return "demo";
 		}
-		return "demo";
+		String normalized = rawMode.trim().toLowerCase();
+		if ("youtube".equals(normalized)) {
+			return "demo";
+		}
+		return normalized;
+	}
+
+	private String asString(Object value, String fallback) {
+		return value == null ? fallback : String.valueOf(value);
 	}
 
 	private String resolveContinuePath(FanProject project) {

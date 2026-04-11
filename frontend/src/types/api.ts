@@ -139,6 +139,17 @@ export interface AiCollabGenerationResponse {
   candidates: AiCollabCandidateResponse[];
 }
 
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ChatPersonalizationResponse {
+  reply: string;
+  proposal: Record<string, unknown> | null;
+  done: boolean;
+}
+
 export interface EstimateResponse {
   totalAmount: number;
   vendorCost: number;
@@ -259,31 +270,9 @@ export interface StudioOrderDashboard {
   recentOrders: StudioOrderSummary[];
 }
 
-/* ── YouTube ── */
+/* ── External channels ── */
 
-export interface YouTubeAuthUrl {
-  enabled: boolean;
-  authUrl: string;
-  state: string;
-}
-
-export interface YouTubeAvailability {
-  enabled: boolean;
-}
-
-export interface YouTubeConnection {
-  connected: boolean;
-  message: string;
-}
-
-export interface YouTubeChannel {
-  channelId: string;
-  title: string;
-  thumbnailUrl: string;
-  subscribedAt: string;
-}
-
-export interface YouTubeChannelDetail {
+export interface ExternalChannelDetail {
   channelId: string;
   title: string;
   description: string;
@@ -295,7 +284,7 @@ export interface YouTubeChannelDetail {
   viewCount: number;
 }
 
-export interface YouTubeVideo {
+export interface ExternalChannelVideo {
   videoId: string;
   title: string;
   thumbnailUrl: string;
@@ -303,24 +292,18 @@ export interface YouTubeVideo {
   publishedAt: string;
 }
 
-export interface YouTubeAnalyzeResult {
-  channel: YouTubeChannelDetail;
-  topVideos: YouTubeVideo[];
-  personalizationData: Record<string, unknown>;
-}
-
-export interface YouTubeStudioMonthlyStat {
+export interface ExternalChannelMonthlyStat {
   month: string;
   uploadCount: number;
   totalViews: number;
 }
 
-export interface YouTubeStudioYearlySummary {
+export interface ExternalChannelYearlySummary {
   uploadCount: number;
   totalViews: number;
   averageViewsPerVideo: number;
   periodLabel: string;
-  monthlyStats: YouTubeStudioMonthlyStat[];
+  monthlyStats: ExternalChannelMonthlyStat[];
 }
 
 export interface StudioCuratedAssetSuggestion {
@@ -330,10 +313,10 @@ export interface StudioCuratedAssetSuggestion {
   sortOrder: number;
 }
 
-export interface YouTubeStudioRecapResult {
-  channel: YouTubeChannelDetail;
-  topVideos: YouTubeVideo[];
-  yearlySummary: YouTubeStudioYearlySummary;
+export interface StudioChannelRecapResult {
+  channel: ExternalChannelDetail;
+  topVideos: ExternalChannelVideo[];
+  yearlySummary: ExternalChannelYearlySummary;
   curatedAssets: StudioCuratedAssetSuggestion[];
 }
 

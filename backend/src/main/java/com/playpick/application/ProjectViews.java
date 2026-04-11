@@ -80,6 +80,13 @@ public final class ProjectViews {
 	) {
 	}
 
+	public record ChatPersonalization(
+		String reply,
+		Map<String, Object> proposal,
+		boolean done
+	) {
+	}
+
 	public record Estimate(
 		Long projectId,
 		String currency,

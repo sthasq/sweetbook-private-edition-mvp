@@ -9,35 +9,35 @@ import { formatChannelHandle } from "../lib/channelHandle";
 import { estimateEditionPricing } from "../lib/sweetbookWorkflow";
 import type { EditionSummary } from "../types/api";
 
-const QUICK_FILTERS = ["오늘의 추천", "팬북", "리캡 포토북", "공식 에디션"] as const;
+const QUICK_FILTERS = ["오늘의 셀렉션", "대화형 제작", "가상 에디션", "소장용 추천"] as const;
 
 const SHOPPING_BENEFITS = [
   {
-    label: "간편 주문",
-    title: "고르고 바로 주문까지",
-    description: "마음에 드는 에디션을 고른 뒤 이름과 한마디만 더하면 나만의 포토북 주문이 시작됩니다.",
+    label: "플랫폼 경험",
+    title: "고르면 바로 대화가 시작돼요",
+    description: "에디션을 고른 뒤 몇 가지 질문에 답하면, 어시스턴트가 팬의 분위기에 맞는 포토북 구성을 제안합니다.",
   },
   {
-    label: "나만의 한 권",
-    title: "같은 에디션, 다른 이야기",
-    description: "좋아한 장면, 추억 한 줄, 내 사진까지 더해 세상에 하나뿐인 포토북으로 완성하세요.",
+    label: "팬 참여",
+    title: "같은 에디션, 다른 스토리",
+    description: "같은 가상 크리에이터 에디션도 팬마다 다른 기억과 문장으로 전혀 다른 결과물로 완성됩니다.",
   },
   {
-    label: "실물 배송",
-    title: "진짜 책으로 받아보기",
-    description: "결제가 끝나면 인쇄와 제본을 거쳐 실물 포토북이 집 앞까지 배송됩니다.",
+    label: "실물 제작",
+    title: "디지털 경험에서 실물 배송까지",
+    description: "대화로 정리한 제안이 미리보기와 인쇄, 배송 단계까지 자연스럽게 이어집니다.",
   },
 ] as const;
 
 const MALL_SIGNALS = [
-  { value: "공식 에디션", caption: "크리에이터가 직접 만든 한정판" },
-  { value: "개인화 제작", caption: "내 문장과 사진을 더해 완성" },
-  { value: "실물 배송", caption: "결제 후 포토북으로 받아보기" },
+  { value: "가상 에디션", caption: "오리지널 세계관으로 만든 포토북 셀렉션" },
+  { value: "대화형 제안", caption: "몇 가지 질문만으로 개인화 문구 완성" },
+  { value: "실물 제작", caption: "미리보기 후 실제 포토북으로 받아보기" },
 ] as const;
 
 const PRODUCT_STICKERS = [
   "지금 가장 인기 있는",
-  "팬 개인화 인기",
+  "대화형 추천",
   "방금 올라온 신규",
   "소장용 추천",
 ] as const;
@@ -72,15 +72,15 @@ export default function LandingPage() {
         <div className="page-shell space-y-10 lg:space-y-14">
           <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
             <div>
-              <p className="editorial-label">크리에이터 포토북</p>
+              <p className="editorial-label">인플루언서-팬 포토북 플랫폼</p>
               <h1 className="mt-5 max-w-4xl text-5xl font-bold leading-tight text-stone-900 md:text-6xl">
-                좋아하는 크리에이터의
+                가상 크리에이터와 팬을 잇는
                 <br />
-                포토북, 내 손안에
+                개인화 포토북 플랫폼
               </h1>
               <p className="mt-6 max-w-2xl text-lg leading-relaxed text-warm-500">
-                크리에이터가 만든 공식 에디션을 고르고, 나만의 문장과 추억을 더해 세상에 하나뿐인
-                포토북을 주문하세요.
+                오리지널 가상 에디션을 고르고 몇 가지 질문에 답하면, 팬의 문장과 추억을 담은
+                맞춤형 포토북 제안을 실물 제작까지 이어서 경험할 수 있습니다.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 {QUICK_FILTERS.map((filter) => (
@@ -126,7 +126,7 @@ export default function LandingPage() {
                       </h2>
                       <p className="mt-3 text-sm leading-relaxed text-warm-500">
                         {featuredEdition?.subtitle ??
-                          "크리에이터가 직접 고른 장면에 팬의 이야기를 더해 완성하는 한정판 포토북입니다."}
+                          "가상 크리에이터가 준비한 장면 위에 팬의 이야기를 더해 완성하는 포토북입니다."}
                       </p>
                     </div>
 
@@ -206,7 +206,7 @@ export default function LandingPage() {
                 지금 바로 만들 수 있는 포토북
               </h2>
               <p className="mt-4 max-w-2xl text-base leading-relaxed text-warm-500">
-                마음에 드는 에디션을 고르고, 내 이야기를 더한 뒤 미리보기까지 확인하고 주문하세요.
+                가상 에디션을 고르고, 대화로 제안받고, 미리보기와 주문까지 한 흐름으로 이어집니다.
               </p>
             </div>
             {user?.role === "CREATOR" && (
@@ -267,7 +267,7 @@ export default function LandingPage() {
                         {edition.title}
                       </h3>
                       <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-warm-500">
-                        {edition.subtitle || "크리에이터가 직접 고른 장면에 나만의 이야기를 더해 완성하는 한정판 포토북입니다."}
+                        {edition.subtitle || "가상 크리에이터가 준비한 장면에 나만의 이야기를 더해 완성하는 포토북입니다."}
                       </p>
                     </div>
 
@@ -316,12 +316,12 @@ export default function LandingPage() {
             <div className="editorial-card p-8">
               <p className="editorial-label">이렇게 만들어져요</p>
               <h2 className="mt-4 text-4xl font-bold text-brand-700">
-                고르고, 채우고,
+                고르고, 대화하고,
                 <br />
                 내 포토북으로 완성
               </h2>
               <p className="mt-5 text-base leading-relaxed text-warm-500">
-                주문은 간단하게, 결과물은 특별하게. 내 이야기를 담아 세상에 하나뿐인 포토북을 받아보세요.
+                팬이 직접 긴 폼을 채우지 않아도 괜찮아요. 질문에 답하며 흐름을 따라가면 나만의 포토북 제안이 완성됩니다.
               </p>
               <div className="mt-8 space-y-4">
                 {SHOPPING_BENEFITS.map((item) => (
@@ -342,12 +342,12 @@ export default function LandingPage() {
                   {
                     step: "01",
                     title: "에디션 선택",
-                    description: "마음에 드는 크리에이터의 포토북 에디션을 골라주세요.",
+                    description: "마음에 드는 가상 크리에이터의 포토북 에디션을 골라주세요.",
                   },
                   {
                     step: "02",
-                    title: "개인화",
-                    description: "닉네임, 좋아하는 장면, 한마디를 적어 나만의 버전으로 만들어요.",
+                    title: "대화형 제안",
+                    description: "몇 가지 질문에 답하면 어시스턴트가 팬의 기억과 문장을 바탕으로 초안을 만들어줘요.",
                   },
                   {
                     step: "03",
@@ -370,10 +370,10 @@ export default function LandingPage() {
                   <div>
                     <p className="editorial-label">크리에이터 셀렉션</p>
                     <h3 className="mt-3 text-3xl font-bold text-brand-700">
-                      크리에이터가 직접 만든 공식 에디션
+                      오리지널 가상 크리에이터 에디션
                     </h3>
                     <p className="mt-3 max-w-2xl text-sm leading-relaxed text-warm-500">
-                      크리에이터가 공개한 에디션을 한눈에 보고, 마음에 드는 포토북을 골라 바로 개인화와 주문을 시작하세요.
+                      여행, 로드트립, 스튜디오 토크처럼 서로 다른 무드의 가상 에디션을 고르고 팬만의 버전으로 이어가보세요.
                     </p>
                   </div>
                   {user?.role === "CREATOR" ? (
@@ -425,10 +425,12 @@ export default function LandingPage() {
             크리에이터 전용
           </p>
           <h2 className="mt-5 text-4xl font-bold italic md:text-5xl">
-            크리에이터라면, 나만의 포토북을 만들어보세요
+            크리에이터라면, 팬과 함께 완성하는
+            <br />
+            포토북 경험을 열어보세요
           </h2>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-brand-100">
-            나의 장면과 메시지를 담은 공식 에디션을 만들고, 팬 주문부터 배송까지 스튜디오에서 관리할 수 있습니다.
+            나의 장면과 메시지를 담은 에디션을 만들고, 대화형 개인화 제안부터 주문과 배송까지 하나의 플랫폼에서 운영할 수 있습니다.
           </p>
           <Link
             to="/studio/orders"

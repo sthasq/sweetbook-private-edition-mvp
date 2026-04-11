@@ -4,13 +4,12 @@ import RequireAuth from "./components/RequireAuth";
 import RequireRole from "./components/RequireRole";
 import LandingPage from "./pages/LandingPage";
 import EditionDetailPage from "./pages/EditionDetailPage";
-import PersonalizationPage from "./pages/PersonalizationPage";
+import ChatPersonalizationPage from "./pages/ChatPersonalizationPage";
 import PreviewPage from "./pages/PreviewPage";
 import ShippingPage from "./pages/ShippingPage";
 import OrderCompletePage from "./pages/OrderCompletePage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import PaymentFailPage from "./pages/PaymentFailPage";
-import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import StudioPage from "./pages/StudioPage";
 import StudioOrdersPage from "./pages/StudioOrdersPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
@@ -35,7 +34,7 @@ export default function App() {
             <Route path="me/projects" element={<MyProjectsPage />} />
             <Route
               path="projects/:projectId/personalize"
-              element={<PersonalizationPage />}
+              element={<ChatPersonalizationPage />}
             />
             <Route path="projects/:projectId/preview" element={<PreviewPage />} />
             <Route path="projects/:projectId/shipping" element={<ShippingPage />} />
@@ -52,7 +51,6 @@ export default function App() {
               element={<OrderCompletePage />}
             />
           </Route>
-          <Route path="oauth/google/callback" element={<OAuthCallbackPage />} />
           <Route element={<RequireRole role="CREATOR" />}>
             <Route path="studio" element={<Navigate to="/studio/orders" replace />} />
             <Route path="studio/orders" element={<StudioOrdersPage />} />
