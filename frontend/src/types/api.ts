@@ -205,7 +205,7 @@ export interface AuthUser {
   id: number;
   email: string;
   displayName: string;
-  role: "FAN" | "CREATOR";
+  role: "FAN" | "CREATOR" | "ADMIN";
 }
 
 export interface MyProjectSummary {
@@ -366,4 +366,70 @@ export interface SweetbookIntegrationStatus {
   mode: "SIMULATED" | "SANDBOX" | "LIVE";
   liveEnabled: boolean;
   label: string;
+}
+
+/* ── Admin ── */
+
+export interface AdminDashboard {
+  totalOrders: number;
+  totalRevenue: number;
+  platformRevenue: number;
+  creatorPayouts: number;
+  commissionRate: number;
+  activeEditions: number;
+  totalUsers: number;
+  totalCreators: number;
+  simulatedOrders: number;
+}
+
+export interface AdminCreatorSettlement {
+  creatorId: number;
+  displayName: string;
+  channelHandle: string;
+  verified: boolean;
+  totalOrders: number;
+  totalRevenue: number;
+  platformCommission: number;
+  creatorPayout: number;
+}
+
+export interface AdminOrderSummary {
+  projectId: number;
+  editionId: number;
+  editionTitle: string;
+  creatorName: string;
+  fanDisplayName: string;
+  recipientName: string;
+  quantity: number;
+  totalAmount: number;
+  platformFee: number;
+  creatorPayout: number;
+  commissionRate: number;
+  siteOrderUid: string;
+  siteOrderStatus: string;
+  fulfillmentStatus: string;
+  lastEventType: string | null;
+  lastEventAt: string | null;
+  paymentProvider: string | null;
+  paymentMethod: string | null;
+  simulated: boolean;
+  orderedAt: string;
+}
+
+export interface AdminWebhookEvent {
+  id: number;
+  eventType: string;
+  sweetbookOrderUid: string | null;
+  processedAt: string | null;
+  createdAt: string;
+  linked: boolean;
+}
+
+export interface AdminUserSummary {
+  id: number;
+  email: string;
+  displayName: string;
+  role: string;
+  createdAt: string;
+  creatorVerified: boolean | null;
 }

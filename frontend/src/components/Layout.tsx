@@ -67,6 +67,9 @@ export default function Layout() {
     if (user.role === "CREATOR") {
       navItems.push({ to: "/studio/orders", label: "크리에이터 스튜디오" });
     }
+    if (user.role === "ADMIN") {
+      navItems.push({ to: "/admin/dashboard", label: "관리자 콘솔" });
+    }
   }
 
   const isNavActive = (to: string) => {
@@ -76,6 +79,10 @@ export default function Layout() {
 
     if (to.startsWith("/studio")) {
       return pathname.startsWith("/studio");
+    }
+
+    if (to.startsWith("/admin")) {
+      return pathname.startsWith("/admin");
     }
 
     return pathname === to || pathname.startsWith(`${to}/`);

@@ -21,6 +21,12 @@ export default function RequireRole({
   }
 
   if (user.role !== role) {
+    const title = role === "ADMIN"
+      ? "이 화면은 관리자 전용입니다"
+      : "이 화면은 크리에이터 전용입니다";
+    const desc = role === "ADMIN"
+      ? "지금 계정으로는 관리자 콘솔에 접근할 수 없어요."
+      : "지금 계정으로는 크리에이터 스튜디오에 들어갈 수 없어요.";
     return (
       <div className="mx-auto max-w-lg px-6 py-20 text-center">
         <div className="rounded-3xl border border-stone-200 bg-white/90 px-8 py-12 shadow-sm shadow-brand-100/30">
@@ -28,10 +34,10 @@ export default function RequireRole({
           접근 제한
         </p>
         <h1 className="mt-4 text-3xl font-bold text-stone-900">
-          이 화면은 크리에이터 전용입니다
+          {title}
         </h1>
         <p className="mt-3 text-sm text-stone-600">
-          지금 계정으로는 크리에이터 스튜디오에 들어갈 수 없어요.
+          {desc}
         </p>
         <Link
           to="/"

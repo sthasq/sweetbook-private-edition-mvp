@@ -1,5 +1,6 @@
 package com.playpick.config;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
@@ -23,4 +24,6 @@ public class AppProperties {
 	private String demoImageBaseUrl = "https://picsum.photos";
 
 	private String studioAssetDir = System.getProperty("java.io.tmpdir") + "/playpick-studio-assets";
+
+	private BigDecimal commissionRate = new BigDecimal("0.20");
 }
