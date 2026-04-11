@@ -31,6 +31,12 @@ public class StudioAssetController {
 		return new AssetUploadResponse(studioAssetService.uploadCover(file));
 	}
 
+	@Operation(summary = "Upload a public image for personalization")
+	@PostMapping("/api/studio/assets/image")
+	public AssetUploadResponse uploadImage(@RequestPart("file") MultipartFile file) {
+		return new AssetUploadResponse(studioAssetService.uploadImage(file));
+	}
+
 	@Operation(summary = "Read a public studio asset")
 	@GetMapping("/api/assets/{fileName}")
 	public ResponseEntity<InputStreamResource> getAsset(@PathVariable String fileName) throws IOException {

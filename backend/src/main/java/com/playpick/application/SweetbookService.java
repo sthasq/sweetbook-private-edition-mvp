@@ -1,14 +1,17 @@
 package com.playpick.application;
 
+import com.playpick.config.AppProperties;
 import com.playpick.config.SweetbookProperties;
 import com.playpick.infrastructure.sweetbook.SweetbookClient;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +33,8 @@ public class SweetbookService {
 
 	private final SweetbookClient sweetbookClient;
 	private final SweetbookProperties sweetbookProperties;
+	private final AppProperties appProperties;
+	private final PublicAssetPublishingService publicAssetPublishingService;
 
 	public boolean isLiveEnabled() {
 		return sweetbookProperties.isLiveEnabled();
@@ -102,6 +107,8 @@ public class SweetbookService {
 			return buildDemoBookGeneration(preview, resolvedTemplates, pagePlan, "DRAFT", "BOOK_CREATED", reused, null);
 		}
 
+		LiveDraftAssets liveDraftAssets = prepareLiveDraftAssets(preview, pagePlan);
+
 		try {
 			Map<String, Object> createPayload = new LinkedHashMap<>();
 			createPayload.put("bookSpecUid", preview.edition().snapshot().bookSpecUid());
@@ -116,7 +123,7 @@ public class SweetbookService {
 			));
 
 			String bookUid = sweetbookClient.createBook(createPayload, idempotencyKey);
-			addDraftContents(preview, resolvedTemplates, pagePlan, bookUid);
+			addDraftContents(preview, resolvedTemplates, pagePlan, bookUid, liveDraftAssets);
 
 			return new ProjectViews.BookGeneration(
 				preview.projectId(),
@@ -248,17 +255,15 @@ public class SweetbookService {
 		ProjectViews.Preview preview,
 		ResolvedTemplates resolvedTemplates,
 		PagePlan pagePlan,
-		String bookUid
+		String bookUid,
+		LiveDraftAssets liveDraftAssets
 	) {
 		LocalDate today = LocalDate.now();
 		String fanNickname = String.valueOf(preview.personalizationData().getOrDefault("fanNickname", "팬"));
 
 		Map<String, Object> coverParams = new LinkedHashMap<>();
-		coverParams.put("frontPhoto", preview.edition().coverImageUrl());
-		coverParams.put(
-			"backPhoto",
-			fallbackImage(preview.pages().get(preview.pages().size() - 1).imageUrl(), preview.edition().coverImageUrl())
-		);
+		coverParams.put("frontPhoto", liveDraftAssets.coverImageUrl());
+		coverParams.put("backPhoto", liveDraftAssets.backCoverImageUrl());
 		coverParams.put(
 			"dateRange",
 			SWEETBOOK_DATE_RANGE_FORMAT.format(today) + " - " + SWEETBOOK_DATE_RANGE_FORMAT.format(today)
@@ -279,9 +284,29 @@ public class SweetbookService {
 			pageParams.put("monthNum", String.valueOf(today.getMonthValue()));
 			pageParams.put("dayNum", String.valueOf(index + 1));
 			pageParams.put("diaryText", buildDiaryText(page, fanNickname));
-			pageParams.put("photo", fallbackImage(page.imageUrl(), preview.edition().coverImageUrl()));
+			pageParams.put("photo", liveDraftAssets.contentImageUrls().get(index));
 			sweetbookClient.addContents(bookUid, resolvedTemplates.contentTemplate().uid(), pageParams, "page");
 		}
+	}
+
+	private LiveDraftAssets prepareLiveDraftAssets(ProjectViews.Preview preview, PagePlan pagePlan) {
+		String coverImageUrl = toLiveAssetUrl(preview.edition().coverImageUrl(), "커버 이미지");
+		String backCoverImageUrl = toLiveAssetUrl(
+			fallbackImage(preview.pages().get(preview.pages().size() - 1).imageUrl(), preview.edition().coverImageUrl()),
+			"뒷표지 이미지"
+		);
+
+		List<ProjectViews.Page> sourcePages = buildSweetbookContentPages(preview, pagePlan.contentPages());
+		List<String> contentImageUrls = new ArrayList<>();
+		for (int index = 0; index < sourcePages.size(); index++) {
+			ProjectViews.Page page = sourcePages.get(index);
+			contentImageUrls.add(toLiveAssetUrl(
+				fallbackImage(page.imageUrl(), preview.edition().coverImageUrl()),
+				"내지 이미지 " + (index + 1)
+			));
+		}
+
+		return new LiveDraftAssets(coverImageUrl, backCoverImageUrl, contentImageUrls);
 	}
 
 	private ResolvedTemplates resolveTemplatesForPreview(ProjectViews.Preview preview) {
@@ -555,6 +580,99 @@ public class SweetbookService {
 		return value == null || value.isBlank() ? fallback : value;
 	}
 
+	private String toLiveAssetUrl(String rawValue, String label) {
+		if (rawValue == null || rawValue.isBlank()) {
+			throw new AppException(
+				HttpStatus.BAD_REQUEST,
+				"Sweetbook 실연동에서는 " + label + "가 비어 있으면 안 됩니다. 공개 URL을 입력해 주세요."
+			);
+		}
+
+		String trimmedValue = rawValue.trim();
+		if (trimmedValue.startsWith("data:image/")) {
+			if (publicAssetPublishingService.isConfigured()) {
+				return publicAssetPublishingService.publishDataUrl(trimmedValue);
+			}
+			throw inaccessibleAsset(label, rawValue);
+		}
+
+		URI uri;
+		try {
+			uri = URI.create(trimmedValue);
+		} catch (IllegalArgumentException exception) {
+			throw new AppException(
+				HttpStatus.BAD_REQUEST,
+				"Sweetbook 실연동에서는 " + label + "가 올바른 URL이어야 합니다: " + summarizeAssetValue(rawValue),
+				exception
+			);
+		}
+
+		if (!uri.isAbsolute()) {
+			URI frontendBaseUri;
+			try {
+				frontendBaseUri = URI.create(appProperties.getEffectivePublicBaseUrl());
+			} catch (IllegalArgumentException exception) {
+				throw new AppException(
+					HttpStatus.BAD_REQUEST,
+					"PUBLIC_BASE_URL 또는 FRONTEND_BASE_URL 설정이 올바르지 않아 Sweetbook용 공개 URL을 만들 수 없습니다.",
+					exception
+				);
+			}
+			uri = frontendBaseUri.resolve(rawValue.startsWith("/") ? rawValue : "/" + rawValue);
+		}
+
+		String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+		String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+		if (!"http".equals(scheme) && !"https".equals(scheme)) {
+			throw inaccessibleAsset(label, rawValue);
+		}
+		if (host.isBlank() || isLocalOnlyHost(host)) {
+			throw inaccessibleAsset(label, rawValue);
+		}
+
+		return uri.toString();
+	}
+
+	private AppException inaccessibleAsset(String label, String rawValue) {
+		return new AppException(
+			HttpStatus.BAD_REQUEST,
+			"Sweetbook 실연동에서는 " + label + "가 외부에서 접근 가능한 공개 URL이어야 합니다. 현재 값 "
+				+ summarizeAssetValue(rawValue)
+				+ " 는 Sweetbook 서버에서 접근할 수 없습니다. 공개 HTTPS 이미지 URL을 사용하거나 "
+				+ "SWEETBOOK_ENABLED=false 로 시뮬레이션 모드를 사용해 주세요."
+		);
+	}
+
+	private boolean isLocalOnlyHost(String host) {
+		if (host.isBlank()) {
+			return true;
+		}
+		if ("localhost".equals(host) || "127.0.0.1".equals(host) || "0.0.0.0".equals(host) || "::1".equals(host)) {
+			return true;
+		}
+		if ("host.docker.internal".equals(host) || host.endsWith(".local")) {
+			return true;
+		}
+		if (host.matches("^10(\\.\\d{1,3}){3}$")) {
+			return true;
+		}
+		if (host.matches("^192\\.168(\\.\\d{1,3}){2}$")) {
+			return true;
+		}
+		if (host.matches("^172\\.(1[6-9]|2\\d|3[0-1])(\\.\\d{1,3}){2}$")) {
+			return true;
+		}
+		return host.startsWith("fe80:") || host.startsWith("fc") || host.startsWith("fd");
+	}
+
+	private String summarizeAssetValue(String rawValue) {
+		String value = rawValue == null ? "" : rawValue.trim();
+		if (value.length() <= 80) {
+			return "'" + value + "'";
+		}
+		return "'" + value.substring(0, 77) + "...'";
+	}
+
 	private BigDecimal asBigDecimal(Object value, BigDecimal fallback) {
 		if (value instanceof BigDecimal decimal) {
 			return decimal;
@@ -598,6 +716,13 @@ public class SweetbookService {
 		SweetbookViews.Template coverTemplate,
 		SweetbookViews.Template publishTemplate,
 		SweetbookViews.Template contentTemplate
+	) {
+	}
+
+	private record LiveDraftAssets(
+		String coverImageUrl,
+		String backCoverImageUrl,
+		List<String> contentImageUrls
 	) {
 	}
 

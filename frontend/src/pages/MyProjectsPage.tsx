@@ -7,6 +7,7 @@ import ErrorBox from "../components/ErrorBox";
 import {
   fulfillmentEventLabel,
   fulfillmentStatusLabel,
+  projectModeLabel,
   projectStageLabel,
   siteOrderLabel,
 } from "../lib/sweetbookWorkflow";
@@ -187,13 +188,3 @@ export default function MyProjectsPage() {
   );
 }
 
-function projectModeLabel(mode: string) {
-  switch (mode.toUpperCase()) {
-    case "DEMO":
-      return "데모";
-    case "YOUTUBE":
-      return "YouTube 연동";
-    default:
-      return mode;
-  }
-}

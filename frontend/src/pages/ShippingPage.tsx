@@ -20,6 +20,7 @@ import ProjectStepper from "../components/ProjectStepper";
 import { loadTossPayments, type TossWidgetsInstance } from "../lib/tossPayments";
 import {
   integrationTone,
+  projectModeLabel,
   projectStageLabel,
 } from "../lib/sweetbookWorkflow";
 
@@ -210,16 +211,27 @@ export default function ShippingPage() {
 
   function updateField(key: keyof ShippingInput, value: string | number) {
     setForm((current) => ({ ...current, [key]: value }));
-    setEstimate(null);
-    setPaymentSession(null);
-    setPaymentUnavailable(false);
-    widgetsRef.current = null;
-    clearPaymentContainers();
+    if (estimate) setEstimate(null);
+    if (paymentSession) {
+      setPaymentSession(null);
+      setPaymentUnavailable(false);
+      widgetsRef.current = null;
+      clearPaymentContainers();
+    }
   }
 
   if (loading) return <Spinner />;
   if (!preview) return <ErrorBox message="프로젝트 정보를 불러올 수 없습니다." />;
   const orderReady = preview.status === "FINALIZED" || preview.status === "ORDERED";
+
+  const phoneDigits = form.recipientPhone.replace(/[^0-9]/g, "");
+  const isPhoneValid = phoneDigits.length >= 10 && phoneDigits.length <= 11;
+  const isPostalValid = /^\d{5}$/.test(form.postalCode.trim());
+  const isFormComplete =
+    form.recipientName.trim().length > 0 &&
+    isPhoneValid &&
+    isPostalValid &&
+    form.address1.trim().length > 0;
 
   if (!orderReady) {
     return (
@@ -332,6 +344,17 @@ export default function ShippingPage() {
               </div>
             </div>
 
+            {(form.recipientPhone.length > 0 && !isPhoneValid) && (
+              <p className="text-sm text-red-600">
+                연락처는 숫자 10~11자리로 입력해주세요. (예: 01012345678)
+              </p>
+            )}
+            {(form.postalCode.length > 0 && !isPostalValid) && (
+              <p className="text-sm text-red-600">
+                우편번호는 5자리 숫자로 입력해주세요.
+              </p>
+            )}
+
             <div className="rounded bg-surface-low px-6 py-6">
               <div className="flex items-center justify-between gap-3">
                 <p className="editorial-label text-brand-700">주문 안내</p>
@@ -375,13 +398,7 @@ export default function ShippingPage() {
 
               {!estimate ? (
                 <button
-                  disabled={
-                    estimating ||
-                    !form.recipientName ||
-                    !form.recipientPhone ||
-                    !form.postalCode ||
-                    !form.address1
-                  }
+                  disabled={estimating || !isFormComplete}
                   onClick={handleEstimate}
                   className="editorial-button-primary min-w-[220px] disabled:opacity-50"
                 >
@@ -586,13 +603,3 @@ function PriceRow({
   );
 }
 
-function projectModeLabel(mode: string) {
-  switch (mode.toUpperCase()) {
-    case "DEMO":
-      return "데모";
-    case "YOUTUBE":
-      return "YouTube 연동";
-    default:
-      return mode;
-  }
-}
