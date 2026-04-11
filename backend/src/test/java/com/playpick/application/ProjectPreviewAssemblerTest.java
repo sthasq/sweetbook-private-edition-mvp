@@ -125,7 +125,7 @@ class ProjectPreviewAssemblerTest {
 
 		ProjectViews.Preview preview = assembler.assemble(project, edition);
 
-		assertThat(preview.pages().get(5).title()).isEqualTo("빠니보틀과 남긴 여행 동행 셀카");
+		assertThat(preview.pages().get(5).title()).isEqualTo("Astra Vale과 남긴 여행 동행 셀카");
 		assertThat(preview.pages().get(5).imageUrl()).isEqualTo("data:image/jpeg;base64,collab-demo");
 		assertThat(preview.pages().get(5).description()).contains("같이 여행 다녀온 듯한 컷");
 	}
