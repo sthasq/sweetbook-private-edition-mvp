@@ -25,8 +25,14 @@ public class SweetbookProperties {
 
 	private String defaultContentTemplateUid = "";
 
+	private String webhookSecret = "";
+
 	public boolean isLiveEnabled() {
 		return enabled && !apiKey.isBlank();
+	}
+
+	public boolean isWebhookSecretConfigured() {
+		return webhookSecret != null && !webhookSecret.isBlank();
 	}
 
 	public String integrationMode() {

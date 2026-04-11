@@ -7,11 +7,15 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.InvalidCsrfTokenException;
+import org.springframework.security.web.csrf.MissingCsrfTokenException;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
@@ -20,9 +24,16 @@ import org.springframework.security.web.context.SecurityContextRepository;
 public class SecurityConfig {
 
 	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper) throws Exception {
+	SecurityFilterChain securityFilterChain(
+		HttpSecurity http,
+		ObjectMapper objectMapper,
+		CookieCsrfTokenRepository csrfTokenRepository
+	) throws Exception {
 		http
-			.csrf(AbstractHttpConfigurer::disable)
+			.csrf(csrf -> csrf
+				.csrfTokenRepository(csrfTokenRepository)
+				.ignoringRequestMatchers("/api/sweetbook/webhooks/**", "/h2-console/**")
+			)
 			.httpBasic(AbstractHttpConfigurer::disable)
 			.formLogin(AbstractHttpConfigurer::disable)
 			.logout(AbstractHttpConfigurer::disable)
@@ -36,6 +47,7 @@ public class SecurityConfig {
 					"/v3/api-docs/**",
 					"/h2-console/**"
 				).permitAll()
+				.requestMatchers("/api/auth/csrf").permitAll()
 				.requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/logout").permitAll()
 				.requestMatchers("/api/assets/**").permitAll()
 				.requestMatchers("/api/editions/**").permitAll()
@@ -46,11 +58,22 @@ public class SecurityConfig {
 			.exceptionHandling(exceptions -> exceptions
 				.authenticationEntryPoint((request, response, exception) ->
 					writeProblemDetail(response, objectMapper, HttpStatus.UNAUTHORIZED, "Authentication required"))
-				.accessDeniedHandler((request, response, exception) ->
-					writeProblemDetail(response, objectMapper, HttpStatus.FORBIDDEN, "Access denied"))
+				.accessDeniedHandler((request, response, exception) -> {
+					String detail = isCsrfFailure(exception)
+						? "CSRF token is missing or invalid"
+						: "Access denied";
+					writeProblemDetail(response, objectMapper, HttpStatus.FORBIDDEN, detail);
+				})
 			);
 
 		return http.build();
+	}
+
+	@Bean
+	CookieCsrfTokenRepository csrfTokenRepository() {
+		CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+		repository.setCookiePath("/");
+		return repository;
 	}
 
 	@Bean
@@ -61,6 +84,10 @@ public class SecurityConfig {
 	@Bean
 	PasswordEncoder passwordEncoder() {
 		return new BCryptPasswordEncoder();
+	}
+
+	private boolean isCsrfFailure(AccessDeniedException exception) {
+		return exception instanceof MissingCsrfTokenException || exception instanceof InvalidCsrfTokenException;
 	}
 
 	private void writeProblemDetail(

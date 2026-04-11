@@ -41,6 +41,7 @@ sweetbook:
   default-cover-template-uid: ${SWEETBOOK_COVER_TEMPLATE_UID:4MY2fokVjkeY}
   default-publish-template-uid: ${SWEETBOOK_PUBLISH_TEMPLATE_UID:75vMl9IeyPMI}
   default-content-template-uid: ${SWEETBOOK_CONTENT_TEMPLATE_UID:46VqZhVNOfAp}
+  webhook-secret: ${SWEETBOOK_WEBHOOK_SECRET:}
 
 google:
   client-id: ${GOOGLE_CLIENT_ID:}
