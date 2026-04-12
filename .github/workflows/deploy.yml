@@ -6,6 +6,9 @@ on:
       - codex/private-edition-mvp-progress
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: sweetbook-demo-deploy
   cancel-in-progress: true
@@ -93,6 +96,21 @@ jobs:
             ./deploy/deploy.sh .env.production
           "
 
-      - name: Smoke test
+      - name: Smoke test on server
         run: |
-          curl -kfsS https://gscheon.com/sweetbook-demo/ >/dev/null
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" <<'EOF'
+            set -euo pipefail
+
+            for attempt in $(seq 1 12); do
+              if curl -fsS http://127.0.0.1:13000/sweetbook-demo/ >/dev/null \
+                && curl -fsS http://127.0.0.1:13000/sweetbook-demo/login >/dev/null \
+                && curl -fsS http://127.0.0.1:18080/api/auth/csrf >/dev/null; then
+                exit 0
+              fi
+
+              sleep 5
+            done
+
+            echo "Smoke test failed after retries" >&2
+            exit 1
+          EOF
