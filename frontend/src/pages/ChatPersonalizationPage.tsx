@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { chatPersonalization, getPreview, updateProject } from "../api/projects";
 import type {
@@ -29,6 +29,12 @@ export default function ChatPersonalizationPage() {
   const [done, setDone] = useState(false);
   const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const requestInitialAssistantReply = useEffectEvent(() => {
+    void requestAssistantReply([]);
+  });
+  const applyProposalFromEffect = useEffectEvent(() => {
+    void handleApplyProposal();
+  });
 
   useEffect(() => {
     if (!projectId) {
@@ -47,7 +53,7 @@ export default function ChatPersonalizationPage() {
       return;
     }
     initialPromptRequestedRef.current = true;
-    void requestAssistantReply([]);
+    requestInitialAssistantReply();
   }, [projectId, preview]);
 
   useEffect(() => {
@@ -106,7 +112,7 @@ export default function ChatPersonalizationPage() {
     }
 
     autoApplyTriggeredRef.current = true;
-    void handleApplyProposal();
+    applyProposalFromEffect();
   }, [done, proposal, saving, preview]);
 
   async function handleSend(forcedInput?: string) {
