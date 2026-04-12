@@ -25,6 +25,12 @@ public class SweetbookProperties {
 
 	private String defaultContentTemplateUid = "";
 
+	private String defaultContentTextTemplateUid = "";
+
+	private String defaultContentGalleryTemplateUid = "";
+
+	private String defaultDividerTemplateUid = "";
+
 	private String webhookSecret = "";
 
 	public boolean isLiveEnabled() {

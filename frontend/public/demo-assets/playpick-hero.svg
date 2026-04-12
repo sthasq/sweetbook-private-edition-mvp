@@ -20,6 +20,6 @@
   <rect x="410" y="692" width="292" height="22" rx="11" fill="#b87053" opacity="0.8"/>
   <rect x="410" y="734" width="252" height="22" rx="11" fill="#b87053" opacity="0.5"/>
   <rect x="112" y="856" width="676" height="160" rx="28" fill="#2f211e"/>
-  <text x="150" y="930" fill="#fff2df" font-size="48" font-weight="700" font-family="Arial, sans-serif">Pick a drop.</text>
+  <text x="150" y="930" fill="#fff2df" font-size="48" font-weight="700" font-family="Arial, sans-serif">Pick an edition.</text>
   <text x="150" y="988" fill="#fff2df" font-size="48" font-weight="700" font-family="Arial, sans-serif">Add your note.</text>
 </svg>

@@ -19,7 +19,9 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class EditionService {
+
+	private static final Set<String> SUPPORTED_PERSONALIZATION_INPUT_TYPES = Set.of(
+		"TEXT",
+		"TEXTAREA",
+		"DATE"
+	);
 
 	private final CreatorProfileRepository creatorProfileRepository;
 	private final EditionRepository editionRepository;
@@ -256,11 +264,12 @@ public class EditionService {
 		List<PersonalizationSchema> fields = new ArrayList<>();
 		List<EditionCommands.PersonalizationFieldInput> fieldInputs = command.personalizationFields() == null ? List.of() : command.personalizationFields();
 		for (EditionCommands.PersonalizationFieldInput fieldInput : fieldInputs) {
+			String inputType = normalizeSupportedInputType(fieldInput.inputType());
 			PersonalizationSchema field = new PersonalizationSchema();
 			field.setEditionVersion(version);
 			field.setFieldKey(fieldInput.fieldKey());
 			field.setLabel(fieldInput.label());
-			field.setInputType(fieldInput.inputType());
+			field.setInputType(inputType);
 			field.setRequired(fieldInput.required());
 			field.setMaxLength(fieldInput.maxLength());
 			field.setSortOrder(fieldInput.sortOrder());
@@ -284,12 +293,13 @@ public class EditionService {
 		curatedAssetRepository.saveAll(assets);
 
 		List<PersonalizationSchema> fields = personalizationSchemaRepository.findByEditionVersionIdOrderBySortOrderAsc(source.getId()).stream()
+			.filter(original -> isSupportedInputType(original.getInputType()))
 			.map(original -> {
 				PersonalizationSchema field = new PersonalizationSchema();
 				field.setEditionVersion(target);
 				field.setFieldKey(original.getFieldKey());
 				field.setLabel(original.getLabel());
-				field.setInputType(original.getInputType());
+				field.setInputType(normalizeSupportedInputType(original.getInputType()));
 				field.setRequired(original.isRequired());
 				field.setMaxLength(original.getMaxLength());
 				field.setSortOrder(original.getSortOrder());
@@ -359,11 +369,12 @@ public class EditionService {
 			))
 			.toList();
 		List<EditionViews.PersonalizationField> fields = personalizationSchemaRepository.findByEditionVersionIdOrderBySortOrderAsc(version.getId()).stream()
+			.filter(field -> isSupportedInputType(field.getInputType()))
 			.map(field -> new EditionViews.PersonalizationField(
 				field.getId(),
 				field.getFieldKey(),
 				field.getLabel(),
-				field.getInputType(),
+				normalizeSupportedInputType(field.getInputType()),
 				field.isRequired(),
 				field.getMaxLength(),
 				field.getSortOrder()
@@ -397,6 +408,23 @@ public class EditionService {
 		closing.put("title", "마지막 인사");
 		closing.put("message", edition == null ? "마지막에 남길 한마디를 여기에 적어 보세요." : edition.getTitle() + "의 마지막 한마디를 여기에 적어 보세요.");
 		return closing;
+	}
+
+	private boolean isSupportedInputType(String inputType) {
+		String normalized = normalizeInputType(inputType);
+		return !normalized.isBlank() && SUPPORTED_PERSONALIZATION_INPUT_TYPES.contains(normalized);
+	}
+
+	private String normalizeSupportedInputType(String inputType) {
+		String normalized = normalizeInputType(inputType);
+		if (!SUPPORTED_PERSONALIZATION_INPUT_TYPES.contains(normalized)) {
+			throw new AppException(HttpStatus.BAD_REQUEST, "Unsupported personalization field input type: " + normalized);
+		}
+		return normalized;
+	}
+
+	private String normalizeInputType(String inputType) {
+		return inputType == null ? "" : inputType.trim().toUpperCase(Locale.ROOT);
 	}
 
 	private Object firstNonBlank(Object... candidates) {

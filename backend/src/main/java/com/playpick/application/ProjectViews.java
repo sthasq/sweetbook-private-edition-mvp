@@ -63,27 +63,11 @@ public final class ProjectViews {
 	) {
 	}
 
-	public record AiCollabGeneration(
-		String provider,
-		String model,
-		List<AiCollabCandidate> candidates
-	) {
-	}
-
-	public record AiCollabCandidate(
-		String id,
-		String templateKey,
-		String label,
-		String caption,
-		String imageUrl,
-		String source
-	) {
-	}
-
 	public record ChatPersonalization(
 		String reply,
 		Map<String, Object> proposal,
-		boolean done
+		boolean done,
+		List<String> suggestedReplies
 	) {
 	}
 

@@ -9,12 +9,15 @@ import type {
 import Spinner from "../components/Spinner";
 import ErrorBox from "../components/ErrorBox";
 import ProjectStepper from "../components/ProjectStepper";
+import { imageObjectPosition } from "../lib/imageFocus";
 
 export default function ChatPersonalizationPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const initialPromptRequestedRef = useRef(false);
+  const autoApplyTriggeredRef = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<ProjectPreview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -23,6 +26,7 @@ export default function ChatPersonalizationPage() {
   const [sending, setSending] = useState(false);
   const [proposal, setProposal] = useState<Record<string, unknown> | null>(null);
   const [done, setDone] = useState(false);
+  const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -49,6 +53,18 @@ export default function ChatPersonalizationPage() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, sending]);
 
+  useEffect(() => {
+    if (sending || saving || done) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [sending, saving, done, messages.length]);
+
   async function requestAssistantReply(history: ChatMessage[]) {
     if (!projectId) {
       return;
@@ -68,7 +84,14 @@ export default function ChatPersonalizationPage() {
       const hasProposal =
         !!response.proposal && Object.keys(response.proposal).length > 0;
       setProposal(response.proposal);
-      setDone(Boolean(response.done || hasProposal));
+      setDone(Boolean(response.done && hasProposal));
+      setSuggestedReplies(
+        Array.isArray(response.suggestedReplies)
+          ? response.suggestedReplies.filter(
+              (item): item is string => typeof item === "string" && item.trim().length > 0,
+            )
+          : [],
+      );
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "개인화 대화를 불러오지 못했어요.");
     } finally {
@@ -76,8 +99,17 @@ export default function ChatPersonalizationPage() {
     }
   }
 
-  async function handleSend() {
-    const trimmed = input.trim();
+  useEffect(() => {
+    if (!done || !proposal || saving || !preview || autoApplyTriggeredRef.current) {
+      return;
+    }
+
+    autoApplyTriggeredRef.current = true;
+    void handleApplyProposal();
+  }, [done, proposal, saving, preview]);
+
+  async function handleSend(forcedInput?: string) {
+    const trimmed = (forcedInput !== undefined ? forcedInput : input).trim();
     if (!trimmed || sending) {
       return;
     }
@@ -86,6 +118,7 @@ export default function ChatPersonalizationPage() {
     const history = [...messages, userMessage];
     setMessages(history);
     setInput("");
+    setSuggestedReplies([]);
     await requestAssistantReply(history);
   }
 
@@ -99,6 +132,7 @@ export default function ChatPersonalizationPage() {
       preview.edition.snapshot?.personalizationFields ?? [],
     );
     if (Object.keys(payload).length === 0) {
+      autoApplyTriggeredRef.current = false;
       setError("제안 데이터가 비어 있어요. 대화를 조금 더 이어서 정보를 채워볼게요.");
       return;
     }
@@ -119,9 +153,11 @@ export default function ChatPersonalizationPage() {
     if (sending) {
       return;
     }
+    autoApplyTriggeredRef.current = false;
     setMessages([]);
     setProposal(null);
     setDone(false);
+    setSuggestedReplies([]);
     await requestAssistantReply([]);
   }
 
@@ -131,6 +167,11 @@ export default function ChatPersonalizationPage() {
 
   const fields = preview.edition.snapshot?.personalizationFields ?? [];
   const proposalEntries = buildProposalEntries(proposal, fields);
+  const topVideos = readTopVideos(preview.personalizationData.topVideos);
+  const selectedFavoriteVideoId = readString(
+    proposal?.favoriteVideoId ?? preview.personalizationData.favoriteVideoId,
+  );
+  const lastAssistantIndex = findLastAssistantIndex(messages);
 
   return (
     <div className="page-shell">
@@ -162,8 +203,79 @@ export default function ChatPersonalizationPage() {
               </div>
 
               <div className="mt-6 space-y-4">
+                {topVideos.length > 0 && (
+                  <div className="rounded border border-stone-200/70 bg-surface-low px-5 py-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="editorial-label text-brand-700">참고할 장면 후보</p>
+                        <p className="mt-2 text-sm leading-relaxed text-warm-500">
+                          아래 후보 중 하나를 골라도 되고, 기억나는 장면이나 콘텐츠 제목을 직접 적어도 괜찮아요.
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-warm-500 shadow-sm">
+                        {topVideos.length}개
+                      </span>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                      {topVideos.map((video) => {
+                        const isSelected = selectedFavoriteVideoId === video.videoId;
+                        return (
+                          <button
+                            key={video.videoId}
+                            type="button"
+                            onClick={() => {
+                                handleSend(`'${video.title}' 장면을 이번 포토북의 중심으로 담고 싶어요.`);
+                            }}
+                            className={`overflow-hidden rounded border bg-white text-left transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-sm ${
+                              isSelected
+                                ? "border-brand-300 shadow-sm ring-1 ring-brand-200"
+                                : "border-stone-200/70"
+                            }`}
+                          >
+                            {video.thumbnailUrl ? (
+                              <img
+                                src={video.thumbnailUrl}
+                                alt={video.title}
+                                className="aspect-video w-full object-cover"
+                                style={{ objectPosition: imageObjectPosition(video.thumbnailUrl) }}
+                              />
+                            ) : (
+                              <div className="flex aspect-video w-full items-center justify-center bg-white text-xs text-warm-500">
+                                썸네일 없음
+                              </div>
+                            )}
+                            <div className="p-3">
+                              <p className="line-clamp-2 text-sm font-semibold leading-relaxed text-stone-900">
+                                {video.title}
+                              </p>
+                              <p className="mt-2 text-xs text-warm-500">
+                                클릭하면 답변 예시로 자동 입력돼요
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {messages.map((message, index) => (
-                  <MessageBubble key={`${message.role}-${index}`} message={message} />
+                  <div key={`${message.role}-${index}`} className="space-y-3">
+                    <MessageBubble message={message} />
+                    {message.role === "assistant" &&
+                      index === lastAssistantIndex &&
+                      suggestedReplies.length > 0 &&
+                      !done && (
+                        <SuggestedReplyChips
+                          replies={suggestedReplies}
+                          disabled={sending || saving}
+                          onSelect={(reply) => {
+                            void handleSend(reply);
+                          }}
+                        />
+                      )}
+                  </div>
                 ))}
 
                 {messages.length === 0 && sending && (
@@ -177,8 +289,16 @@ export default function ChatPersonalizationPage() {
                 )}
 
                 {messages.length > 0 && sending && (
-                  <div className="max-w-[88%] rounded border border-brand-100 bg-brand-50/70 px-4 py-3 text-sm text-brand-700">
-                    개인화 제안을 정리하는 중...
+                    <div className="flex animate-pulse items-center gap-1.5 rounded-2xl rounded-tl-sm bg-brand-50/70 px-4 py-3 text-brand-600 shadow-sm w-fit max-w-[88%] border border-brand-100">
+                      <div className="h-1.5 w-1.5 rounded-full bg-brand-400"></div>
+                      <div className="h-1.5 w-1.5 rounded-full bg-brand-400 animation-delay-200"></div>
+                      <div className="h-1.5 w-1.5 rounded-full bg-brand-400 animation-delay-400"></div>
+                  </div>
+                )}
+
+                {saving && (
+                  <div className="max-w-[88%] rounded border border-emerald-100 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-700">
+                    문구를 책에 반영하고 있어요. 바로 미리보기로 이동합니다...
                   </div>
                 )}
 
@@ -195,6 +315,16 @@ export default function ChatPersonalizationPage() {
                         다시 시도하기
                       </button>
                     )}
+                    {done && proposal && (
+                      <button
+                        type="button"
+                        onClick={() => void handleApplyProposal()}
+                        disabled={saving}
+                        className="mt-2 text-xs font-semibold text-red-800 underline"
+                      >
+                        저장 다시 시도하기
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -208,6 +338,7 @@ export default function ChatPersonalizationPage() {
                 <div className="mt-3 flex gap-3">
                   <input
                     id="chat-input"
+                    ref={inputRef}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => {
@@ -218,12 +349,12 @@ export default function ChatPersonalizationPage() {
                     }}
                     className="editorial-input"
                     placeholder="예: 가장 기억나는 장면은 밤기차 창가 장면이었어요."
-                    disabled={sending}
+                    disabled={sending || saving}
                   />
                   <button
                     type="button"
                     onClick={() => void handleSend()}
-                    disabled={sending || input.trim().length === 0}
+                    disabled={sending || saving || input.trim().length === 0}
                     className="editorial-button-primary min-w-[120px] disabled:opacity-50"
                   >
                     전송
@@ -233,7 +364,7 @@ export default function ChatPersonalizationPage() {
                   <button
                     type="button"
                     onClick={() => void handleRestart()}
-                    disabled={sending}
+                    disabled={sending || saving}
                     className="editorial-button-secondary"
                   >
                     대화 다시 시작
@@ -247,8 +378,10 @@ export default function ChatPersonalizationPage() {
             <div className="editorial-panel p-6 md:p-8">
               <p className="editorial-label text-gold-500">자동 제안 카드</p>
               <h2 className="mt-4 text-2xl font-bold leading-tight text-brand-700">
-                {done || proposalEntries.length > 0
-                  ? "지금 이대로 미리보기로 갈 수 있어요"
+                {saving
+                  ? "문구를 책에 반영하는 중이에요"
+                  : done || proposalEntries.length > 0
+                  ? "완성된 문구를 바로 적용하고 있어요"
                   : "대화가 완료되면 제안안이 표시됩니다"}
               </h2>
 
@@ -271,14 +404,15 @@ export default function ChatPersonalizationPage() {
               )}
 
               <div className="mt-8 space-y-3">
-                <button
-                  type="button"
-                  onClick={() => void handleApplyProposal()}
-                  disabled={saving || proposalEntries.length === 0}
-                  className="editorial-button-primary w-full disabled:opacity-50"
-                >
-                  {saving ? "저장 중..." : "이대로 진행하기"}
-                </button>
+                {saving ? (
+                  <div className="rounded bg-emerald-50 px-4 py-3 text-sm leading-relaxed text-emerald-700">
+                    인터뷰 내용을 바탕으로 문구를 저장했고, 미리보기 페이지로 이동 중이에요.
+                  </div>
+                ) : (
+                  <div className="rounded bg-surface-low px-4 py-3 text-sm leading-relaxed text-warm-500">
+                    별도 확인 없이, 정보가 충분해지는 즉시 문구를 생성해 미리보기로 넘겨드려요.
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={() => navigate(`/editions/${preview.edition.id}`)}
@@ -316,6 +450,39 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   );
 }
 
+function SuggestedReplyChips({
+  replies,
+  disabled,
+  onSelect,
+}: {
+  replies: string[];
+  disabled: boolean;
+  onSelect: (reply: string) => void;
+}) {
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[88%] rounded border border-stone-200/70 bg-white/92 px-4 py-3 shadow-sm">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-500">
+          바로 답하기
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {replies.map((reply) => (
+            <button
+              key={reply}
+              type="button"
+              onClick={() => onSelect(reply)}
+              disabled={disabled}
+              className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 transition-colors hover:border-brand-400 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {reply}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function buildProposalEntries(
   proposal: Record<string, unknown> | null,
   fields: PersonalizationField[],
@@ -327,11 +494,7 @@ function buildProposalEntries(
   const labels = new Map(fields.map((field) => [field.fieldKey, field.label]));
 
   return Object.entries(proposal)
-    .map(([key, value]) => ({
-      key,
-      label: labels.get(key) ?? key,
-      value: renderProposalValue(value),
-    }))
+    .flatMap(([key, value]) => expandProposalEntry(key, value, labels))
     .filter((entry) => entry.value.length > 0);
 }
 
@@ -343,6 +506,14 @@ function buildProposalPayload(
   const payload: Record<string, unknown> = {};
 
   Object.entries(proposal).forEach(([key, value]) => {
+    if (key === "bookCopy") {
+      const normalizedBookCopy = normalizeBookCopyPayload(value);
+      if (normalizedBookCopy && Object.keys(normalizedBookCopy).length > 0) {
+        payload[key] = normalizedBookCopy;
+      }
+      return;
+    }
+
     const field = fieldByKey.get(key);
     if (!field) {
       return;
@@ -392,4 +563,102 @@ function renderProposalValue(value: unknown) {
     return value.trim();
   }
   return "";
+}
+
+function expandProposalEntry(
+  key: string,
+  value: unknown,
+  labels: Map<string, string>,
+) {
+  if (key === "bookCopy" && typeof value === "object" && value !== null) {
+    const bookCopy = value as Record<string, unknown>;
+    return Object.entries(bookCopy).map(([copyKey, copyValue]) => ({
+      key: `bookCopy.${copyKey}`,
+      label: bookCopyLabel(copyKey),
+      value: renderProposalValue(copyValue),
+    }));
+  }
+
+  return [{
+    key,
+    label: labels.get(key) ?? key,
+    value: renderProposalValue(value),
+  }];
+}
+
+function normalizeBookCopyPayload(value: unknown) {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+
+  const allowedKeys = [
+    "relationshipTitle",
+    "relationshipBody",
+    "momentTitle",
+    "momentBody",
+    "fanNoteTitle",
+    "fanNoteBody",
+  ] as const;
+
+  const result: Record<string, string> = {};
+  for (const key of allowedKeys) {
+    const next = renderProposalValue((value as Record<string, unknown>)[key]);
+    if (next) {
+      result[key] = next;
+    }
+  }
+  return Object.keys(result).length > 0 ? result : null;
+}
+
+function bookCopyLabel(key: string) {
+  switch (key) {
+    case "relationshipTitle":
+      return "관계 페이지 제목";
+    case "relationshipBody":
+      return "관계 페이지 문구";
+    case "momentTitle":
+      return "대표 장면 제목";
+    case "momentBody":
+      return "대표 장면 문구";
+    case "fanNoteTitle":
+      return "메시지 페이지 제목";
+    case "fanNoteBody":
+      return "메시지 페이지 문구";
+    default:
+      return key;
+  }
+}
+
+type TopVideo = {
+  videoId: string;
+  title: string;
+  thumbnailUrl: string;
+};
+
+function readTopVideos(value: unknown): TopVideo[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .map((item) => ({
+      videoId: readString(item.videoId),
+      title: readString(item.title),
+      thumbnailUrl: readString(item.thumbnailUrl),
+    }))
+    .filter((video) => video.videoId && video.title);
+}
+
+function readString(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
+function findLastAssistantIndex(messages: ChatMessage[]) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index]?.role === "assistant") {
+      return index;
+    }
+  }
+  return -1;
 }

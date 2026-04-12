@@ -69,25 +69,46 @@ public class SweetbookService {
 		if (!isLiveEnabled()) {
 			return List.of(
 				new SweetbookViews.Template(
-					"demo-cover-template",
-					"기본 커버",
+					sweetbookProperties.getDefaultCoverTemplateUid(),
+					"표지",
 					"album",
 					"cover",
 					"https://picsum.photos/seed/demo-cover-template/960/720"
 				),
 				new SweetbookViews.Template(
-					"demo-publish-template",
+					sweetbookProperties.getDefaultPublishTemplateUid(),
 					"발행면",
 					"album",
 					"publish",
 					"https://picsum.photos/seed/demo-publish-template/960/720"
 				),
 				new SweetbookViews.Template(
-					"demo-content-template",
-					"기본 펼침면",
+					sweetbookProperties.getDefaultContentTemplateUid(),
+					"내지a_contain",
 					"album",
 					"content",
 					"https://picsum.photos/seed/demo-content-template/960/720"
+				),
+				new SweetbookViews.Template(
+					sweetbookProperties.getDefaultContentTextTemplateUid(),
+					"내지b",
+					"album",
+					"content",
+					"https://picsum.photos/seed/demo-content-text-template/960/720"
+				),
+				new SweetbookViews.Template(
+					sweetbookProperties.getDefaultContentGalleryTemplateUid(),
+					"내지_gallery",
+					"album",
+					"content",
+					"https://picsum.photos/seed/demo-content-gallery-template/960/720"
+				),
+				new SweetbookViews.Template(
+					sweetbookProperties.getDefaultDividerTemplateUid(),
+					"간지",
+					"album",
+					"divider",
+					"https://picsum.photos/seed/demo-divider-template/960/720"
 				)
 			);
 		}
@@ -101,7 +122,10 @@ public class SweetbookService {
 		boolean reused
 	) {
 		ResolvedTemplates resolvedTemplates = resolveTemplatesForPreview(preview);
-		PagePlan pagePlan = planPages(resolveBookSpec(preview.edition().snapshot().bookSpecUid()));
+		PagePlan pagePlan = planPages(
+			resolveBookSpec(preview.edition().snapshot().bookSpecUid()),
+			desiredTotalPagesForPreview(preview)
+		);
 
 		if (!isLiveEnabled()) {
 			return buildDemoBookGeneration(preview, resolvedTemplates, pagePlan, "DRAFT", "BOOK_CREATED", reused, null);
@@ -150,7 +174,10 @@ public class SweetbookService {
 		boolean reused
 	) {
 		ResolvedTemplates resolvedTemplates = resolveTemplatesForPreview(preview);
-		PagePlan pagePlan = planPages(resolveBookSpec(preview.edition().snapshot().bookSpecUid()));
+		PagePlan pagePlan = planPages(
+			resolveBookSpec(preview.edition().snapshot().bookSpecUid()),
+			desiredTotalPagesForPreview(preview)
+		);
 
 		if (!isLiveEnabled()) {
 			return buildDemoBookGeneration(preview, resolvedTemplates, pagePlan, "FINALIZED", "FINALIZED", reused, bookUid);
@@ -186,7 +213,10 @@ public class SweetbookService {
 		boolean reused
 	) {
 		ResolvedTemplates resolvedTemplates = resolveTemplatesForPreview(preview);
-		PagePlan pagePlan = planPages(resolveBookSpec(preview.edition().snapshot().bookSpecUid()));
+		PagePlan pagePlan = planPages(
+			resolveBookSpec(preview.edition().snapshot().bookSpecUid()),
+			desiredTotalPagesForPreview(preview)
+		);
 		return new ProjectViews.BookGeneration(
 			preview.projectId(),
 			bookUid,
@@ -272,20 +302,30 @@ public class SweetbookService {
 		sweetbookClient.addCover(bookUid, resolvedTemplates.coverTemplate().uid(), coverParams);
 
 		Map<String, Object> publishParams = new LinkedHashMap<>();
+		publishParams.put("photo", liveDraftAssets.coverImageUrl());
 		publishParams.put("title", preview.edition().title());
 		publishParams.put("publishDate", SWEETBOOK_PUBLISH_DATE_FORMAT.format(today));
 		publishParams.put("author", preview.edition().creator().displayName());
+		publishParams.put("publisher", "PlayPick");
+		publishParams.put("hashtags", "#PlayPick #CollabArchive");
 		sweetbookClient.addContents(bookUid, resolvedTemplates.publishTemplate().uid(), publishParams, "page");
 
 		List<ProjectViews.Page> sourcePages = buildSweetbookContentPages(preview, pagePlan.contentPages());
-		for (int index = 0; index < sourcePages.size(); index++) {
-			ProjectViews.Page page = sourcePages.get(index);
-			Map<String, Object> pageParams = new LinkedHashMap<>();
-			pageParams.put("monthNum", String.valueOf(today.getMonthValue()));
-			pageParams.put("dayNum", String.valueOf(index + 1));
-			pageParams.put("diaryText", buildDiaryText(page, fanNickname));
-			pageParams.put("photo", liveDraftAssets.contentImageUrls().get(index));
-			sweetbookClient.addContents(bookUid, resolvedTemplates.contentTemplate().uid(), pageParams, "page");
+		List<LiveContentInstruction> instructions = buildLiveContentInstructions(
+			sourcePages,
+			liveDraftAssets.contentImageUrls(),
+			resolvedTemplates,
+			fanNickname,
+			today,
+			pagePlan.contentPages()
+		);
+		for (LiveContentInstruction instruction : instructions) {
+			sweetbookClient.addContents(
+				bookUid,
+				instruction.template().uid(),
+				instruction.params(),
+				instruction.breakBefore()
+			);
 		}
 	}
 
@@ -314,7 +354,15 @@ public class SweetbookService {
 		return new ResolvedTemplates(
 			chooseCoverTemplate(templates, preview.edition().snapshot().sweetbookCoverTemplateUid()),
 			choosePublishTemplate(templates, preview.edition().snapshot().sweetbookPublishTemplateUid()),
-			chooseContentTemplate(templates, preview.edition().snapshot().sweetbookContentTemplateUid())
+			chooseContentTemplate(templates, preview.edition().snapshot().sweetbookContentTemplateUid()),
+			chooseOptionalTemplate(templates, sweetbookProperties.getDefaultContentTextTemplateUid()),
+			chooseOptionalTemplate(templates, sweetbookProperties.getDefaultContentGalleryTemplateUid()),
+			chooseTemplate(
+				templates,
+				sweetbookProperties.getDefaultDividerTemplateUid(),
+				"divider",
+				""
+			)
 		);
 	}
 
@@ -346,14 +394,15 @@ public class SweetbookService {
 			.orElse(new SweetbookViews.BookSpec(bookSpecUid, bookSpecUid, 24, 130, 2));
 	}
 
-	private PagePlan planPages(SweetbookViews.BookSpec bookSpec) {
+	private PagePlan planPages(SweetbookViews.BookSpec bookSpec, int desiredTotalPages) {
 		int minimumPages = positive(bookSpec.minPages(), DEFAULT_TOTAL_PAGE_COUNT);
 		int maximumPages = Math.max(minimumPages, positive(bookSpec.maxPages(), minimumPages));
 		int pageIncrement = positive(bookSpec.pageIncrement(), DEFAULT_PAGE_INCREMENT);
 
-		int totalPages = minimumPages;
+		int totalPages = Math.max(minimumPages, desiredTotalPages);
 		if ((totalPages - minimumPages) % pageIncrement != 0) {
-			totalPages = minimumPages;
+			int remainder = (totalPages - minimumPages) % pageIncrement;
+			totalPages += pageIncrement - remainder;
 		}
 		totalPages = Math.min(Math.max(totalPages, minimumPages), maximumPages);
 
@@ -369,6 +418,10 @@ public class SweetbookService {
 		return value;
 	}
 
+	private int desiredTotalPagesForPreview(ProjectViews.Preview preview) {
+		return preview.pages().size() + 4;
+	}
+
 	private List<ProjectViews.Page> buildSweetbookContentPages(ProjectViews.Preview preview, int contentPageCount) {
 		List<ProjectViews.Page> available = preview.pages().stream().skip(1).toList();
 		if (available.isEmpty()) {
@@ -380,6 +433,108 @@ public class SweetbookService {
 			result.add(available.get(index % available.size()));
 		}
 		return result;
+	}
+
+	private List<LiveContentInstruction> buildLiveContentInstructions(
+		List<ProjectViews.Page> sourcePages,
+		List<String> sourceImageUrls,
+		ResolvedTemplates resolvedTemplates,
+		String fanNickname,
+		LocalDate today,
+		int contentPageCount
+	) {
+		List<LiveContentInstruction> instructions = new ArrayList<>();
+		int chunkSize = 6;
+		int chapterNumber = 1;
+		for (int chunkStart = 0; chunkStart < sourcePages.size() && instructions.size() < contentPageCount; chunkStart += chunkSize) {
+			int chunkEnd = Math.min(chunkStart + chunkSize, sourcePages.size());
+			List<ProjectViews.Page> chunkPages = sourcePages.subList(chunkStart, chunkEnd);
+			List<String> chunkImages = sourceImageUrls.subList(chunkStart, chunkEnd);
+			if (resolvedTemplates.dividerTemplate() != null && instructions.size() < contentPageCount) {
+				instructions.add(new LiveContentInstruction(
+					resolvedTemplates.dividerTemplate(),
+					buildDividerParams(chunkPages.get(0), chapterNumber++, today),
+					"page"
+				));
+			}
+			if (resolvedTemplates.galleryTemplate() != null && chunkImages.size() >= 2 && instructions.size() < contentPageCount) {
+				instructions.add(new LiveContentInstruction(
+					resolvedTemplates.galleryTemplate(),
+					buildGalleryParams(chunkPages, chunkImages, today),
+					"page"
+				));
+			}
+			for (int index = 0; index < chunkPages.size() && instructions.size() < contentPageCount; index++) {
+				ProjectViews.Page page = chunkPages.get(index);
+				boolean useTextTemplate = resolvedTemplates.textContentTemplate() != null && index % 2 == 1;
+				SweetbookViews.Template template = useTextTemplate
+					? resolvedTemplates.textContentTemplate()
+					: resolvedTemplates.contentTemplate();
+				Map<String, Object> params = useTextTemplate
+					? buildTextPageParams(page, fanNickname, today, chunkStart + index)
+					: buildPhotoPageParams(page, chunkImages.get(index), fanNickname, today, chunkStart + index);
+				instructions.add(new LiveContentInstruction(template, params, "page"));
+			}
+		}
+		int backfillIndex = 0;
+		while (!sourcePages.isEmpty() && instructions.size() < contentPageCount) {
+			ProjectViews.Page page = sourcePages.get(backfillIndex % sourcePages.size());
+			String imageUrl = sourceImageUrls.get(backfillIndex % sourceImageUrls.size());
+			instructions.add(new LiveContentInstruction(
+				resolvedTemplates.contentTemplate(),
+				buildPhotoPageParams(page, imageUrl, fanNickname, today, backfillIndex),
+				"page"
+			));
+			backfillIndex++;
+		}
+		return instructions;
+	}
+
+	private Map<String, Object> buildDividerParams(ProjectViews.Page page, int chapterNumber, LocalDate today) {
+		Map<String, Object> params = new LinkedHashMap<>();
+		params.put("chapterNum", "%02d".formatted(chapterNumber));
+		params.put("seasonTitle", truncate(page.title(), 28));
+		params.put("year", String.valueOf(today.getYear()));
+		return params;
+	}
+
+	private Map<String, Object> buildGalleryParams(
+		List<ProjectViews.Page> pages,
+		List<String> imageUrls,
+		LocalDate today
+	) {
+		Map<String, Object> params = new LinkedHashMap<>();
+		params.put("date", SWEETBOOK_DATE_RANGE_FORMAT.format(today));
+		params.put("collagePhotos", imageUrls.stream().limit(3).toList());
+		return params;
+	}
+
+	private Map<String, Object> buildPhotoPageParams(
+		ProjectViews.Page page,
+		String imageUrl,
+		String fanNickname,
+		LocalDate today,
+		int index
+	) {
+		Map<String, Object> params = new LinkedHashMap<>();
+		params.put("photo1", imageUrl);
+		params.put("date", SWEETBOOK_DATE_RANGE_FORMAT.format(today.plusDays(index)));
+		params.put("title", truncate(page.title(), 40));
+		params.put("diaryText", buildDiaryText(page, fanNickname));
+		return params;
+	}
+
+	private Map<String, Object> buildTextPageParams(
+		ProjectViews.Page page,
+		String fanNickname,
+		LocalDate today,
+		int index
+	) {
+		Map<String, Object> params = new LinkedHashMap<>();
+		params.put("date", SWEETBOOK_DATE_RANGE_FORMAT.format(today.plusDays(index)));
+		params.put("title", truncate(page.title(), 40));
+		params.put("diaryText", buildDiaryText(page, fanNickname));
+		return params;
 	}
 
 	private String buildDiaryText(ProjectViews.Page page, String fanNickname) {
@@ -576,6 +731,49 @@ public class SweetbookService {
 			.orElse(templates.get(0));
 	}
 
+	private SweetbookViews.Template chooseTemplate(
+		List<SweetbookViews.Template> templates,
+		String preferredTemplateUid,
+		String role,
+		String fallbackUid
+	) {
+		if (preferredTemplateUid != null && !preferredTemplateUid.isBlank()) {
+			SweetbookViews.Template exact = templates.stream()
+				.filter(template -> preferredTemplateUid.equals(template.uid()))
+				.findFirst()
+				.orElse(null);
+			if (exact != null) {
+				return exact;
+			}
+		}
+		if (fallbackUid != null && !fallbackUid.isBlank()) {
+			SweetbookViews.Template fallbackTemplate = templates.stream()
+				.filter(template -> fallbackUid.equals(template.uid()))
+				.findFirst()
+				.orElse(null);
+			if (fallbackTemplate != null) {
+				return fallbackTemplate;
+			}
+		}
+		return templates.stream()
+			.filter(template -> template.role().toLowerCase().contains(role))
+			.findFirst()
+			.orElse(null);
+	}
+
+	private SweetbookViews.Template chooseOptionalTemplate(
+		List<SweetbookViews.Template> templates,
+		String preferredTemplateUid
+	) {
+		if (preferredTemplateUid == null || preferredTemplateUid.isBlank()) {
+			return null;
+		}
+		return templates.stream()
+			.filter(template -> preferredTemplateUid.equals(template.uid()))
+			.findFirst()
+			.orElse(null);
+	}
+
 	private String fallbackImage(String value, String fallback) {
 		return value == null || value.isBlank() ? fallback : value;
 	}
@@ -698,6 +896,13 @@ public class SweetbookService {
 		return value == null || value.isBlank() ? fallback : value;
 	}
 
+	private String truncate(String value, int maxLength) {
+		if (value == null || value.length() <= maxLength) {
+			return fallback(value, "");
+		}
+		return value.substring(0, maxLength);
+	}
+
 	private String normalizeOrderStatus(Map<String, Object> result) {
 		String display = asString(result.get("orderStatusDisplay"), "");
 		String rawStatus = asString(result.get("status"), "");
@@ -715,7 +920,10 @@ public class SweetbookService {
 	private record ResolvedTemplates(
 		SweetbookViews.Template coverTemplate,
 		SweetbookViews.Template publishTemplate,
-		SweetbookViews.Template contentTemplate
+		SweetbookViews.Template contentTemplate,
+		SweetbookViews.Template textContentTemplate,
+		SweetbookViews.Template galleryTemplate,
+		SweetbookViews.Template dividerTemplate
 	) {
 	}
 
@@ -723,6 +931,13 @@ public class SweetbookService {
 		String coverImageUrl,
 		String backCoverImageUrl,
 		List<String> contentImageUrls
+	) {
+	}
+
+	private record LiveContentInstruction(
+		SweetbookViews.Template template,
+		Map<String, Object> params,
+		String breakBefore
 	) {
 	}
 

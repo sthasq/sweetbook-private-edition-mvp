@@ -46,14 +46,16 @@ sweetbook:
   default-template-category: ${SWEETBOOK_TEMPLATE_CATEGORY:album}
   default-cover-template-uid: ${SWEETBOOK_COVER_TEMPLATE_UID:4MY2fokVjkeY}
   default-publish-template-uid: ${SWEETBOOK_PUBLISH_TEMPLATE_UID:75vMl9IeyPMI}
-  default-content-template-uid: ${SWEETBOOK_CONTENT_TEMPLATE_UID:46VqZhVNOfAp}
+  default-content-template-uid: ${SWEETBOOK_CONTENT_TEMPLATE_UID:3FhSEhJ94c0T}
+  default-content-text-template-uid: ${SWEETBOOK_CONTENT_TEXT_TEMPLATE_UID:vHA59XPPKqak}
+  default-content-gallery-template-uid: ${SWEETBOOK_CONTENT_GALLERY_TEMPLATE_UID:y5Ih0Uo7tuQ3}
+  default-divider-template-uid: ${SWEETBOOK_DIVIDER_TEMPLATE_UID:1N8i0MR6Ro1D}
   webhook-secret: ${SWEETBOOK_WEBHOOK_SECRET:}
 
 openrouter:
   base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
   api-key: ${OPENROUTER_API_KEY:}
   chat-model: ${OPENROUTER_CHAT_MODEL:deepseek/deepseek-v3.2}
-  image-model: ${OPENROUTER_IMAGE_MODEL:google/gemini-3.1-flash-image-preview}
 
 toss-payments:
   base-url: ${TOSS_PAYMENTS_BASE_URL:https://api.tosspayments.com}

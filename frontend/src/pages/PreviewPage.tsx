@@ -13,6 +13,7 @@ import {
   projectModeLabel,
   projectStageLabel,
 } from "../lib/sweetbookWorkflow";
+import { imageObjectPosition } from "../lib/imageFocus";
 
 export default function PreviewPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -81,8 +82,6 @@ export default function PreviewPage() {
   const leftPage = pages[activeSpread];
   const rightPage = pages[activeSpread + 1];
   const personalizationHighlights = buildPersonalizationHighlights(preview);
-  const collabImageUrl = readString(preview.personalizationData.aiCollabSelectedUrl);
-  const collabTemplateLabel = readString(preview.personalizationData.aiCollabTemplateLabel);
   const pricingHint = estimateEditionPricing(preview.edition.snapshot?.bookSpecUid);
   const primaryActionLabel =
     preview.status === "BOOK_CREATED"
@@ -117,12 +116,10 @@ export default function PreviewPage() {
                   <div className="overflow-hidden rounded bg-white shadow-editorial">
                     <div className="grid min-h-[520px] md:grid-cols-2">
                       <BookPage
-                        label="에디션 원본"
                         page={leftPage}
                         fallbackTitle="크리에이터가 구성한 페이지"
                       />
                       <BookPage
-                        label="나의 페이지"
                         page={rightPage}
                         fallbackTitle="내가 채운 페이지"
                         right
@@ -184,6 +181,7 @@ export default function PreviewPage() {
                           src={page.imageUrl}
                           alt={page.title}
                           className="h-20 w-16 object-cover"
+                          style={{ objectPosition: imageObjectPosition(page.imageUrl) }}
                         />
                       ) : (
                         <div className="flex h-20 w-16 items-center justify-center bg-surface-low text-xs text-warm-500">
@@ -256,27 +254,6 @@ export default function PreviewPage() {
                 </div>
               )}
 
-              {collabImageUrl && (
-                <div className="mt-8 rounded bg-white/85 p-5 shadow-sm">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="editorial-label text-brand-700">콜라보 이미지</p>
-                      <p className="mt-2 text-sm text-stone-900">
-                        {collabTemplateLabel || "크리에이터 콜라보 컷"}
-                      </p>
-                    </div>
-                    <span className="rounded bg-gold-400/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-gold-500">
-                      PICK
-                    </span>
-                  </div>
-                  <img
-                    src={collabImageUrl}
-                    alt={collabTemplateLabel || "콜라보 이미지"}
-                    className="mt-4 aspect-[4/3] w-full rounded object-cover"
-                  />
-                </div>
-              )}
-
               <div className="mt-8 space-y-4">
                 {readOnly ? (
                   <button
@@ -331,12 +308,10 @@ export default function PreviewPage() {
 }
 
 function BookPage({
-  label,
   page,
   fallbackTitle,
   right = false,
 }: {
-  label: string;
   page: ProjectPreview["pages"][number] | undefined;
   fallbackTitle: string;
   right?: boolean;
@@ -347,19 +322,9 @@ function BookPage({
         right ? "bg-[#fffdfa] md:border-l" : "bg-white"
       }`}
     >
-      <span
-        className={`rounded px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
-          right
-            ? "bg-brand-50 text-brand-700"
-            : "bg-gold-400/15 text-gold-500"
-        }`}
-      >
-        {label}
-      </span>
-
       {page ? (
         <>
-          <h3 className="mt-8 text-2xl font-bold leading-tight text-brand-700">
+          <h3 className="text-2xl font-bold leading-tight text-brand-700">
             {page.title || fallbackTitle}
           </h3>
           {page.imageUrl ? (
@@ -367,6 +332,7 @@ function BookPage({
               src={page.imageUrl}
               alt={page.title}
               className="mt-6 aspect-[4/3] w-full rounded object-cover"
+              style={{ objectPosition: imageObjectPosition(page.imageUrl) }}
             />
           ) : (
             <p className="mt-6 whitespace-pre-line text-sm leading-relaxed text-stone-900">
@@ -414,19 +380,8 @@ function buildPersonalizationHighlights(preview: ProjectPreview): SummaryHighlig
     (preview.edition.snapshot?.personalizationFields ?? []).map((field) => [field.fieldKey, field.label]),
   );
   const topVideos = readSummaryVideos(preview.personalizationData.topVideos);
-  const collabTemplateLabel = readString(preview.personalizationData.aiCollabTemplateLabel);
-  const highlights: SummaryHighlight[] = [];
-
-  if (collabTemplateLabel) {
-    highlights.push({
-      key: "aiCollabTemplateLabel",
-      label: "콜라보 이미지",
-      value: collabTemplateLabel,
-    });
-  }
 
   return [
-    ...highlights,
     ...Object.entries(preview.personalizationData)
       .map(([key, value]) => buildSummaryHighlight(key, value, fieldLabelByKey, topVideos))
       .filter((item): item is SummaryHighlight => item !== null),
@@ -447,8 +402,7 @@ function buildSummaryHighlight(
   if (
     !trimmed ||
     key === "uploadedImageUrl" ||
-    key === "memoryImageUrl" ||
-    key.startsWith("aiCollab")
+    key === "memoryImageUrl"
   ) {
     return null;
   }
@@ -460,8 +414,8 @@ function buildSummaryHighlight(
       const selectedVideo = topVideos.find((video) => video.videoId === trimmed);
       return {
         key,
-        label: fieldLabelByKey.get(key) ?? "최애 영상",
-        value: selectedVideo?.title ?? "선택한 영상",
+        label: fieldLabelByKey.get(key) ?? "대표 장면",
+        value: selectedVideo?.title ?? "선택한 장면",
       };
     }
     case "subscribedSince":
@@ -477,10 +431,6 @@ function buildSummaryHighlight(
         value: trimmed,
       };
   }
-}
-
-function readString(value: unknown) {
-  return typeof value === "string" ? value : "";
 }
 
 function readSummaryVideos(value: unknown): SummaryVideo[] {

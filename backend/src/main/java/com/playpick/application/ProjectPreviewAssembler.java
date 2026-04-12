@@ -19,18 +19,23 @@ public class ProjectPreviewAssembler {
 
 	public ProjectViews.Preview assemble(ProjectViews.Snapshot project, EditionViews.Detail edition) {
 		Map<String, Object> personalization = new LinkedHashMap<>(project.personalizationData());
+		personalization.remove("aiCollabSelectedUrl");
+		personalization.remove("aiCollabTemplateLabel");
 		String mode = normalizeMode(asString(personalization.get("mode"), "demo"));
 		personalization.put("mode", mode);
 		String fanNickname = asNonBlankString(personalization.get("fanNickname"), "팬");
+		String creatorName = edition.creator().displayName();
 		Map<String, Object> channel = asMap(personalization.get("channel"));
+		Map<String, Object> bookCopy = asMap(personalization.get("bookCopy"));
 		List<Map<String, Object>> topVideos = asListOfMaps(personalization.get("topVideos"));
 		Map<String, Object> favoriteVideo = findFavoriteVideo(topVideos, asString(personalization.get("favoriteVideoId"), ""));
+		String favoriteMomentTitle = asNonBlankString(favoriteVideo.get("title"), "오래 남은 장면");
 
 		List<ProjectViews.Page> pages = new ArrayList<>();
 		pages.add(new ProjectViews.Page(
 			"cover",
 			edition.title(),
-			"지금 공개 중인 드롭 · " + fanNickname + "님을 위한 한 권",
+			creatorName + "가 " + fanNickname + "님에게 건네는 한 권",
 			edition.coverImageUrl(),
 			Map.of(
 				"fanNickname", fanNickname,
@@ -45,15 +50,26 @@ public class ProjectPreviewAssembler {
 			firstAssetImage(edition.snapshot().curatedAssets(), edition.coverImageUrl()),
 			edition.snapshot().officialIntro()
 		));
+		pages.addAll(buildCuratedAssetPages(
+			edition.snapshot().curatedAssets(),
+			edition.coverImageUrl(),
+			creatorName,
+			fanNickname
+		));
 
 		String subscribedSince = asString(personalization.get("subscribedSince"), "");
 		long daysTogether = asLong(personalization.get("daysTogether"), subscribedSince.isBlank() ? 0L : computeDaysTogether(subscribedSince));
+		String channelTitle = asString(channel.get("title"), creatorName);
+		String defaultRelationshipTitle = subscribedSince.isBlank()
+			? "여기까지 와줘서 반가워요"
+			: "우리의 시간이 여기까지 왔어요";
+		String defaultRelationshipBody = subscribedSince.isBlank()
+			? fanNickname + "님, " + channelTitle + "의 장면들 곁에 와줘서 고마워요. 오늘은 당신이 오래 붙잡아 둔 마음을 한 장씩 같이 펼쳐볼게요."
+			: fanNickname + "님, " + subscribedSince.substring(0, Math.min(10, subscribedSince.length())) + "부터 이어진 " + daysTogether + "일의 마음을 여기 조용히 꺼내둘게요.";
 		pages.add(new ProjectViews.Page(
 			"relationship",
-			subscribedSince.isBlank()
-				? "처음 좋아한 그날부터"
-				: "함께 보기 시작한 날 · " + subscribedSince.substring(0, Math.min(10, subscribedSince.length())),
-			"함께한 " + daysTogether + "일 · " + asString(channel.get("title"), edition.creator().displayName()),
+			asNonBlankString(bookCopy.get("relationshipTitle"), defaultRelationshipTitle),
+			asNonBlankString(bookCopy.get("relationshipBody"), defaultRelationshipBody),
 			resolveImageUrl(channel.get("bannerUrl"), edition.coverImageUrl()),
 			Map.of(
 				"daysTogether", daysTogether,
@@ -62,22 +78,28 @@ public class ProjectPreviewAssembler {
 			)
 		));
 
+		String defaultMomentList = topVideos.stream()
+			.limit(5)
+			.map(video -> asNonBlankString(video.get("title"), "제목 없는 영상"))
+			.reduce((left, right) -> left + " · " + right)
+			.orElse("내가 먼저 꺼내 보여주고 싶은 장면들을 여기 채워둘게요.");
 		pages.add(new ProjectViews.Page(
 			"top-videos",
-			"자주 꺼내 본 장면",
-			topVideos.stream()
-				.limit(5)
-				.map(video -> asNonBlankString(video.get("title"), "제목 없는 영상"))
-				.reduce((left, right) -> left + " · " + right)
-				.orElse("인기 영상 데이터를 불러오면 이 페이지가 채워집니다."),
+			"이 장면부터 같이 볼까요",
+			defaultMomentList,
 			topVideos.isEmpty() ? edition.coverImageUrl() : resolveImageUrl(topVideos.get(0).get("thumbnailUrl"), edition.coverImageUrl()),
 			Map.of("topVideos", topVideos)
 		));
 
+		String defaultMomentTitle = "이 장면을 고른 당신의 마음";
+		String defaultMomentBody = "'" + favoriteMomentTitle + "'을 떠올린 이유를 이 페이지 한가운데에 남겨둘게요. 당신이 오래 붙잡고 있던 순간이 이 책의 표정이 됩니다.";
 		pages.add(new ProjectViews.Page(
 			"fan-pick",
-			"내가 고른 장면",
-			asNonBlankString(favoriteVideo.get("title"), "가장 좋아하는 장면"),
+			asNonBlankString(bookCopy.get("momentTitle"), defaultMomentTitle),
+			asNonBlankString(
+				bookCopy.get("momentBody"),
+				defaultMomentBody
+			),
 			resolveImageUrl(favoriteVideo.get("thumbnailUrl"), edition.coverImageUrl()),
 			Map.of(
 				"favoriteVideo", favoriteVideo,
@@ -86,25 +108,24 @@ public class ProjectPreviewAssembler {
 			)
 		));
 
-		boolean hasAiCollabCut = edition.id() == 1L && hasText(personalization.get("aiCollabSelectedUrl"));
-		String aiCollabImageUrl = resolveImageUrl(personalization.get("aiCollabSelectedUrl"), "");
-		String aiCollabTemplateLabel = asNonBlankString(personalization.get("aiCollabTemplateLabel"), "공식 콜라보 컷");
 		String memoryImageUrl = resolveImageUrl(
 			personalization.get("uploadedImageUrl"),
 			resolveImageUrl(personalization.get("memoryImageUrl"), resolveImageUrl(channel.get("thumbnailUrl"), edition.coverImageUrl()))
 		);
+		String defaultFanNoteTitle = "당신이 남긴 문장은 여기 둘게요";
+		String defaultFanNoteBody = asNonBlankString(
+			personalization.get("fanNote"),
+			fanNickname + "님이 남긴 마음을 내가 대신 조용히 적어둔 페이지처럼 읽히면 좋겠어요."
+		);
 		pages.add(new ProjectViews.Page(
 			"fan-note",
-			hasAiCollabCut ? "Astra Vale과 남긴 " + aiCollabTemplateLabel : fanNickname + "님의 한마디",
-			hasAiCollabCut
-				? asNonBlankString(personalization.get("fanNote"), "Astra Vale 여행 무드로 정리한 공식 콜라보 컷입니다.")
-				: asNonBlankString(personalization.get("fanNote"), "좋아하는 마음을 한 줄로 남겨 보세요."),
-			hasAiCollabCut ? aiCollabImageUrl : memoryImageUrl,
+			asNonBlankString(bookCopy.get("fanNoteTitle"), defaultFanNoteTitle),
+			asNonBlankString(bookCopy.get("fanNoteBody"), defaultFanNoteBody),
+			memoryImageUrl,
 			Map.of(
 				"fanNickname", fanNickname,
 				"fanNote", asString(personalization.get("fanNote"), ""),
-				"uploadedImageUrl", hasAiCollabCut ? aiCollabImageUrl : memoryImageUrl,
-				"aiCollabTemplateLabel", aiCollabTemplateLabel
+				"uploadedImageUrl", memoryImageUrl
 			)
 		));
 
@@ -150,6 +171,62 @@ public class ProjectPreviewAssembler {
 			.filter(video -> favoriteVideoId.equals(video.get("videoId")))
 			.findFirst()
 			.orElseGet(() -> topVideos.isEmpty() ? Map.of() : topVideos.get(0));
+	}
+
+	private List<ProjectViews.Page> buildCuratedAssetPages(
+		List<EditionViews.CuratedAsset> assets,
+		String fallbackImage,
+		String creatorName,
+		String fanNickname
+	) {
+		if (assets == null || assets.isEmpty()) {
+			return List.of();
+		}
+
+		List<String> imagePool = assets.stream()
+			.filter(asset -> "IMAGE".equals(asset.assetType()))
+			.map(EditionViews.CuratedAsset::content)
+			.map(publicAssetUrlResolver::resolve)
+			.toList();
+		List<ProjectViews.Page> pages = new ArrayList<>();
+		for (int index = 0; index < assets.size(); index++) {
+			EditionViews.CuratedAsset asset = assets.get(index);
+			Map<String, Object> payload = new LinkedHashMap<>();
+			payload.put("assetType", asset.assetType());
+			payload.put("title", asset.title());
+			payload.put("content", asset.content());
+			pages.add(new ProjectViews.Page(
+				"curated-" + asset.assetType().toLowerCase() + "-" + (index + 1),
+				asset.title(),
+				describeCuratedAsset(asset, creatorName, fanNickname),
+				resolveCuratedAssetImage(asset, imagePool, fallbackImage, index),
+				payload
+			));
+		}
+		return pages;
+	}
+
+	private String resolveCuratedAssetImage(
+		EditionViews.CuratedAsset asset,
+		List<String> imagePool,
+		String fallbackImage,
+		int index
+	) {
+		if ("IMAGE".equals(asset.assetType())) {
+			return publicAssetUrlResolver.resolve(asset.content());
+		}
+		if (!imagePool.isEmpty()) {
+			return imagePool.get(index % imagePool.size());
+		}
+		return publicAssetUrlResolver.resolve(fallbackImage);
+	}
+
+	private String describeCuratedAsset(EditionViews.CuratedAsset asset, String creatorName, String fanNickname) {
+		return switch (asset.assetType()) {
+			case "MESSAGE" -> asNonBlankString(asset.content(), creatorName + "가 이번 협업 에디션을 위해 남긴 메모입니다.");
+			case "VIDEO" -> creatorName + "가 함께 고른 하이라이트 장면이에요. " + fanNickname + "님이 책장을 넘길 때 흐름이 자연스럽게 이어지도록 중간 호흡을 만들어주는 레퍼런스예요.";
+			default -> creatorName + "가 이 에디션의 결을 만들기 위해 직접 고른 공식 장면이에요. " + fanNickname + "님의 문장과 나란히 놓였을 때 한 권의 포토북으로 읽히도록 배치했어요.";
+		};
 	}
 
 	private String firstAssetImage(List<EditionViews.CuratedAsset> assets, String fallback) {
@@ -221,13 +298,6 @@ public class ProjectPreviewAssembler {
 			}
 		}
 		return fallback;
-	}
-
-	private boolean hasText(Object value) {
-		if (value instanceof String text) {
-			return !text.isBlank();
-		}
-		return value != null && !String.valueOf(value).isBlank();
 	}
 
 	private String asCopyText(Map<String, Object> source, String primaryKey, String aliasKey, String fallback) {

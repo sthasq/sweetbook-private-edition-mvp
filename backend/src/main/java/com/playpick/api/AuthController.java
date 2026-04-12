@@ -57,6 +57,12 @@ public class AuthController {
 		return authService.currentUser();
 	}
 
+	@Operation(summary = "Get the current session user if signed in")
+	@GetMapping("/session")
+	public AuthViews.CurrentUser session() {
+		return authService.sessionUser();
+	}
+
 	@Operation(summary = "Issue a CSRF token for browser clients")
 	@GetMapping("/csrf")
 	public CsrfTokenResponse csrf(CsrfToken csrfToken) {

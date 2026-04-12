@@ -4,6 +4,7 @@ import com.playpick.application.AppException;
 import com.playpick.domain.AppUser;
 import com.playpick.domain.AppUserRepository;
 import com.playpick.domain.AppUserRole;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -44,5 +45,19 @@ public class CurrentUserService {
 		}
 		return appUserRepository.findById(currentUser.id())
 			.orElseThrow(() -> new AppException(HttpStatus.UNAUTHORIZED, "Authenticated user not found"));
+	}
+
+	public Optional<AppUser> findCurrentAppUser() {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken) {
+			return Optional.empty();
+		}
+
+		Object principal = authentication.getPrincipal();
+		if (!(principal instanceof AuthenticatedUser user)) {
+			return Optional.empty();
+		}
+
+		return appUserRepository.findById(user.id());
 	}
 }

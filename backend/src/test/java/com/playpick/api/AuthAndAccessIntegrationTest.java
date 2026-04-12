@@ -183,8 +183,8 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(jsonPath("$.edition.id").value(editionId))
 			.andExpect(jsonPath("$.pages[1].title").value("어서 와요"))
 			.andExpect(jsonPath("$.pages[1].description").value("크리에이터 인사"))
-			.andExpect(jsonPath("$.pages[6].title").value("다음에도 만나요"))
-			.andExpect(jsonPath("$.pages[6].description").value("마지막 한마디"));
+			.andExpect(jsonPath("$.pages[7].title").value("다음에도 만나요"))
+			.andExpect(jsonPath("$.pages[7].description").value("마지막 한마디"));
 	}
 
 	@Test
@@ -257,7 +257,7 @@ class AuthAndAccessIntegrationTest {
 		mockMvc.perform(get("/api/me/projects").session(ownerSession))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$[0].projectId").value(ownerProjectId))
-			.andExpect(jsonPath("$[0].mode").value("youtube"));
+			.andExpect(jsonPath("$[0].mode").value("demo"));
 	}
 
 	@Test
@@ -307,7 +307,7 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(jsonPath("$.siteOrderUid").isNotEmpty())
 			.andExpect(jsonPath("$.siteOrderStatus").value("PAID"))
 			.andExpect(jsonPath("$.fulfillmentStatus").isNotEmpty())
-			.andExpect(jsonPath("$.edition.title").value("빠니보틀 세계여행 메모리북 데모"))
+			.andExpect(jsonPath("$.edition.title").value("Astra Vale · Mina Loop · Noah Reed Collab Archive"))
 			.andExpect(jsonPath("$.shipping.recipientName").value("천경신"));
 	}
 
@@ -515,7 +515,7 @@ class AuthAndAccessIntegrationTest {
 		return """
 			{
 			  "title": "%s",
-			  "subtitle": "지금 공개 중인 드롭",
+			  "subtitle": "지금 공개 중인 에디션",
 			  "coverImageUrl": "https://picsum.photos/seed/studio-auth/600/600",
 			  "bookSpecUid": "SQUAREBOOK_HC",
 			  "officialIntro": {

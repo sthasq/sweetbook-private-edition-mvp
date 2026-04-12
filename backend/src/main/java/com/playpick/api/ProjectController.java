@@ -49,17 +49,6 @@ public class ProjectController {
 		return projectService.getPreview(projectId);
 	}
 
-	@Operation(summary = "Generate AI collab image candidates for a project")
-	@PostMapping("/{projectId}/ai-collab/generate")
-	public AiCollabGenerateResponse generateAiCollab(
-		@PathVariable Long projectId,
-		@Valid @RequestBody AiCollabGenerateRequest request
-	) {
-		return AiCollabGenerateResponse.from(
-			projectService.generateAiCollab(projectId, request.toCommand())
-		);
-	}
-
 	@Operation(summary = "Chat-based personalization assistant")
 	@PostMapping("/{projectId}/chat")
 	public ChatPersonalizationResponse chatPersonalization(
@@ -164,50 +153,6 @@ record EstimateResponse(
 	}
 }
 
-record AiCollabGenerateRequest(
-	@NotBlank String templateKey,
-	@NotBlank String sourceImageUrl,
-	@NotBlank String officialImageUrl
-) {
-	ProjectCommands.GenerateAiCollab toCommand() {
-		return new ProjectCommands.GenerateAiCollab(templateKey, sourceImageUrl, officialImageUrl);
-	}
-}
-
-record AiCollabGenerateResponse(
-	String provider,
-	String model,
-	java.util.List<AiCollabCandidateResponse> candidates
-) {
-	static AiCollabGenerateResponse from(ProjectViews.AiCollabGeneration generation) {
-		return new AiCollabGenerateResponse(
-			generation.provider(),
-			generation.model(),
-			generation.candidates().stream().map(AiCollabCandidateResponse::from).toList()
-		);
-	}
-}
-
-record AiCollabCandidateResponse(
-	String id,
-	String templateKey,
-	String label,
-	String caption,
-	String imageUrl,
-	String source
-) {
-	static AiCollabCandidateResponse from(ProjectViews.AiCollabCandidate candidate) {
-		return new AiCollabCandidateResponse(
-			candidate.id(),
-			candidate.templateKey(),
-			candidate.label(),
-			candidate.caption(),
-			candidate.imageUrl(),
-			candidate.source()
-		);
-	}
-}
-
 record ChatPersonalizationRequest(
 	List<ChatMessagePayload> messages
 ) {
@@ -230,13 +175,15 @@ record ChatMessagePayload(
 record ChatPersonalizationResponse(
 	String reply,
 	Map<String, Object> proposal,
-	boolean done
+	boolean done,
+	List<String> suggestedReplies
 ) {
 	static ChatPersonalizationResponse from(ProjectViews.ChatPersonalization response) {
 		return new ChatPersonalizationResponse(
 			response.reply(),
 			response.proposal(),
-			response.done()
+			response.done(),
+			response.suggestedReplies()
 		);
 	}
 }

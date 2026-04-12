@@ -124,21 +124,6 @@ export interface BookGeneration {
   reused: boolean;
 }
 
-export interface AiCollabCandidateResponse {
-  id: string;
-  templateKey: string;
-  label: string;
-  caption: string;
-  imageUrl: string;
-  source: string;
-}
-
-export interface AiCollabGenerationResponse {
-  provider: string;
-  model: string;
-  candidates: AiCollabCandidateResponse[];
-}
-
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -148,6 +133,7 @@ export interface ChatPersonalizationResponse {
   reply: string;
   proposal: Record<string, unknown> | null;
   done: boolean;
+  suggestedReplies: string[];
 }
 
 export interface EstimateResponse {
