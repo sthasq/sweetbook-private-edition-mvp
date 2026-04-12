@@ -8,7 +8,8 @@
     "build:raw": "tsc -b && vite build",
     "build": "node ./scripts/build.mjs",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "e2e:extended": "node ./scripts/e2e-extended.mjs"
   },
   "dependencies": {
     "react": "^19.2.4",
@@ -27,6 +28,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "playwright": "^1.52.0",
     "postcss": "^8.5.6",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.0",

@@ -6,6 +6,7 @@ import {
   getStudioEdition,
   publishEdition,
   uploadStudioCover,
+  uploadStudioImage,
   updateEdition,
 } from "../api/studio";
 import {
@@ -34,6 +35,7 @@ import {
   resolveMediaUrl,
   toAbsoluteAppUrl,
 } from "../lib/appPaths";
+
 const ASSET_TYPES = ["IMAGE", "VIDEO", "MESSAGE"] as const;
 const FIELD_TYPES = ["TEXT", "TEXTAREA", "DATE"] as const;
 const STUDIO_STEPS = [
@@ -110,6 +112,7 @@ export default function StudioPage() {
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploadingCuratedAssetIndex, setUploadingCuratedAssetIndex] = useState<number | null>(null);
   const [bookSpecs, setBookSpecs] = useState<SweetbookBookSpec[]>([]);
   const [bookSpecsLoading, setBookSpecsLoading] = useState(true);
   const [bookSpecError, setBookSpecError] = useState("");
@@ -392,6 +395,25 @@ export default function StudioPage() {
       setError(e instanceof Error ? e.message : "커버 이미지를 업로드하지 못했습니다.");
     } finally {
       setUploadingCover(false);
+    }
+  }
+
+  async function handleCuratedImageUpload(assetIndex: number, file: File | null) {
+    if (!file) {
+      return;
+    }
+
+    setUploadingCuratedAssetIndex(assetIndex);
+    setError("");
+    setSuccess("");
+    try {
+      const uploaded = await uploadStudioImage(file);
+      updateAsset(assetIndex, "content", uploaded.url);
+      setSuccess("큐레이션 이미지를 업로드했습니다.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "이미지를 업로드하지 못했습니다.");
+    } finally {
+      setUploadingCuratedAssetIndex(null);
     }
   }
 
@@ -802,8 +824,30 @@ export default function StudioPage() {
                       <div className="min-w-0">
                         {asset.assetType === "MESSAGE" ? (
                           <textarea rows={5} value={asset.content} onChange={(e) => updateAsset(index, "content", e.target.value)} className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="메시지를 입력해 주세요" />
+                        ) : asset.assetType === "IMAGE" ? (
+                          <div className="space-y-3 rounded-2xl border border-stone-200 bg-white p-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                              <p className="text-sm text-warm-500">커버와 같이 파일을 올리거나, 아래에 이미지 URL을 직접 넣을 수 있습니다.</p>
+                              <label
+                                className={`editorial-button-secondary px-4 py-2.5 ${uploadingCuratedAssetIndex !== null ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+                              >
+                                {uploadingCuratedAssetIndex === index ? "업로드 중..." : "파일 업로드"}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  disabled={uploadingCuratedAssetIndex !== null}
+                                  onChange={(e) => {
+                                    void handleCuratedImageUpload(index, e.target.files?.[0] ?? null);
+                                    e.currentTarget.value = "";
+                                  }}
+                                />
+                              </label>
+                            </div>
+                            <input value={asset.content} onChange={(e) => updateAsset(index, "content", e.target.value)} className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="이미지 URL" />
+                          </div>
                         ) : (
-                          <input value={asset.content} onChange={(e) => updateAsset(index, "content", e.target.value)} className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder={asset.assetType === "VIDEO" ? "영상 링크" : "이미지 URL"} />
+                          <input value={asset.content} onChange={(e) => updateAsset(index, "content", e.target.value)} className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="영상 링크" />
                         )}
                       </div>
                       <div className="min-w-0 rounded-2xl border border-stone-200 bg-white/80 p-3">
