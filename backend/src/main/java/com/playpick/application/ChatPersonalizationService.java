@@ -29,6 +29,8 @@ public class ChatPersonalizationService {
 
 	private static final int MAX_MESSAGES = 24;
 	private static final int MAX_MESSAGE_LENGTH = 1200;
+	private static final int BOOK_COPY_TITLE_MAX_LENGTH = 48;
+	private static final int BOOK_COPY_BODY_MAX_LENGTH = 180;
 
 	private final OpenRouterProperties properties;
 	private final AppProperties appProperties;
@@ -185,16 +187,27 @@ public class ChatPersonalizationService {
 			Current saved personalization values: %s
 			Field definitions:
 			%s
-			Available video picks (if any): %s
+			Reference content picks (if any): %s
 
 			Conversation policy:
 			- Ask concise, warm, emotionally natural Korean questions.
 			- Ask one focused question per turn.
 			- Aim to gather enough information in 2-4 questions.
-			- On the very first turn (empty message history), start with a brief warm greeting and the easiest welcoming question.
+			- First turn (empty user message history): after a short greeting, ask how to address the FAN themselves — e.g. "먼저, 포토북에 새겨질 당신의 이름이나 닉네임을 알려주세요" or "어떻게 불러드리면 좋을까요?" Match the tone to the first personalization field (often fanNickname) when sensible.
+			- Do NOT open by asking for a companion, travel mate, partner, or third party's name unless a field definition explicitly requires someone other than the fan.
 			- Do not ask the fan to re-confirm saved values unless they asked to revise.
+			- When asking about favoriteVideoId or any reference picks, phrase it generically as a memorable scene, standout moment, or representative content. Avoid framing the question around "videos" unless the user explicitly uses that word first.
 			- Accept user inputs in any natural Korean form (e.g., "2022년 7월 21일", "작년 여름", "3년 전") and internally convert them to the required format.
 			- If the user asks for revisions after a proposal, refine and return an updated proposal.
+			- Once enough information is gathered, actively craft photobook-ready Korean copy that feels polished, specific, and emotionally grounded.
+			- The generated copy must stay faithful to the interview facts. Do not invent events, timelines, places, or emotions the user did not imply.
+			- Keep generated copy concise and publication-ready rather than chatty.
+			- Do not ask for approval, confirmation, or final review once you have enough information. Move straight to generation.
+			- When done=true, the assistant is sending the result directly into preview, so the reply should briefly say that the book copy is being prepared right away.
+			- The photobook concept is: the creator is speaking directly to the fan over the image, gently reacting to the fan's memory and offering encouragement.
+			- Write the print-ready copy in intimate second-person Korean, as if the creator is quietly talking to one fan.
+			- Favor lines that feel like a direct message, a small reply, a nudge, or an encouraging note over neutral exposition.
+			- Avoid ad copy, marketing slogans, generic summary language, and detached third-person descriptions.
 
 			Output policy (MANDATORY – never violate):
 			- Your ENTIRE response must be a single valid JSON object with NO extra text before or after.
@@ -202,9 +215,17 @@ public class ChatPersonalizationService {
 			- Always use exactly this shape:
 			  {"reply":"<Korean message to the fan>","done":false,"proposal":null}
 			  or, when you have collected enough information:
-			  {"reply":"<Korean message confirming proposal>","done":true,"proposal":{"fieldKey":"value",...}}
+			  {"reply":"<Korean message saying the preview is being prepared now>","done":true,"proposal":{"fieldKey":"value",...,"bookCopy":{"relationshipTitle":"...","relationshipBody":"...","momentTitle":"...","momentBody":"...","fanNoteTitle":"...","fanNoteBody":"..."}}}
 			- "reply" must contain your conversational Korean message. It must NEVER be empty.
+			- "reply" must be short, natural Korean. Keep it to 1-2 sentences.
+			- "reply" must NOT contain markdown, bullet points, template labels, bracketed placeholders, or internal key names like relationshipTitle, relationshipBody, momentTitle, momentBody, fanNoteTitle, fanNoteBody, favoriteVideoId.
 			- proposal keys must only be from: %s
+			- proposal may additionally contain one optional key named "bookCopy".
+			- When done=true, include bookCopy unless the user's information is still too thin to write safely.
+			- All polished print-ready copy belongs inside proposal.bookCopy, not inside reply.
+			- relationshipTitle/relationshipBody should sound like the creator greeting the fan and recognizing the time they have shared.
+			- momentTitle/momentBody should sound like the creator responding to the fan's chosen scene and helping them hold onto that feeling.
+			- fanNoteTitle/fanNoteBody should sound like the creator receiving the fan's message and turning it into a warm, printable line of encouragement.
 			- For DATE fields, normalize any Korean/natural-language date the user provided to YYYY-MM-DD in the proposal value.
 			- For IMAGE_URL fields, never invent URLs. Use only user-provided URLs.
 			- Even if the user's input is unusual, ambiguous, or contains special characters, always output valid JSON.
@@ -268,6 +289,10 @@ public class ChatPersonalizationService {
 				result.put(key, value);
 			}
 		}
+		Object bookCopy = personalizationData.get("bookCopy");
+		if (bookCopy instanceof Map<?, ?> map && !map.isEmpty()) {
+			result.put("bookCopy", map);
+		}
 		return result;
 	}
 
@@ -314,6 +339,14 @@ public class ChatPersonalizationService {
 
 		Map<String, Object> result = new LinkedHashMap<>();
 		proposalNode.fields().forEachRemaining(entry -> {
+			if ("bookCopy".equals(entry.getKey())) {
+				Map<String, Object> bookCopy = normalizeBookCopy(entry.getValue());
+				if (bookCopy != null && !bookCopy.isEmpty()) {
+					result.put("bookCopy", bookCopy);
+				}
+				return;
+			}
+
 			EditionViews.PersonalizationField field = fieldByKey.get(entry.getKey());
 			if (field == null) {
 				return;
@@ -324,6 +357,34 @@ public class ChatPersonalizationService {
 			}
 		});
 
+		return result.isEmpty() ? null : result;
+	}
+
+	private Map<String, Object> normalizeBookCopy(JsonNode bookCopyNode) {
+		if (bookCopyNode == null || bookCopyNode.isMissingNode() || bookCopyNode.isNull() || !bookCopyNode.isObject()) {
+			return null;
+		}
+
+		Map<String, Integer> limits = Map.of(
+			"relationshipTitle", BOOK_COPY_TITLE_MAX_LENGTH,
+			"relationshipBody", BOOK_COPY_BODY_MAX_LENGTH,
+			"momentTitle", BOOK_COPY_TITLE_MAX_LENGTH,
+			"momentBody", BOOK_COPY_BODY_MAX_LENGTH,
+			"fanNoteTitle", BOOK_COPY_TITLE_MAX_LENGTH,
+			"fanNoteBody", BOOK_COPY_BODY_MAX_LENGTH
+		);
+
+		Map<String, Object> result = new LinkedHashMap<>();
+		for (Map.Entry<String, Integer> entry : limits.entrySet()) {
+			String value = bookCopyNode.path(entry.getKey()).asText("").trim();
+			if (value.isBlank()) {
+				continue;
+			}
+			if (value.length() > entry.getValue()) {
+				value = value.substring(0, entry.getValue());
+			}
+			result.put(entry.getKey(), value);
+		}
 		return result.isEmpty() ? null : result;
 	}
 

@@ -72,20 +72,20 @@ class ProjectPreviewAssemblerTest {
 		ProjectViews.Preview preview = assembler.assemble(project, edition);
 
 		assertThat(preview.pages()).hasSize(7);
-		assertThat(preview.pages().get(0).description()).contains("경신님을 위한 한 권");
+		assertThat(preview.pages().get(0).description()).contains("온도로그가 경신님에게 건네는 한 권");
 		assertThat(preview.pages().get(2).description()).contains("1332일");
-		assertThat(preview.pages().get(5).title()).isEqualTo("경신님의 한마디");
+		assertThat(preview.pages().get(5).title()).isEqualTo("당신이 남긴 문장은 여기 둘게요");
 	}
 
 	@Test
 	void usesPaniCollabCutWhenSelectedImageExists() {
 		EditionViews.Detail edition = new EditionViews.Detail(
 			1L,
-			"빠니보틀 세계여행 메모리북 데모",
-			"여행 메모리 드롭",
+			"Astra Vale 사막 횡단 메모리북 데모",
+			"가상 여행 크리에이터 Astra Vale의 기록 감성으로 구성한 메모리북 데모",
 			"/demo-assets/panibottle-cover.jpg",
 			"PUBLISHED",
-			new EditionViews.Creator(1L, "빠니보틀", "@PaniBottle", "/demo-assets/panibottle-avatar.jpg", true),
+			new EditionViews.Creator(1L, "Astra Vale", "@astravale", "/demo-assets/panibottle-avatar.jpg", true),
 			new EditionViews.Snapshot(
 				10L,
 				1,
@@ -125,9 +125,81 @@ class ProjectPreviewAssemblerTest {
 
 		ProjectViews.Preview preview = assembler.assemble(project, edition);
 
-		assertThat(preview.pages().get(5).title()).isEqualTo("Astra Vale과 남긴 여행 동행 셀카");
+		assertThat(preview.pages().get(5).title()).isEqualTo("이 한 컷에 당신의 마음도 같이 담아둘게요");
 		assertThat(preview.pages().get(5).imageUrl()).isEqualTo("data:image/jpeg;base64,collab-demo");
 		assertThat(preview.pages().get(5).description()).contains("같이 여행 다녀온 듯한 컷");
+	}
+
+	@Test
+	void usesGeneratedBookCopyWhenPresent() {
+		EditionViews.Detail edition = new EditionViews.Detail(
+			1L,
+			"Astra Vale 사막 횡단 메모리북 데모",
+			"가상 여행 크리에이터 Astra Vale의 기록 감성으로 구성한 메모리북 데모",
+			"/demo-assets/panibottle-cover.jpg",
+			"PUBLISHED",
+			new EditionViews.Creator(1L, "Astra Vale", "@astravale", "/demo-assets/panibottle-avatar.jpg", true),
+			new EditionViews.Snapshot(
+				10L,
+				1,
+				"SQUAREBOOK_HC",
+				"demo-cover-template",
+				"demo-publish-template",
+				"demo-content-template",
+				Map.of("title", "크리에이터 인사", "message", "같이 여행 가듯 넘겨 보세요."),
+				Map.of("title", "마지막 인사", "message", "다음 장면도 같이 저장해요."),
+				Instant.parse("2026-04-08T00:00:00Z"),
+				List.of(new EditionViews.CuratedAsset(1L, "IMAGE", "Intro Visual", "/demo-assets/panibottle-cover.jpg", 1)),
+				List.of()
+			),
+			Instant.parse("2026-04-01T00:00:00Z"),
+			Instant.parse("2026-04-08T00:00:00Z")
+		);
+
+		ProjectViews.Snapshot project = new ProjectViews.Snapshot(
+			99L,
+			1L,
+			10L,
+			"PERSONALIZED",
+			Map.of(
+				"mode", "demo",
+				"fanNickname", "연두",
+				"subscribedSince", "2023-07-14",
+				"daysTogether", 1002,
+				"favoriteVideoId", "astra-demo-2",
+				"fanNote", "밤기차 플랫폼 장면이 오래 남았어요.",
+				"channel", Map.of(
+					"title", "Astra Vale",
+					"bannerUrl", "/demo-assets/banner.jpg",
+					"thumbnailUrl", "/demo-assets/thumb.jpg"
+				),
+				"topVideos", List.of(
+					Map.of("videoId", "astra-demo-2", "title", "야간열차 플랫폼의 기록", "thumbnailUrl", "/demo-assets/video.jpg", "viewCount", 100)
+				),
+				"bookCopy", Map.of(
+					"relationshipTitle", "처음 멈춰 서서 오래 본 계절",
+					"relationshipBody", "연두님이 Astra Vale의 기록을 따라 걷기 시작한 시간은 조용히 오래 남는 장면이 되었습니다.",
+					"momentTitle", "플랫폼에 남은 잔상",
+					"momentBody", "밤기차 플랫폼의 공기와 손끝의 긴장이 한 장면처럼 다시 펼쳐지도록 문장을 눌러 담았습니다.",
+					"fanNoteTitle", "연두님이 붙잡아 둔 한 문장",
+					"fanNoteBody", "스쳐 지나갈 것 같던 장면도 오래 붙잡고 싶어지는 순간이 있다는 걸, 그 밤의 플랫폼이 먼저 알려주었습니다."
+				)
+			),
+			null,
+			null,
+			null,
+			null,
+			Instant.parse("2026-04-07T00:00:00Z"),
+			Instant.parse("2026-04-08T00:00:00Z")
+		);
+
+		ProjectViews.Preview preview = assembler.assemble(project, edition);
+
+		assertThat(preview.pages().get(2).title()).isEqualTo("처음 멈춰 서서 오래 본 계절");
+		assertThat(preview.pages().get(2).description()).contains("연두님이 Astra Vale의 기록");
+		assertThat(preview.pages().get(4).title()).isEqualTo("플랫폼에 남은 잔상");
+		assertThat(preview.pages().get(5).title()).isEqualTo("연두님이 붙잡아 둔 한 문장");
+		assertThat(preview.pages().get(5).description()).contains("그 밤의 플랫폼");
 	}
 
 	@Test
@@ -138,7 +210,7 @@ class ProjectPreviewAssemblerTest {
 			"샘플",
 			"https://playpick.example.com/demo-assets/cover.jpg",
 			"PUBLISHED",
-			new EditionViews.Creator(1L, "빠니보틀", "@PaniBottle", "https://playpick.example.com/demo-assets/avatar.jpg", true),
+			new EditionViews.Creator(1L, "Astra Vale", "@astravale", "https://playpick.example.com/demo-assets/avatar.jpg", true),
 			new EditionViews.Snapshot(
 				10L,
 				1,
@@ -166,7 +238,7 @@ class ProjectPreviewAssemblerTest {
 				"fanNickname", "연두",
 				"uploadedImageUrl", "/api/assets/memory.jpg",
 				"channel", Map.of(
-					"title", "빠니보틀",
+					"title", "Astra Vale",
 					"bannerUrl", "/demo-assets/banner.jpg",
 					"thumbnailUrl", "/demo-assets/thumb.jpg"
 				),

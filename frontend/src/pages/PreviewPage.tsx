@@ -117,12 +117,10 @@ export default function PreviewPage() {
                   <div className="overflow-hidden rounded bg-white shadow-editorial">
                     <div className="grid min-h-[520px] md:grid-cols-2">
                       <BookPage
-                        label="에디션 원본"
                         page={leftPage}
                         fallbackTitle="크리에이터가 구성한 페이지"
                       />
                       <BookPage
-                        label="나의 페이지"
                         page={rightPage}
                         fallbackTitle="내가 채운 페이지"
                         right
@@ -331,12 +329,10 @@ export default function PreviewPage() {
 }
 
 function BookPage({
-  label,
   page,
   fallbackTitle,
   right = false,
 }: {
-  label: string;
   page: ProjectPreview["pages"][number] | undefined;
   fallbackTitle: string;
   right?: boolean;
@@ -347,19 +343,9 @@ function BookPage({
         right ? "bg-[#fffdfa] md:border-l" : "bg-white"
       }`}
     >
-      <span
-        className={`rounded px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
-          right
-            ? "bg-brand-50 text-brand-700"
-            : "bg-gold-400/15 text-gold-500"
-        }`}
-      >
-        {label}
-      </span>
-
       {page ? (
         <>
-          <h3 className="mt-8 text-2xl font-bold leading-tight text-brand-700">
+          <h3 className="text-2xl font-bold leading-tight text-brand-700">
             {page.title || fallbackTitle}
           </h3>
           {page.imageUrl ? (
@@ -460,8 +446,8 @@ function buildSummaryHighlight(
       const selectedVideo = topVideos.find((video) => video.videoId === trimmed);
       return {
         key,
-        label: fieldLabelByKey.get(key) ?? "최애 영상",
-        value: selectedVideo?.title ?? "선택한 영상",
+        label: fieldLabelByKey.get(key) ?? "대표 장면",
+        value: selectedVideo?.title ?? "선택한 장면",
       };
     }
     case "subscribedSince":

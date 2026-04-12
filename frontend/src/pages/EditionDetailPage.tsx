@@ -119,6 +119,10 @@ export default function EditionDetailPage() {
   const imageAssets = officialAssets.filter((asset) => asset.assetType === "IMAGE");
   const textAssets = officialAssets.filter((asset) => asset.assetType !== "IMAGE");
   const pricingHint = estimateEditionPricing(snap?.bookSpecUid);
+  const quickPreviewImages = buildQuickPreviewImages(
+    edition.coverImageUrl,
+    imageAssets,
+  );
 
   return (
     <div className="page-shell">
@@ -322,6 +326,53 @@ export default function EditionDetailPage() {
 
               <div className="editorial-card p-8 lg:col-span-5">
                 <p className="editorial-label text-gold-500">한눈에 보기</p>
+                {quickPreviewImages.length > 0 && (
+                  <div className="mt-5 rounded bg-surface-low p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-500">
+                      미리보기 구성
+                    </p>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1.15fr)_minmax(148px,0.85fr)]">
+                      <div className="overflow-hidden rounded bg-white p-2 shadow-sm">
+                        <div className="relative overflow-hidden rounded">
+                          <img
+                            src={quickPreviewImages[0].url}
+                            alt={quickPreviewImages[0].label}
+                            className="aspect-[4/5] w-full object-cover"
+                          />
+                          <span className="absolute left-3 top-3 rounded-full bg-white/92 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-700 shadow-sm">
+                            {quickPreviewImages[0].label}
+                          </span>
+                        </div>
+                      </div>
+
+                      {quickPreviewImages.length > 1 && (
+                        <div
+                          className={`grid gap-3 ${
+                            quickPreviewImages.length > 2 ? "grid-rows-2" : "grid-cols-1"
+                          }`}
+                        >
+                          {quickPreviewImages.slice(1).map((image) => (
+                            <div
+                              key={`${image.label}-${image.url}`}
+                              className="overflow-hidden rounded bg-white p-1.5 shadow-sm"
+                            >
+                              <div className="relative overflow-hidden rounded">
+                                <img
+                                  src={image.url}
+                                  alt={image.label}
+                                  className="aspect-[4/5] w-full object-cover"
+                                />
+                                <span className="absolute left-2 top-2 rounded-full bg-white/92 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-warm-500 shadow-sm">
+                                  {image.label}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="mt-5 space-y-5">
                   <SpecRow
                     label="사이즈"
@@ -426,4 +477,26 @@ function inputTypeLabel(inputType: string) {
     default:
       return inputType;
   }
+}
+
+function buildQuickPreviewImages(
+  coverImageUrl: string,
+  imageAssets: CuratedAsset[],
+) {
+  const previewItems = [
+    { label: "표지", url: coverImageUrl },
+    ...imageAssets.slice(0, 2).map((asset, index) => ({
+      label: `내지 ${index + 1}`,
+      url: asset.content,
+    })),
+  ];
+
+  const seen = new Set<string>();
+  return previewItems.filter((item) => {
+    if (!item.url || seen.has(item.url)) {
+      return false;
+    }
+    seen.add(item.url);
+    return true;
+  });
 }

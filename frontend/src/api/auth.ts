@@ -2,7 +2,7 @@ import { clearCsrfToken, get, invalidateApiCache, post } from "./client";
 import type { AuthUser } from "../types/api";
 
 export function getCurrentUser() {
-  return get<AuthUser>("/auth/me", { ttlMs: 15_000 });
+  return get<AuthUser | null>("/auth/session", { ttlMs: 15_000 }).then((user) => user ?? null);
 }
 
 export async function login(body: { email: string; password: string }) {

@@ -22,15 +22,18 @@ public class ProjectPreviewAssembler {
 		String mode = normalizeMode(asString(personalization.get("mode"), "demo"));
 		personalization.put("mode", mode);
 		String fanNickname = asNonBlankString(personalization.get("fanNickname"), "팬");
+		String creatorName = edition.creator().displayName();
 		Map<String, Object> channel = asMap(personalization.get("channel"));
+		Map<String, Object> bookCopy = asMap(personalization.get("bookCopy"));
 		List<Map<String, Object>> topVideos = asListOfMaps(personalization.get("topVideos"));
 		Map<String, Object> favoriteVideo = findFavoriteVideo(topVideos, asString(personalization.get("favoriteVideoId"), ""));
+		String favoriteMomentTitle = asNonBlankString(favoriteVideo.get("title"), "오래 남은 장면");
 
 		List<ProjectViews.Page> pages = new ArrayList<>();
 		pages.add(new ProjectViews.Page(
 			"cover",
 			edition.title(),
-			"지금 공개 중인 드롭 · " + fanNickname + "님을 위한 한 권",
+			creatorName + "가 " + fanNickname + "님에게 건네는 한 권",
 			edition.coverImageUrl(),
 			Map.of(
 				"fanNickname", fanNickname,
@@ -48,12 +51,17 @@ public class ProjectPreviewAssembler {
 
 		String subscribedSince = asString(personalization.get("subscribedSince"), "");
 		long daysTogether = asLong(personalization.get("daysTogether"), subscribedSince.isBlank() ? 0L : computeDaysTogether(subscribedSince));
+		String channelTitle = asString(channel.get("title"), creatorName);
+		String defaultRelationshipTitle = subscribedSince.isBlank()
+			? "여기까지 와줘서 반가워요"
+			: "우리의 시간이 여기까지 왔어요";
+		String defaultRelationshipBody = subscribedSince.isBlank()
+			? fanNickname + "님, " + channelTitle + "의 장면들 곁에 와줘서 고마워요. 오늘은 당신이 오래 붙잡아 둔 마음을 한 장씩 같이 펼쳐볼게요."
+			: fanNickname + "님, " + subscribedSince.substring(0, Math.min(10, subscribedSince.length())) + "부터 이어진 " + daysTogether + "일의 마음을 여기 조용히 꺼내둘게요.";
 		pages.add(new ProjectViews.Page(
 			"relationship",
-			subscribedSince.isBlank()
-				? "처음 좋아한 그날부터"
-				: "함께 보기 시작한 날 · " + subscribedSince.substring(0, Math.min(10, subscribedSince.length())),
-			"함께한 " + daysTogether + "일 · " + asString(channel.get("title"), edition.creator().displayName()),
+			asNonBlankString(bookCopy.get("relationshipTitle"), defaultRelationshipTitle),
+			asNonBlankString(bookCopy.get("relationshipBody"), defaultRelationshipBody),
 			resolveImageUrl(channel.get("bannerUrl"), edition.coverImageUrl()),
 			Map.of(
 				"daysTogether", daysTogether,
@@ -62,22 +70,28 @@ public class ProjectPreviewAssembler {
 			)
 		));
 
+		String defaultMomentList = topVideos.stream()
+			.limit(5)
+			.map(video -> asNonBlankString(video.get("title"), "제목 없는 영상"))
+			.reduce((left, right) -> left + " · " + right)
+			.orElse("내가 먼저 꺼내 보여주고 싶은 장면들을 여기 채워둘게요.");
 		pages.add(new ProjectViews.Page(
 			"top-videos",
-			"자주 꺼내 본 장면",
-			topVideos.stream()
-				.limit(5)
-				.map(video -> asNonBlankString(video.get("title"), "제목 없는 영상"))
-				.reduce((left, right) -> left + " · " + right)
-				.orElse("인기 영상 데이터를 불러오면 이 페이지가 채워집니다."),
+			"이 장면부터 같이 볼까요",
+			defaultMomentList,
 			topVideos.isEmpty() ? edition.coverImageUrl() : resolveImageUrl(topVideos.get(0).get("thumbnailUrl"), edition.coverImageUrl()),
 			Map.of("topVideos", topVideos)
 		));
 
+		String defaultMomentTitle = "이 장면을 고른 당신의 마음";
+		String defaultMomentBody = "'" + favoriteMomentTitle + "'을 떠올린 이유를 이 페이지 한가운데에 남겨둘게요. 당신이 오래 붙잡고 있던 순간이 이 책의 표정이 됩니다.";
 		pages.add(new ProjectViews.Page(
 			"fan-pick",
-			"내가 고른 장면",
-			asNonBlankString(favoriteVideo.get("title"), "가장 좋아하는 장면"),
+			asNonBlankString(bookCopy.get("momentTitle"), defaultMomentTitle),
+			asNonBlankString(
+				bookCopy.get("momentBody"),
+				defaultMomentBody
+			),
 			resolveImageUrl(favoriteVideo.get("thumbnailUrl"), edition.coverImageUrl()),
 			Map.of(
 				"favoriteVideo", favoriteVideo,
@@ -93,12 +107,16 @@ public class ProjectPreviewAssembler {
 			personalization.get("uploadedImageUrl"),
 			resolveImageUrl(personalization.get("memoryImageUrl"), resolveImageUrl(channel.get("thumbnailUrl"), edition.coverImageUrl()))
 		);
+		String defaultFanNoteTitle = hasAiCollabCut
+			? "이 한 컷에 당신의 마음도 같이 담아둘게요"
+			: "당신이 남긴 문장은 여기 둘게요";
+		String defaultFanNoteBody = hasAiCollabCut
+			? asNonBlankString(personalization.get("fanNote"), aiCollabTemplateLabel + " 안에 당신이 기억한 분위기도 함께 눌러 담아둘게요.")
+			: asNonBlankString(personalization.get("fanNote"), fanNickname + "님이 남긴 마음을 내가 대신 조용히 적어둔 페이지처럼 읽히면 좋겠어요.");
 		pages.add(new ProjectViews.Page(
 			"fan-note",
-			hasAiCollabCut ? "Astra Vale과 남긴 " + aiCollabTemplateLabel : fanNickname + "님의 한마디",
-			hasAiCollabCut
-				? asNonBlankString(personalization.get("fanNote"), "Astra Vale 여행 무드로 정리한 공식 콜라보 컷입니다.")
-				: asNonBlankString(personalization.get("fanNote"), "좋아하는 마음을 한 줄로 남겨 보세요."),
+			asNonBlankString(bookCopy.get("fanNoteTitle"), defaultFanNoteTitle),
+			asNonBlankString(bookCopy.get("fanNoteBody"), defaultFanNoteBody),
 			hasAiCollabCut ? aiCollabImageUrl : memoryImageUrl,
 			Map.of(
 				"fanNickname", fanNickname,

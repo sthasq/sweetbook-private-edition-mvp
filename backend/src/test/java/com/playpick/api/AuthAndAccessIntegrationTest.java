@@ -257,7 +257,7 @@ class AuthAndAccessIntegrationTest {
 		mockMvc.perform(get("/api/me/projects").session(ownerSession))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$[0].projectId").value(ownerProjectId))
-			.andExpect(jsonPath("$[0].mode").value("youtube"));
+			.andExpect(jsonPath("$[0].mode").value("demo"));
 	}
 
 	@Test
@@ -307,7 +307,7 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(jsonPath("$.siteOrderUid").isNotEmpty())
 			.andExpect(jsonPath("$.siteOrderStatus").value("PAID"))
 			.andExpect(jsonPath("$.fulfillmentStatus").isNotEmpty())
-			.andExpect(jsonPath("$.edition.title").value("빠니보틀 세계여행 메모리북 데모"))
+			.andExpect(jsonPath("$.edition.title").value("Astra Vale 사막 횡단 메모리북 데모"))
 			.andExpect(jsonPath("$.shipping.recipientName").value("천경신"));
 	}
 

@@ -71,6 +71,12 @@ public class AuthService {
 		return toView(currentUserService.requireCurrentAppUser());
 	}
 
+	public AuthViews.CurrentUser sessionUser() {
+		return currentUserService.findCurrentAppUser()
+			.map(this::toView)
+			.orElse(null);
+	}
+
 	public void logout(HttpServletRequest request, HttpServletResponse response) {
 		new SecurityContextLogoutHandler().logout(request, response, SecurityContextHolder.getContext().getAuthentication());
 	}

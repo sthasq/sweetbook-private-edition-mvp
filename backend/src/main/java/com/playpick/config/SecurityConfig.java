@@ -47,7 +47,7 @@ public class SecurityConfig {
 					"/v3/api-docs/**",
 					"/h2-console/**"
 				).permitAll()
-				.requestMatchers("/api/auth/csrf").permitAll()
+				.requestMatchers("/api/auth/csrf", "/api/auth/session").permitAll()
 				.requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/logout").permitAll()
 				.requestMatchers("/api/assets/**").permitAll()
 				.requestMatchers("/api/editions/**").permitAll()

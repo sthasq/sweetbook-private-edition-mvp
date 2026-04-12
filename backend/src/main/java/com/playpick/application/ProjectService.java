@@ -81,31 +81,38 @@ public class ProjectService {
 				"channelId", "VC_ASTRA_VALE",
 				"title", creatorName,
 				"subscriberCount", "2500000",
-				"thumbnailUrl", "/demo-assets/panibottle-avatar.jpg",
-				"bannerUrl", "/demo-assets/panibottle-landscape.jpg",
+				"thumbnailUrl", "/demo-assets/astra-vale-avatar.png",
+				"bannerUrl", "/demo-assets/astra-vale-banner.png",
 				"handle", creatorHandle
 			));
 			data.put("topVideos", List.of(
 				Map.of(
 					"videoId", "astra-demo-1",
-					"title", "사막 도시의 첫 오후",
-					"thumbnailUrl", "/demo-assets/panibottle-cover.jpg",
+					"title", "사막 협곡에서 꺼낸 첫 문장",
+					"thumbnailUrl", "/demo-assets/astra-vale-story-1.png",
 					"viewCount", 630000,
 					"publishedAt", "2024-06-01T00:00:00Z"
 				),
 				Map.of(
 					"videoId", "astra-demo-2",
-					"title", "야간열차 플랫폼의 기록",
-					"thumbnailUrl", "/demo-assets/panibottle-landscape.jpg",
+					"title", "차창 밖으로 흘러가던 황금빛 사막",
+					"thumbnailUrl", "/demo-assets/astra-vale-story-2.png",
 					"viewCount", 520000,
 					"publishedAt", "2024-10-01T00:00:00Z"
 				),
 				Map.of(
 					"videoId", "astra-demo-3",
-					"title", "창밖으로 흘러가던 황금빛 사막",
-					"thumbnailUrl", "/demo-assets/panibottle-landscape.jpg",
+					"title", "노트에 적어둔 야간열차 메모",
+					"thumbnailUrl", "/demo-assets/astra-vale-story-3.png",
 					"viewCount", 410000,
 					"publishedAt", "2025-01-01T00:00:00Z"
+				),
+				Map.of(
+					"videoId", "astra-demo-4",
+					"title", "플랫폼에서 다시 고쳐 든 여행 노트",
+					"thumbnailUrl", "/demo-assets/astra-vale-story-4.png",
+					"viewCount", 360000,
+					"publishedAt", "2025-02-08T00:00:00Z"
 				)
 			));
 			return data;
@@ -116,9 +123,32 @@ public class ProjectService {
 				"channelId", "VC_MINA_LOOP",
 				"title", creatorName,
 				"subscriberCount", "2100000",
-				"thumbnailUrl", "/demo-assets/jbkwak-avatar.jpg",
-				"bannerUrl", "/demo-assets/jbkwak-landscape.jpg",
+				"thumbnailUrl", "/demo-assets/mina-loop-avatar.png",
+				"bannerUrl", "/demo-assets/mina-loop-banner.png",
 				"handle", creatorHandle
+			));
+			data.put("topVideos", List.of(
+				Map.of(
+					"videoId", "mina-demo-1",
+					"title", "언덕 위에서 시작한 시티 드라이브",
+					"thumbnailUrl", "/demo-assets/mina-loop-cover.png",
+					"viewCount", 540000,
+					"publishedAt", "2024-05-14T00:00:00Z"
+				),
+				Map.of(
+					"videoId", "mina-demo-2",
+					"title", "차창에 기대 웃던 오후",
+					"thumbnailUrl", "/demo-assets/mina-loop-story-2.png",
+					"viewCount", 490000,
+					"publishedAt", "2024-09-22T00:00:00Z"
+				),
+				Map.of(
+					"videoId", "mina-demo-3",
+					"title", "해질녘 도시를 마주한 한 컷",
+					"thumbnailUrl", "/demo-assets/mina-loop-story-3.png",
+					"viewCount", 430000,
+					"publishedAt", "2025-01-17T00:00:00Z"
+				)
 			));
 			return data;
 		}
@@ -127,29 +157,29 @@ public class ProjectService {
 			"channelId", "VC_NOAH_REED",
 			"title", creatorName,
 			"subscriberCount", "3100000",
-			"thumbnailUrl", "/demo-assets/chimchakman-avatar.jpg",
-			"bannerUrl", "/demo-assets/chimchakman-landscape.jpg",
+			"thumbnailUrl", "/demo-assets/noah-reed-avatar.png",
+			"bannerUrl", "/demo-assets/noah-reed-banner.png",
 			"handle", creatorHandle
 		));
 		data.put("topVideos", List.of(
 			Map.of(
 				"videoId", "noah-demo-1",
-				"title", "정적이 먼저 흐르는 오프닝 토크",
-				"thumbnailUrl", "/demo-assets/chimchakman-cover.jpg",
+				"title", "조용히 눈을 맞추는 오프닝",
+				"thumbnailUrl", "/demo-assets/noah-reed-cover.png",
 				"viewCount", 980000,
 				"publishedAt", "2024-05-01T00:00:00Z"
 			),
 			Map.of(
 				"videoId", "noah-demo-2",
 				"title", "노트 위에 남겨둔 대화의 잔상",
-				"thumbnailUrl", "/demo-assets/chimchakman-landscape.jpg",
+				"thumbnailUrl", "/demo-assets/noah-reed-story-1.png",
 				"viewCount", 870000,
 				"publishedAt", "2024-11-01T00:00:00Z"
 			),
 			Map.of(
 				"videoId", "noah-demo-3",
-				"title", "늦은 밤 스튜디오 메모",
-				"thumbnailUrl", "/demo-assets/chimchakman-landscape.jpg",
+				"title", "웃음 끝에 오래 남는 밤",
+				"thumbnailUrl", "/demo-assets/noah-reed-story-3.png",
 				"viewCount", 790000,
 				"publishedAt", "2025-02-01T00:00:00Z"
 			)

@@ -24,7 +24,7 @@ export function getFieldHelper(fieldKey: string) {
     case "subscribedSince":
       return "정확한 날짜가 아니어도 괜찮아요. 기억나는 시점만 적어도 분위기가 살아나요.";
     case "favoriteVideoId":
-      return "가장 많이 다시 본 영상이나 이번 책의 대표 장면이 될 영상을 고르면 좋아요.";
+      return "가장 기억에 남는 장면이나 이번 책의 중심이 될 콘텐츠를 떠올리면 좋아요.";
     case "fanNote":
       return "장면 설명보다, 그 장면이 나한테 왜 남았는지를 적으면 더 자연스럽습니다.";
     case "favoriteMemory":

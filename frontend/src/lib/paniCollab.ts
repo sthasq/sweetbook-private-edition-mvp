@@ -21,7 +21,7 @@ export type PaniCollabCandidate = {
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 900;
 export const PANI_COLLAB_OFFICIAL_PHOTO = "/demo-assets/COLABOBBANIE.jpg";
-export const PANI_COLLAB_ASSET_VERSION = "2026-04-11-colabobbanie";
+export const PANI_COLLAB_ASSET_VERSION = "2026-04-12-virtual-influencer-refresh";
 
 const assetDataUrlCache = new Map<string, Promise<string>>();
 
@@ -216,9 +216,9 @@ function drawTravelSelfie(
     600,
   );
   context.font = "500 24px sans-serif";
-  context.fillText("Astra Vale edition prototype", 98, 646);
+  context.fillText("Astra Vale virtual edition", 98, 646);
 
-  drawAvatarBadge(context, avatar, 92, 684, "AstraVale");
+  drawAvatarBadge(context, avatar, 92, 684, "Astra Vale");
 }
 
 function drawPassportPoster(
@@ -268,7 +268,7 @@ function drawPassportPoster(
 
   drawStamp(context, 620, 76, variant === 0 ? "#d67644" : "#276f7a", "PASSPORT");
   drawStamp(context, 812, 108, "#c6a357", "TRAVEL");
-  drawAvatarBadge(context, avatar, 932, 736, "AstraVale");
+  drawAvatarBadge(context, avatar, 932, 736, "Astra Vale");
 }
 
 function drawNightTrain(
@@ -317,7 +317,7 @@ function drawNightTrain(
     792,
   );
 
-  drawAvatarBadge(context, avatar, 112, 692, "AstraVale");
+  drawAvatarBadge(context, avatar, 112, 692, "Astra Vale");
 }
 
 function drawAvatarBadge(
