@@ -29,10 +29,15 @@ export default function AdminUsersPage() {
 
   useEffect(load, [load]);
 
-  async function handleVerify(userId: number) {
-    setBusyId(userId);
+  async function handleVerify(user: AdminUserSummary) {
+    if (user.creatorProfileId == null) {
+      setError("크리에이터 프로필 정보를 찾지 못했어요.");
+      return;
+    }
+
+    setBusyId(user.id);
     try {
-      await verifyCreator(userId);
+      await verifyCreator(user.creatorProfileId);
       load();
     } catch {
       setError("인증 처리에 실패했어요.");
@@ -96,7 +101,7 @@ export default function AdminUsersPage() {
                       <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">인증됨</span>
                     ) : (
                       <button
-                        onClick={() => handleVerify(user.id)}
+                        onClick={() => handleVerify(user)}
                         disabled={busyId === user.id}
                         className="rounded-full bg-brand-600 px-3 py-1 text-[11px] font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
                       >

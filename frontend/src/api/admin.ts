@@ -27,6 +27,6 @@ export function getAdminUsers() {
   return get<AdminUserSummary[]>("/admin/users");
 }
 
-export function verifyCreator(creatorId: number) {
-  return post<void>(`/admin/creators/${creatorId}/verify`);
+export function verifyCreator(creatorProfileId: number) {
+  return post<void>(`/admin/creators/${creatorProfileId}/verify`);
 }

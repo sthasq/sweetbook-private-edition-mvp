@@ -42,6 +42,7 @@ services:
       - "8080:8080"
     volumes:
       - ${USERPROFILE}/.ssh:/root/.ssh:ro
+      - ./frontend/public/demo-assets:/app/demo-assets:ro
     environment:
       SPRING_PROFILES_ACTIVE: docker,session-redis
       SERVER_PORT: 8080
@@ -52,11 +53,12 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:3000}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3000}
+      APP_DEMO_ASSET_DIR: ${APP_DEMO_ASSET_DIR:-/app/demo-assets}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
       PUBLIC_ASSET_BASE_URL: ${PUBLIC_ASSET_BASE_URL:-}
       PUBLIC_ASSET_SCP_TARGET: ${PUBLIC_ASSET_SCP_TARGET:-}
       PUBLIC_ASSET_SSH_KEY_PATH: /root/.ssh/oci_a1_free
-      SWEETBOOK_ENABLED: ${SWEETBOOK_ENABLED:-true}
+      SWEETBOOK_ENABLED: ${SWEETBOOK_ENABLED:-false}
       SWEETBOOK_API_KEY: ${SWEETBOOK_API_KEY:-}
       SWEETBOOK_BASE_URL: ${SWEETBOOK_BASE_URL:-https://api-sandbox.sweetbook.com/v1}
       SWEETBOOK_WEBHOOK_SECRET: ${SWEETBOOK_WEBHOOK_SECRET:-}

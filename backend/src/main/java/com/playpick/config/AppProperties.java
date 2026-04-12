@@ -25,6 +25,8 @@ public class AppProperties {
 
 	private String studioAssetDir = System.getProperty("java.io.tmpdir") + "/playpick-studio-assets";
 
+	private String demoAssetDir = "../frontend/public/demo-assets";
+
 	private String publicBaseUrl = "";
 
 	private String publicAssetBaseUrl = "";

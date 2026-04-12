@@ -1,4 +1,4 @@
-import { get, invalidateApiCache, post, patch } from "./client";
+import { del, get, invalidateApiCache, post, patch } from "./client";
 import type {
   ProjectSnapshot,
   ProjectPreview,
@@ -79,4 +79,11 @@ export async function createOrder(id: number, shipping: ShippingInput) {
   invalidateApiCache(`/projects/${id}/order-summary`);
   invalidateApiCache("/me/projects");
   return result;
+}
+
+export async function deleteProject(id: number) {
+  await del<void>(`/projects/${id}`);
+  invalidateApiCache(`/projects/${id}/preview`);
+  invalidateApiCache(`/projects/${id}/order-summary`);
+  invalidateApiCache("/me/projects");
 }

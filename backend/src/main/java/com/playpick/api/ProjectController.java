@@ -13,6 +13,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.ResponseStatus;
 
 @Tag(name = "Projects")
 @RestController
@@ -100,6 +103,13 @@ public class ProjectController {
 	@PostMapping("/{projectId}/order")
 	public OrderResponse order(@PathVariable Long projectId, @Valid @RequestBody ShippingRequest request) {
 		return OrderResponse.from(projectService.order(projectId, request.toCommand()));
+	}
+
+	@Operation(summary = "Delete a fan project")
+	@DeleteMapping("/{projectId}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void deleteProject(@PathVariable Long projectId) {
+		projectService.deleteProject(projectId);
 	}
 
 	private Map<String, Object> unwrapPersonalizationPayload(Map<String, Object> request) {

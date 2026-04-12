@@ -31,6 +31,7 @@ app:
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:3000}
   demo-image-base-url: ${DEMO_IMAGE_BASE_URL:https://picsum.photos}
   studio-asset-dir: ${STUDIO_ASSET_DIR:${java.io.tmpdir}/playpick-studio-assets}
+  demo-asset-dir: ${APP_DEMO_ASSET_DIR:../frontend/public/demo-assets}
   public-base-url: ${PUBLIC_BASE_URL:}
   public-asset-base-url: ${PUBLIC_ASSET_BASE_URL:}
   public-asset-scp-target: ${PUBLIC_ASSET_SCP_TARGET:}

@@ -59,23 +59,6 @@ const STUDIO_STEPS = [
   },
 ] as const;
 
-const SWEETBOOK_EDIT_MODES = [
-  {
-    id: "auto",
-    badge: "추천",
-    title: "자동 조판 우선",
-    description: "대표 장면과 메시지를 빠르게 묶어 인쇄용 초안을 먼저 만들 때 적합합니다.",
-    summary: "핵심 자산 위주로 먼저 인쇄용 초안을 만들고, 이후 보정 포인트만 확인하는 흐름입니다.",
-  },
-  {
-    id: "manual",
-    badge: "직접",
-    title: "출력 규칙 직접 제어",
-    description: "페이지마다 사진 수와 레이아웃 규칙을 세밀하게 맞출 때 적합합니다.",
-    summary: "사진 선택과 배치 규칙을 페이지 단위로 더 세밀하게 설계하는 흐름입니다.",
-  },
-] as const;
-
 const SWEETBOOK_EDITOR_TOOLS = [
   { key: "cover", label: "표지 파라미터", description: "커버 이미지와 제목처럼 표지 템플릿에 바로 바인딩될 값을 준비합니다." },
   { key: "publish", label: "발행면 파라미터", description: "제목, 발행일, 저자 정보처럼 오프닝 페이지에 들어갈 값을 정리합니다." },
@@ -111,7 +94,6 @@ const PLAYPICK_CONTENT_TEMPLATE_CATEGORY_PRIORITY = [
 ] as const;
 
 type StudioStepId = (typeof STUDIO_STEPS)[number]["id"];
-type SweetbookEditModeId = (typeof SWEETBOOK_EDIT_MODES)[number]["id"];
 type SupportedFieldType = (typeof FIELD_TYPES)[number];
 
 export default function StudioPage() {
@@ -136,7 +118,6 @@ export default function StudioPage() {
   const [success, setSuccess] = useState("");
   const [savedFingerprint, setSavedFingerprint] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState<StudioStepId>("structure");
-  const [sweetbookEditMode, setSweetbookEditMode] = useState<SweetbookEditModeId>("auto");
 
   const intro = form.officialIntro ?? createCopyBlock();
   const closing = form.officialClosing ?? createCopyBlock();
@@ -157,11 +138,10 @@ export default function StudioPage() {
         form,
         assetCount: assets.length,
         fieldCount: fields.length,
-        mode: sweetbookEditMode,
         layoutTemplates,
         bookPlan,
       }),
-    [assets.length, bookPlan, fields.length, form, layoutTemplates, sweetbookEditMode],
+    [assets.length, bookPlan, fields.length, form, layoutTemplates],
   );
   const sweetbookTemplateGroups = useMemo(
     () => ({
@@ -684,41 +664,41 @@ export default function StudioPage() {
           <section className="editorial-card p-6 md:p-8">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-stone-900">자동 조판 전략</h2>
+                <h2 className="text-lg font-semibold text-stone-900">조판 가이드</h2>
                 <p className="mt-1 text-sm text-stone-600">
-                  공개 API 기준으로는 호스팅 에디터 대신 자동 조판 전략과 템플릿 조합을 먼저 정하고, 이후 팬 입력이 그 위에 들어갑니다.
+                  공개 API 기준으로는 호스팅 에디터 대신 템플릿 조합과 페이지 규칙을 먼저 정하고, 이후 팬 입력이 그 위에 들어갑니다.
                 </p>
               </div>
               <p className="text-xs font-medium text-stone-500">
-                현재 선택: {readEditModeName(sweetbookEditMode)}
+                Sweetbook 템플릿 기반
               </p>
             </div>
 
             <div className="mt-5 grid gap-4 lg:grid-cols-2">
-              {SWEETBOOK_EDIT_MODES.map((mode) => {
-                const isSelected = sweetbookEditMode === mode.id;
-                return (
-                  <button
-                    key={mode.id}
-                    type="button"
-                    onClick={() => setSweetbookEditMode(mode.id)}
-                    className={`rounded-3xl border p-5 text-left transition-colors ${
-                      isSelected
-                        ? "border-brand-400 bg-brand-50/70"
-                        : "border-stone-200 bg-stone-50/70 hover:border-brand-300"
-                    }`}
-                  >
-                    <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-gold-500">
-                      {mode.badge}
-                    </span>
-                    <h3 className="mt-4 text-2xl font-semibold text-stone-900">{mode.title}</h3>
-                    <p className="mt-3 text-sm leading-relaxed text-warm-500">{mode.description}</p>
-                    <p className="mt-4 rounded-2xl bg-white/80 px-4 py-3 text-sm text-stone-700">
-                      {mode.summary}
-                    </p>
-                  </button>
-                );
-              })}
+              <div className="rounded-3xl border border-brand-200 bg-brand-50/60 p-5 text-left">
+                <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-gold-500">
+                  기본 흐름
+                </span>
+                <h3 className="mt-4 text-2xl font-semibold text-stone-900">템플릿과 자산으로 초안 생성</h3>
+                <p className="mt-3 text-sm leading-relaxed text-warm-500">
+                  표지, 발행면, 본문 템플릿을 고른 뒤 큐레이션 자산과 팬 입력 항목을 조합해 인쇄용 초안을 만듭니다.
+                </p>
+                <p className="mt-4 rounded-2xl bg-white/80 px-4 py-3 text-sm text-stone-700">
+                  현재 Studio는 하나의 조판 흐름만 제공하며, 선택한 템플릿과 페이지 규칙을 기준으로 미리보기와 출력을 이어갑니다.
+                </p>
+              </div>
+              <div className="rounded-3xl border border-stone-200 bg-stone-50/70 p-5 text-left">
+                <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">
+                  체크 포인트
+                </span>
+                <h3 className="mt-4 text-2xl font-semibold text-stone-900">페이지 규칙 먼저 확인</h3>
+                <p className="mt-3 text-sm leading-relaxed text-warm-500">
+                  인쇄 규격마다 최소 페이지 수와 증분 단위가 다르기 때문에, 대표 장면과 메시지가 현재 분량 계획에 맞는지 먼저 확인하는 것이 중요합니다.
+                </p>
+                <p className="mt-4 rounded-2xl bg-white/80 px-4 py-3 text-sm text-stone-700">
+                  본문 템플릿은 사진 중심 구성을 기본으로 쓰고, 팬 참여 텍스트는 후반부 개인화 페이지와 미리보기에서 함께 반영됩니다.
+                </p>
+              </div>
             </div>
           </section>
 
@@ -953,9 +933,6 @@ export default function StudioPage() {
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
                     인쇄 규칙 체크
-                  </p>
-                  <p className="text-sm font-medium text-stone-700">
-                    조판 전략: {readEditModeName(sweetbookEditMode)}
                   </p>
                 </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -1892,22 +1869,16 @@ function extractYouTubeVideoId(url: string) {
   return "";
 }
 
-function readEditModeName(mode: SweetbookEditModeId) {
-  return SWEETBOOK_EDIT_MODES.find((item) => item.id === mode)?.title ?? mode;
-}
-
 function buildSweetbookPagePlan({
   form,
   assetCount,
   fieldCount,
-  mode,
   layoutTemplates,
   bookPlan,
 }: {
   form: StudioEditionInput;
   assetCount: number;
   fieldCount: number;
-  mode: SweetbookEditModeId;
   layoutTemplates: SweetbookTemplate[];
   bookPlan: ReturnType<typeof computeBookPlan>;
 }) {
@@ -1937,10 +1908,7 @@ function buildSweetbookPagePlan({
       title: "본문 사진 배치",
       status: assetCount > 0 ? `${assetCount}개 준비` : "자산 필요",
       tone: assetCount > 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
-      description:
-        mode === "manual"
-          ? `직접 제어 전략에서는 본문 템플릿(${contentTemplateName}) 기준으로 페이지마다 몇 장씩 넣을지 미리 잡아두는 게 좋습니다.`
-          : `자동 조판 전략에서는 대표 자산 ${assetCount}개를 중심으로 먼저 인쇄용 초안을 만들고, 이후 보정 포인트만 확인하는 흐름이 잘 맞습니다.`,
+      description: `본문 템플릿(${contentTemplateName})과 대표 자산 ${assetCount}개를 바탕으로 인쇄용 초안을 만들고, 이후 보정 포인트를 점검하는 흐름입니다.`,
     },
     {
       title: "팬 참여 페이지",
@@ -1955,7 +1923,7 @@ function buildSweetbookPagePlan({
       title: "페이지 수 규칙",
       status: bookPlan.isValid ? `${bookPlan.plannedTotalPages}p 통과` : "규칙 점검 필요",
       tone: bookPlan.isValid ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
-      description: `현재 자동 조판 계획은 ${bookPlan.plannedTotalPages}p이며, 최소 ${bookPlan.minimumPages}p에서 ${bookPlan.pageIncrement}p 단위로 증감하는 규칙을 기준으로 검토합니다.`,
+      description: `현재 페이지 계획은 ${bookPlan.plannedTotalPages}p이며, 최소 ${bookPlan.minimumPages}p에서 ${bookPlan.pageIncrement}p 단위로 증감하는 규칙을 기준으로 검토합니다.`,
     },
     {
       title: "엔딩 페이지",

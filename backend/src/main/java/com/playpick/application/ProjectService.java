@@ -299,10 +299,14 @@ public class ProjectService {
 
 		CustomerOrder existingOrder = customerOrderRepository.findByFanProjectId(projectId).orElse(null);
 		if (existingOrder != null) {
+			OrderRecord existingFulfillmentOrder = orderRecordRepository.findByFanProjectId(projectId).orElse(null);
+			if (existingOrder.getStatus() == OrderStatus.PAID && existingFulfillmentOrder == null) {
+				return finalizePaidOrder(projectId, project, toShipping(existingOrder), existingOrder);
+			}
 			return toOrderResult(
 				projectId,
 				existingOrder,
-				orderRecordRepository.findByFanProjectId(projectId).orElse(null),
+				existingFulfillmentOrder,
 				Map.of("reused", true)
 			);
 		}
@@ -329,7 +333,7 @@ public class ProjectService {
 		return finalizePaidOrder(projectId, project, shipping, customerOrder);
 	}
 
-	@Transactional
+	@Transactional(noRollbackFor = AppException.class)
 	public ProjectViews.OrderResult confirmPayment(Long projectId, ProjectCommands.PaymentConfirmation confirmation) {
 		FanProject project = requireOwnedProject(projectId);
 		requireFinalizedBook(project);
@@ -344,11 +348,15 @@ public class ProjectService {
 			throw new AppException(HttpStatus.BAD_REQUEST, "Payment order does not match the pending project order");
 		}
 
+		OrderRecord existingFulfillmentOrder = orderRecordRepository.findByFanProjectId(projectId).orElse(null);
 		if (customerOrder.getStatus() == OrderStatus.PAID) {
+			if (existingFulfillmentOrder == null) {
+				return finalizePaidOrder(projectId, project, toShipping(customerOrder), customerOrder);
+			}
 			return toOrderResult(
 				projectId,
 				customerOrder,
-				orderRecordRepository.findByFanProjectId(projectId).orElse(null),
+				existingFulfillmentOrder,
 				Map.of("reused", true)
 			);
 		}
@@ -414,6 +422,21 @@ public class ProjectService {
 		);
 	}
 
+	@Transactional
+	public void deleteProject(Long projectId) {
+		FanProject project = requireOwnedProject(projectId);
+		CustomerOrder customerOrder = customerOrderRepository.findByFanProjectId(projectId).orElse(null);
+		OrderRecord fulfillmentOrder = orderRecordRepository.findByFanProjectId(projectId).orElse(null);
+		if (!isProjectDeletable(project, customerOrder, fulfillmentOrder)) {
+			throw new AppException(HttpStatus.CONFLICT, "결제 또는 주문 이력이 있는 프로젝트는 삭제할 수 없습니다.");
+		}
+
+		if (customerOrder != null) {
+			customerOrderRepository.delete(customerOrder);
+		}
+		fanProjectRepository.delete(project);
+	}
+
 	public List<ProjectViews.MyProjectSummary> listMyProjects() {
 		AppUser currentUser = currentUserService.requireCurrentAppUser();
 		return fanProjectRepository.findByOwnerUserIdOrderByUpdatedAtDesc(currentUser.getId()).stream()
@@ -467,8 +490,16 @@ public class ProjectService {
 			fulfillmentOrder == null ? null : fulfillmentOrder.getLastEventType(),
 			fulfillmentOrder == null ? null : fulfillmentOrder.getLastEventAt(),
 			project.getUpdatedAt(),
-			resolveContinuePath(project)
+			resolveContinuePath(project),
+			isProjectDeletable(project, customerOrder, fulfillmentOrder)
 		);
+	}
+
+	private boolean isProjectDeletable(FanProject project, CustomerOrder customerOrder, OrderRecord fulfillmentOrder) {
+		if (project.getStatus() == FanProjectStatus.ORDERED || fulfillmentOrder != null) {
+			return false;
+		}
+		return customerOrder == null || customerOrder.getStatus() == OrderStatus.CREATED;
 	}
 
 	private String resolveMode(FanProject project) {
@@ -494,7 +525,8 @@ public class ProjectService {
 		return switch (project.getStatus()) {
 			case DRAFT -> "/projects/" + project.getId() + "/personalize";
 			case PERSONALIZED -> "/projects/" + project.getId() + "/preview";
-			case BOOK_CREATED, FINALIZED -> "/projects/" + project.getId() + "/shipping";
+			case BOOK_CREATED -> "/projects/" + project.getId() + "/preview";
+			case FINALIZED -> "/projects/" + project.getId() + "/shipping";
 			case ORDERED -> "/projects/" + project.getId() + "/complete";
 		};
 	}
@@ -513,8 +545,7 @@ public class ProjectService {
 	}
 
 	private String buildSweetbookExternalRef(FanProject project) {
-		long revisionSeed = project.getUpdatedAt() == null ? Instant.now().toEpochMilli() : project.getUpdatedAt().toEpochMilli();
-		return "playpick-project-" + project.getId() + "-" + revisionSeed;
+		return "playpick-project-" + project.getId() + "-" + UUID.randomUUID();
 	}
 
 	private String buildDraftIdempotencyKey(FanProject project, String externalRef) {
@@ -552,7 +583,16 @@ public class ProjectService {
 		CustomerOrder customerOrder
 	) {
 		Instant orderedAt = customerOrder.getOrderedAt() == null ? Instant.now() : customerOrder.getOrderedAt();
-		OrderRecord fulfillmentOrder = submitFulfillmentOrder(project, shipping, customerOrder, orderedAt);
+		OrderRecord fulfillmentOrder;
+		try {
+			fulfillmentOrder = submitFulfillmentOrder(project, shipping, customerOrder, orderedAt);
+		} catch (AppException exception) {
+			throw new AppException(
+				HttpStatus.BAD_GATEWAY,
+				"Sweetbook 주문 접수에 실패했습니다. 프로젝트를 주문 완료로 표시하지 않았습니다. 잠시 후 다시 시도해 주세요.",
+				exception
+			);
+		}
 		if (fulfillmentOrder != null && fulfillmentOrder.getStatus() == FulfillmentStatus.SIMULATED && !customerOrder.isSimulated()) {
 			customerOrder.setSimulated(true);
 			customerOrder = customerOrderRepository.save(customerOrder);
@@ -569,26 +609,22 @@ public class ProjectService {
 		CustomerOrder customerOrder,
 		Instant orderedAt
 	) {
-		try {
-			ProjectViews.FulfillmentResult result = sweetbookService.createOrder(project.getId(), project.getSweetbookBookUid(), shipping);
+		ProjectViews.FulfillmentResult result = sweetbookService.createOrder(project.getId(), project.getSweetbookBookUid(), shipping);
 
-			OrderRecord orderRecord = new OrderRecord();
-			orderRecord.setFanProject(project);
-			orderRecord.setSweetbookOrderUid(result.orderUid());
-			orderRecord.setStatus(toFulfillmentStatus(result));
-			orderRecord.setTotalAmount(customerOrder.getTotalAmount());
-			orderRecord.setRecipientName(customerOrder.getRecipientName());
-			orderRecord.setRecipientPhone(customerOrder.getRecipientPhone());
-			orderRecord.setPostalCode(customerOrder.getPostalCode());
-			orderRecord.setAddress1(customerOrder.getAddress1());
-			orderRecord.setAddress2(customerOrder.getAddress2());
-			orderRecord.setOrderedAt(orderedAt);
-			orderRecord.setLastEventType(result.simulated() ? "simulation.ready" : "order.created");
-			orderRecord.setLastEventAt(Instant.now());
-			return orderRecordRepository.save(orderRecord);
-		} catch (RuntimeException exception) {
-			return null;
-		}
+		OrderRecord orderRecord = new OrderRecord();
+		orderRecord.setFanProject(project);
+		orderRecord.setSweetbookOrderUid(result.orderUid());
+		orderRecord.setStatus(toFulfillmentStatus(result));
+		orderRecord.setTotalAmount(customerOrder.getTotalAmount());
+		orderRecord.setRecipientName(customerOrder.getRecipientName());
+		orderRecord.setRecipientPhone(customerOrder.getRecipientPhone());
+		orderRecord.setPostalCode(customerOrder.getPostalCode());
+		orderRecord.setAddress1(customerOrder.getAddress1());
+		orderRecord.setAddress2(customerOrder.getAddress2());
+		orderRecord.setOrderedAt(orderedAt);
+		orderRecord.setLastEventType(result.simulated() ? "simulation.ready" : "order.created");
+		orderRecord.setLastEventAt(Instant.now());
+		return orderRecordRepository.save(orderRecord);
 	}
 
 	private FulfillmentStatus toFulfillmentStatus(ProjectViews.FulfillmentResult result) {
