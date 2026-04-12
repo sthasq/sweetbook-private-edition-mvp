@@ -355,18 +355,8 @@ public class SweetbookService {
 			chooseCoverTemplate(templates, preview.edition().snapshot().sweetbookCoverTemplateUid()),
 			choosePublishTemplate(templates, preview.edition().snapshot().sweetbookPublishTemplateUid()),
 			chooseContentTemplate(templates, preview.edition().snapshot().sweetbookContentTemplateUid()),
-			chooseTemplate(
-				templates,
-				sweetbookProperties.getDefaultContentTextTemplateUid(),
-				"content",
-				sweetbookProperties.getDefaultContentTemplateUid()
-			),
-			chooseTemplate(
-				templates,
-				sweetbookProperties.getDefaultContentGalleryTemplateUid(),
-				"content",
-				sweetbookProperties.getDefaultContentTemplateUid()
-			),
+			chooseOptionalTemplate(templates, sweetbookProperties.getDefaultContentTextTemplateUid()),
+			chooseOptionalTemplate(templates, sweetbookProperties.getDefaultContentGalleryTemplateUid()),
 			chooseTemplate(
 				templates,
 				sweetbookProperties.getDefaultDividerTemplateUid(),
@@ -767,6 +757,19 @@ public class SweetbookService {
 		}
 		return templates.stream()
 			.filter(template -> template.role().toLowerCase().contains(role))
+			.findFirst()
+			.orElse(null);
+	}
+
+	private SweetbookViews.Template chooseOptionalTemplate(
+		List<SweetbookViews.Template> templates,
+		String preferredTemplateUid
+	) {
+		if (preferredTemplateUid == null || preferredTemplateUid.isBlank()) {
+			return null;
+		}
+		return templates.stream()
+			.filter(template -> preferredTemplateUid.equals(template.uid()))
 			.findFirst()
 			.orElse(null);
 	}

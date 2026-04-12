@@ -126,6 +126,55 @@ class SweetbookServiceTest {
 		);
 	}
 
+	@Test
+	void skipsTextAndGalleryLayoutsWhenDedicatedTemplatesAreUnavailable() {
+		SweetbookClient sweetbookClient = mock(SweetbookClient.class);
+		PublicAssetPublishingService publicAssetPublishingService = mock(PublicAssetPublishingService.class);
+		SweetbookProperties sweetbookProperties = liveSweetbookProperties();
+		AppProperties appProperties = new AppProperties();
+		appProperties.setFrontendBaseUrl("https://playpick.example.com");
+
+		when(sweetbookClient.getBookSpecs()).thenReturn(List.of(new SweetbookViews.BookSpec("SQUAREBOOK_HC", "Square", 24, 130, 2)));
+		when(sweetbookClient.getTemplates("SQUAREBOOK_HC")).thenReturn(List.of(
+			new SweetbookViews.Template("4MY2fokVjkeY", "표지", "album", "cover", ""),
+			new SweetbookViews.Template("75vMl9IeyPMI", "발행면", "album", "publish", ""),
+			new SweetbookViews.Template("3FhSEhJ94c0T", "내지a_contain", "album", "content", ""),
+			new SweetbookViews.Template("1N8i0MR6Ro1D", "간지", "album", "divider", "")
+		));
+		when(sweetbookClient.createBook(anyMap(), anyString())).thenReturn("bk_test");
+		when(publicAssetPublishingService.isConfigured()).thenReturn(false);
+
+		SweetbookService service = new SweetbookService(
+			sweetbookClient,
+			sweetbookProperties,
+			appProperties,
+			publicAssetPublishingService
+		);
+
+		service.prepareBookDraft(
+			previewWithImages(
+				"https://playpick.example.com/demo-assets/cover.jpg",
+				"https://playpick.example.com/demo-assets/page-1.jpg"
+			),
+			"ext",
+			"idem",
+			false
+		);
+
+		verify(sweetbookClient, never()).addContents(
+			eq("bk_test"),
+			eq("3FhSEhJ94c0T"),
+			argThat(params -> !params.containsKey("photo1")),
+			eq("page")
+		);
+		verify(sweetbookClient, never()).addContents(
+			eq("bk_test"),
+			eq("3FhSEhJ94c0T"),
+			argThat(params -> params.containsKey("collagePhotos")),
+			eq("page")
+		);
+	}
+
 	private SweetbookProperties liveSweetbookProperties() {
 		SweetbookProperties properties = new SweetbookProperties();
 		properties.setEnabled(true);

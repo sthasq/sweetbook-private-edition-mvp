@@ -143,7 +143,6 @@ export default function ChatPersonalizationPage() {
       await updateProject(Number(projectId), payload);
       navigate(`/projects/${projectId}/preview`);
     } catch (e: unknown) {
-      autoApplyTriggeredRef.current = false;
       setError(e instanceof Error ? e.message : "개인화 저장에 실패했어요.");
     } finally {
       setSaving(false);
@@ -314,6 +313,16 @@ export default function ChatPersonalizationPage() {
                         className="mt-2 text-xs font-semibold text-red-800 underline"
                       >
                         다시 시도하기
+                      </button>
+                    )}
+                    {done && proposal && (
+                      <button
+                        type="button"
+                        onClick={() => void handleApplyProposal()}
+                        disabled={saving}
+                        className="mt-2 text-xs font-semibold text-red-800 underline"
+                      >
+                        저장 다시 시도하기
                       </button>
                     )}
                   </div>
