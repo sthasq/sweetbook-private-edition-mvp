@@ -7,6 +7,7 @@ import { useAuth } from "../auth/AuthContext";
 import { listEditions } from "../api/editions";
 import { formatChannelHandle } from "../lib/channelHandle";
 import { estimateEditionPricing } from "../lib/sweetbookWorkflow";
+import { resolveMediaUrl } from "../lib/appPaths";
 import type { EditionSummary } from "../types/api";
 
 const QUICK_FILTERS = ["오늘의 셀렉션", "대화형 제작", "가상 에디션", "소장용 추천"] as const;
@@ -108,7 +109,7 @@ export default function LandingPage() {
                 <div className="grid gap-5 md:grid-cols-[0.95fr_1.05fr]">
                   <div className="overflow-hidden rounded bg-surface-low">
                     <img
-                      src={featuredEdition?.coverImageUrl || "/demo-assets/playpick-hero.svg"}
+                      src={resolveMediaUrl(featuredEdition?.coverImageUrl)}
                       alt={featuredEdition?.title ?? "PlayPick 대표 포토북"}
                       className="aspect-[4/5] h-full w-full object-cover"
                     />
@@ -175,7 +176,7 @@ export default function LandingPage() {
                 className="group flex items-center gap-4 rounded border border-transparent bg-surface-low/70 p-3 transition hover:border-brand-200 hover:bg-white"
               >
                 <img
-                  src={edition.coverImageUrl || "/demo-assets/playpick-hero.svg"}
+                  src={resolveMediaUrl(edition.coverImageUrl)}
                   alt={edition.title}
                   className="h-20 w-16 rounded object-cover"
                 />
@@ -245,7 +246,7 @@ export default function LandingPage() {
                   <Link to={`/editions/${edition.id}`} className="block">
                     <div className="relative overflow-hidden rounded bg-surface-low">
                       <img
-                        src={edition.coverImageUrl || "/demo-assets/playpick-hero.svg"}
+                        src={resolveMediaUrl(edition.coverImageUrl)}
                         alt={edition.title}
                         className="aspect-[4/5] w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                       />
@@ -396,7 +397,7 @@ export default function LandingPage() {
                     >
                       <div className="flex items-center gap-4">
                         <img
-                          src={edition.coverImageUrl || "/demo-assets/playpick-hero.svg"}
+                          src={resolveMediaUrl(edition.coverImageUrl)}
                           alt={edition.title}
                           className="h-20 w-16 rounded object-cover"
                         />

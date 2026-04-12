@@ -981,9 +981,8 @@ public class SweetbookService {
 		}
 
 		if (!uri.isAbsolute()) {
-			URI frontendBaseUri;
 			try {
-				frontendBaseUri = URI.create(appProperties.getEffectivePublicBaseUrl());
+				uri = URI.create(appProperties.resolvePublicUrl(trimmedValue));
 			} catch (IllegalArgumentException exception) {
 				throw new AppException(
 					HttpStatus.BAD_REQUEST,
@@ -991,7 +990,6 @@ public class SweetbookService {
 					exception
 				);
 			}
-			uri = frontendBaseUri.resolve(rawValue.startsWith("/") ? rawValue : "/" + rawValue);
 		}
 
 		String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);

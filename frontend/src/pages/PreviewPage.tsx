@@ -14,6 +14,7 @@ import {
   projectStageLabel,
 } from "../lib/sweetbookWorkflow";
 import { imageObjectPosition } from "../lib/imageFocus";
+import { resolveMediaUrl } from "../lib/appPaths";
 
 export default function PreviewPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -178,10 +179,14 @@ export default function PreviewPage() {
                     >
                       {page.imageUrl ? (
                         <img
-                          src={page.imageUrl}
+                          src={resolveMediaUrl(page.imageUrl)}
                           alt={page.title}
                           className="h-20 w-16 object-cover"
-                          style={{ objectPosition: imageObjectPosition(page.imageUrl) }}
+                          style={{
+                            objectPosition: imageObjectPosition(
+                              resolveMediaUrl(page.imageUrl),
+                            ),
+                          }}
                         />
                       ) : (
                         <div className="flex h-20 w-16 items-center justify-center bg-surface-low text-xs text-warm-500">
@@ -329,10 +334,12 @@ function BookPage({
           </h3>
           {page.imageUrl ? (
             <img
-              src={page.imageUrl}
+              src={resolveMediaUrl(page.imageUrl)}
               alt={page.title}
               className="mt-6 aspect-[4/3] w-full rounded object-cover"
-              style={{ objectPosition: imageObjectPosition(page.imageUrl) }}
+              style={{
+                objectPosition: imageObjectPosition(resolveMediaUrl(page.imageUrl)),
+              }}
             />
           ) : (
             <p className="mt-6 whitespace-pre-line text-sm leading-relaxed text-stone-900">

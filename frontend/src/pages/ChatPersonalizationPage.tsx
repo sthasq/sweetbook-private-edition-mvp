@@ -10,6 +10,7 @@ import Spinner from "../components/Spinner";
 import ErrorBox from "../components/ErrorBox";
 import ProjectStepper from "../components/ProjectStepper";
 import { imageObjectPosition } from "../lib/imageFocus";
+import { resolveMediaUrl } from "../lib/appPaths";
 
 export default function ChatPersonalizationPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -235,10 +236,14 @@ export default function ChatPersonalizationPage() {
                           >
                             {video.thumbnailUrl ? (
                               <img
-                                src={video.thumbnailUrl}
+                                src={resolveMediaUrl(video.thumbnailUrl)}
                                 alt={video.title}
                                 className="aspect-video w-full object-cover"
-                                style={{ objectPosition: imageObjectPosition(video.thumbnailUrl) }}
+                                style={{
+                                  objectPosition: imageObjectPosition(
+                                    resolveMediaUrl(video.thumbnailUrl),
+                                  ),
+                                }}
                               />
                             ) : (
                               <div className="flex aspect-video w-full items-center justify-center bg-white text-xs text-warm-500">

@@ -23,6 +23,7 @@ import {
   projectModeLabel,
   projectStageLabel,
 } from "../lib/sweetbookWorkflow";
+import { resolveMediaUrl } from "../lib/appPaths";
 
 const INITIAL_SHIPPING: ShippingInput = {
   recipientName: "",
@@ -452,10 +453,7 @@ export default function ShippingPage() {
               <div className="mt-6 flex gap-5">
                 <div className="w-28 overflow-hidden rounded bg-white p-2 shadow-editorial">
                   <img
-                    src={
-                      preview.edition.coverImageUrl ||
-                      "/demo-assets/playpick-hero.svg"
-                    }
+                    src={resolveMediaUrl(preview.edition.coverImageUrl)}
                     alt={preview.edition.title}
                     className="aspect-[3/4] w-full rounded object-cover"
                   />

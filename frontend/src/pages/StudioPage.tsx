@@ -29,7 +29,11 @@ import {
   computeBookPlan,
   estimateEditionPricing,
 } from "../lib/sweetbookWorkflow";
-
+import {
+  resolveAppUrl,
+  resolveMediaUrl,
+  toAbsoluteAppUrl,
+} from "../lib/appPaths";
 const ASSET_TYPES = ["IMAGE", "VIDEO", "MESSAGE"] as const;
 const FIELD_TYPES = ["TEXT", "TEXTAREA", "DATE"] as const;
 const STUDIO_STEPS = [
@@ -396,7 +400,7 @@ export default function StudioPage() {
       return;
     }
 
-    const shareUrl = `${window.location.origin}/editions/${created.id}`;
+    const shareUrl = toAbsoluteAppUrl(`/editions/${created.id}`);
     try {
       await navigator.clipboard.writeText(shareUrl);
       setSuccess("팬에게 공유할 링크를 복사했습니다.");
@@ -642,7 +646,7 @@ export default function StudioPage() {
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-500">미리보기</p>
                 <div className="mt-4 overflow-hidden rounded-2xl border border-stone-200 bg-white p-3">
                   <img
-                    src={form.coverImageUrl || "/demo-assets/playpick-hero.svg"}
+                    src={resolveMediaUrl(form.coverImageUrl)}
                     alt={form.title || "커버 미리보기"}
                     className="aspect-[4/5] w-full rounded-xl object-cover"
                   />
@@ -1057,7 +1061,13 @@ export default function StudioPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => window.open(`/editions/${created.id}`, "_blank", "noopener,noreferrer")}
+                    onClick={() =>
+                      window.open(
+                        resolveAppUrl(`/editions/${created.id}`),
+                        "_blank",
+                        "noopener,noreferrer",
+                      )
+                    }
                     className="editorial-button-secondary px-4 py-2.5"
                   >
                     팬 시점 미리보기
@@ -1638,7 +1648,7 @@ function SweetbookTemplatePreview({
     return (
       <div className={`relative ${aspectClass} overflow-hidden bg-stone-100 ${selectedClass}`}>
         <img
-          src={template.thumbnailUrl}
+          src={resolveMediaUrl(template.thumbnailUrl)}
           alt={`${template.name} 레이아웃 미리보기`}
           className="h-full w-full object-cover"
           loading="lazy"
@@ -1770,7 +1780,7 @@ function AssetPreview({ asset }: { asset: StudioCuratedAssetInput }) {
       <div className="overflow-hidden rounded-xl border border-stone-200 bg-stone-100">
         {asset.content ? (
           <img
-            src={asset.content}
+            src={resolveMediaUrl(asset.content)}
             alt={asset.title || "큐레이션 이미지 미리보기"}
             className="aspect-[4/3] w-full object-cover"
           />
@@ -1796,7 +1806,7 @@ function AssetPreview({ asset }: { asset: StudioCuratedAssetInput }) {
         {videoMeta.thumbnailUrl ? (
           <div className="relative">
             <img
-              src={videoMeta.thumbnailUrl}
+              src={resolveMediaUrl(videoMeta.thumbnailUrl)}
               alt={asset.title || "영상 미리보기"}
               className="aspect-video w-full object-cover"
             />

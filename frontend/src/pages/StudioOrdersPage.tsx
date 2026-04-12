@@ -16,6 +16,7 @@ import {
   integrationTone,
   siteOrderLabel,
 } from "../lib/sweetbookWorkflow";
+import { resolveMediaUrl } from "../lib/appPaths";
 
 export default function StudioOrdersPage() {
   const navigate = useNavigate();
@@ -168,7 +169,7 @@ export default function StudioOrdersPage() {
               <article key={edition.id} className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4">
                 <div className="flex gap-4">
                   <img
-                    src={edition.coverImageUrl || "/demo-assets/playpick-hero.svg"}
+                    src={resolveMediaUrl(edition.coverImageUrl)}
                     alt={edition.title}
                     className="h-28 w-24 rounded-xl object-cover"
                   />
