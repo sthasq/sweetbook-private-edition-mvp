@@ -176,6 +176,7 @@ public class AdminService {
 			return new AdminViews.UserSummary(
 				user.getId(), user.getEmail(), user.getDisplayName(),
 				user.getRole().name(), user.getCreatedAt(),
+				profile == null ? null : profile.getId(),
 				profile == null ? null : profile.isVerified()
 			);
 		}).toList();

@@ -2,6 +2,7 @@ package com.playpick.api;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -22,7 +23,12 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest(properties = "sweetbook.webhook-secret=test-webhook-secret")
+@SpringBootTest(properties = {
+	"sweetbook.webhook-secret=test-webhook-secret",
+	"sweetbook.enabled=false",
+	"app.frontend-base-url=https://playpick.example.com",
+	"app.public-base-url=https://playpick.example.com"
+})
 @AutoConfigureMockMvc
 @ActiveProfiles("local")
 class AuthAndAccessIntegrationTest {
@@ -183,8 +189,8 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(jsonPath("$.edition.id").value(editionId))
 			.andExpect(jsonPath("$.pages[1].title").value("어서 와요"))
 			.andExpect(jsonPath("$.pages[1].description").value("크리에이터 인사"))
-			.andExpect(jsonPath("$.pages[7].title").value("다음에도 만나요"))
-			.andExpect(jsonPath("$.pages[7].description").value("마지막 한마디"));
+			.andExpect(jsonPath("$.pages[6].title").value("다음에도 만나요"))
+			.andExpect(jsonPath("$.pages[6].description").value("마지막 한마디"));
 	}
 
 	@Test
@@ -257,7 +263,41 @@ class AuthAndAccessIntegrationTest {
 		mockMvc.perform(get("/api/me/projects").session(ownerSession))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$[0].projectId").value(ownerProjectId))
-			.andExpect(jsonPath("$[0].mode").value("demo"));
+			.andExpect(jsonPath("$[0].mode").value("demo"))
+			.andExpect(jsonPath("$[0].deletable").value(true));
+	}
+
+	@Test
+	void unorderedProjectCanBeDeletedFromMyProjects() throws Exception {
+		MockHttpSession session = signUp(uniqueEmail("delete-project"), "Delete Fan");
+		long projectId = createProject(session, 1L, "demo");
+
+		mockMvc.perform(delete("/api/projects/{projectId}", projectId).with(csrf()).session(session))
+			.andExpect(status().isNoContent());
+
+		mockMvc.perform(get("/api/me/projects").session(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$").isEmpty());
+
+		mockMvc.perform(get("/api/projects/{projectId}/preview", projectId).session(session))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.detail").value("Project not found: " + projectId));
+	}
+
+	@Test
+	void orderedProjectCannotBeDeleted() throws Exception {
+		MockHttpSession session = signUp(uniqueEmail("delete-ordered"), "Ordered Delete Fan");
+		long projectId = createProject(session, 1L, "demo");
+		placeOrder(session, projectId, "Ordered Delete Fan", "010-1234-5678");
+
+		mockMvc.perform(delete("/api/projects/{projectId}", projectId).with(csrf()).session(session))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.detail").value("결제 또는 주문 이력이 있는 프로젝트는 삭제할 수 없습니다."));
+
+		mockMvc.perform(get("/api/me/projects").session(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$[0].projectId").value(projectId))
+			.andExpect(jsonPath("$[0].deletable").value(false));
 	}
 
 	@Test
@@ -309,6 +349,34 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(jsonPath("$.fulfillmentStatus").isNotEmpty())
 			.andExpect(jsonPath("$.edition.title").value("Astra Vale · Mina Loop · Noah Reed Collab Archive"))
 			.andExpect(jsonPath("$.shipping.recipientName").value("천경신"));
+	}
+
+	@Test
+	void bookCreatedProjectContinuesAtPreviewUntilFinalized() throws Exception {
+		MockHttpSession session = signUp(uniqueEmail("book-created"), "Preview Fan");
+		long projectId = createProject(session, 1L, "demo");
+
+		mockMvc.perform(post("/api/projects/{projectId}/generate-book", projectId).with(csrf()).session(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("DRAFT"))
+			.andExpect(jsonPath("$.projectStatus").value("BOOK_CREATED"));
+
+		mockMvc.perform(get("/api/me/projects").session(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$[0].projectId").value(projectId))
+			.andExpect(jsonPath("$[0].status").value("BOOK_CREATED"))
+			.andExpect(jsonPath("$[0].continuePath").value("/projects/" + projectId + "/preview"));
+
+		mockMvc.perform(post("/api/projects/{projectId}/finalize-book", projectId).with(csrf()).session(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("FINALIZED"))
+			.andExpect(jsonPath("$.projectStatus").value("FINALIZED"));
+
+		mockMvc.perform(get("/api/me/projects").session(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$[0].projectId").value(projectId))
+			.andExpect(jsonPath("$[0].status").value("FINALIZED"))
+			.andExpect(jsonPath("$[0].continuePath").value("/projects/" + projectId + "/shipping"));
 	}
 
 	@Test
@@ -377,6 +445,52 @@ class AuthAndAccessIntegrationTest {
 	}
 
 	@Test
+	void adminCanVerifyCreatorUsingCreatorProfileIdFromUsersResponse() throws Exception {
+		MockHttpSession adminSession = signUpAdmin(uniqueEmail("admin"), "Admin User");
+		String creatorEmail = uniqueEmail("creator-verify");
+		signUpCreator(creatorEmail, "Verify Creator", "@verify_creator");
+
+		MvcResult usersResult = mockMvc.perform(get("/api/admin/users").session(adminSession))
+			.andExpect(status().isOk())
+			.andReturn();
+
+		List<Map<String, Object>> users = objectMapper.readValue(
+			usersResult.getResponse().getContentAsString(),
+			new TypeReference<>() {
+			}
+		);
+
+		Map<String, Object> creatorUser = users.stream()
+			.filter(user -> creatorEmail.equals(user.get("email")))
+			.findFirst()
+			.orElseThrow();
+
+		Number creatorProfileId = (Number) creatorUser.get("creatorProfileId");
+
+		mockMvc.perform(post("/api/admin/creators/{creatorId}/verify", creatorProfileId.longValue())
+				.with(csrf())
+				.session(adminSession))
+			.andExpect(status().isOk());
+
+		MvcResult refreshedUsersResult = mockMvc.perform(get("/api/admin/users").session(adminSession))
+			.andExpect(status().isOk())
+			.andReturn();
+
+		List<Map<String, Object>> refreshedUsers = objectMapper.readValue(
+			refreshedUsersResult.getResponse().getContentAsString(),
+			new TypeReference<>() {
+			}
+		);
+
+		Map<String, Object> refreshedCreatorUser = refreshedUsers.stream()
+			.filter(user -> creatorEmail.equals(user.get("email")))
+			.findFirst()
+			.orElseThrow();
+
+		org.assertj.core.api.Assertions.assertThat(refreshedCreatorUser.get("creatorVerified")).isEqualTo(Boolean.TRUE);
+	}
+
+	@Test
 	void sweetbookWebhookRejectsMissingSharedSecret() throws Exception {
 		mockMvc.perform(post("/api/sweetbook/webhooks/events")
 				.contentType(APPLICATION_JSON)
@@ -439,6 +553,24 @@ class AuthAndAccessIntegrationTest {
 					  "channelHandle": "%s"
 					}
 					""".formatted(email, displayName, channelHandle)))
+			.andExpect(status().isOk())
+			.andReturn();
+
+		return (MockHttpSession) result.getRequest().getSession(false);
+	}
+
+	private MockHttpSession signUpAdmin(String email, String displayName) throws Exception {
+		MvcResult result = mockMvc.perform(post("/api/auth/signup")
+				.with(csrf())
+				.contentType(APPLICATION_JSON)
+				.content("""
+					{
+					  "email": "%s",
+					  "password": "Admin12345!",
+					  "displayName": "%s",
+					  "role": "ADMIN"
+					}
+					""".formatted(email, displayName)))
 			.andExpect(status().isOk())
 			.andReturn();
 

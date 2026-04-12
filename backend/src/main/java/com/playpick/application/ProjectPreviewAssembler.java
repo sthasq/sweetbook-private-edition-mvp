@@ -31,8 +31,7 @@ public class ProjectPreviewAssembler {
 		Map<String, Object> favoriteVideo = findFavoriteVideo(topVideos, asString(personalization.get("favoriteVideoId"), ""));
 		String favoriteMomentTitle = asNonBlankString(favoriteVideo.get("title"), "오래 남은 장면");
 
-		List<ProjectViews.Page> pages = new ArrayList<>();
-		pages.add(new ProjectViews.Page(
+		ProjectViews.Page coverPage = new ProjectViews.Page(
 			"cover",
 			edition.title(),
 			creatorName + "가 " + fanNickname + "님에게 건네는 한 권",
@@ -41,21 +40,15 @@ public class ProjectPreviewAssembler {
 				"fanNickname", fanNickname,
 				"subtitle", edition.subtitle()
 			)
-		));
+		);
 
-		pages.add(new ProjectViews.Page(
+		ProjectViews.Page officialIntroPage = new ProjectViews.Page(
 			"official-intro",
 			asCopyText(edition.snapshot().officialIntro(), "title", "heading", "크리에이터 인사"),
 			asCopyText(edition.snapshot().officialIntro(), "message", "body", ""),
 			firstAssetImage(edition.snapshot().curatedAssets(), edition.coverImageUrl()),
 			edition.snapshot().officialIntro()
-		));
-		pages.addAll(buildCuratedAssetPages(
-			edition.snapshot().curatedAssets(),
-			edition.coverImageUrl(),
-			creatorName,
-			fanNickname
-		));
+		);
 
 		String subscribedSince = asString(personalization.get("subscribedSince"), "");
 		long daysTogether = asLong(personalization.get("daysTogether"), subscribedSince.isBlank() ? 0L : computeDaysTogether(subscribedSince));
@@ -66,7 +59,7 @@ public class ProjectPreviewAssembler {
 		String defaultRelationshipBody = subscribedSince.isBlank()
 			? fanNickname + "님, " + channelTitle + "의 장면들 곁에 와줘서 고마워요. 오늘은 당신이 오래 붙잡아 둔 마음을 한 장씩 같이 펼쳐볼게요."
 			: fanNickname + "님, " + subscribedSince.substring(0, Math.min(10, subscribedSince.length())) + "부터 이어진 " + daysTogether + "일의 마음을 여기 조용히 꺼내둘게요.";
-		pages.add(new ProjectViews.Page(
+		ProjectViews.Page relationshipPage = new ProjectViews.Page(
 			"relationship",
 			asNonBlankString(bookCopy.get("relationshipTitle"), defaultRelationshipTitle),
 			asNonBlankString(bookCopy.get("relationshipBody"), defaultRelationshipBody),
@@ -76,24 +69,11 @@ public class ProjectPreviewAssembler {
 				"subscribedSince", subscribedSince,
 				"channel", channel
 			)
-		));
-
-		String defaultMomentList = topVideos.stream()
-			.limit(5)
-			.map(video -> asNonBlankString(video.get("title"), "제목 없는 영상"))
-			.reduce((left, right) -> left + " · " + right)
-			.orElse("내가 먼저 꺼내 보여주고 싶은 장면들을 여기 채워둘게요.");
-		pages.add(new ProjectViews.Page(
-			"top-videos",
-			"이 장면부터 같이 볼까요",
-			defaultMomentList,
-			topVideos.isEmpty() ? edition.coverImageUrl() : resolveImageUrl(topVideos.get(0).get("thumbnailUrl"), edition.coverImageUrl()),
-			Map.of("topVideos", topVideos)
-		));
+		);
 
 		String defaultMomentTitle = "이 장면을 고른 당신의 마음";
 		String defaultMomentBody = "'" + favoriteMomentTitle + "'을 떠올린 이유를 이 페이지 한가운데에 남겨둘게요. 당신이 오래 붙잡고 있던 순간이 이 책의 표정이 됩니다.";
-		pages.add(new ProjectViews.Page(
+		ProjectViews.Page fanPickPage = new ProjectViews.Page(
 			"fan-pick",
 			asNonBlankString(bookCopy.get("momentTitle"), defaultMomentTitle),
 			asNonBlankString(
@@ -106,7 +86,7 @@ public class ProjectPreviewAssembler {
 				"favoriteReason", asString(personalization.get("favoriteReason"), ""),
 				"fanNote", asString(personalization.get("fanNote"), "")
 			)
-		));
+		);
 
 		String memoryImageUrl = resolveImageUrl(
 			personalization.get("uploadedImageUrl"),
@@ -117,7 +97,7 @@ public class ProjectPreviewAssembler {
 			personalization.get("fanNote"),
 			fanNickname + "님이 남긴 마음을 내가 대신 조용히 적어둔 페이지처럼 읽히면 좋겠어요."
 		);
-		pages.add(new ProjectViews.Page(
+		ProjectViews.Page fanNotePage = new ProjectViews.Page(
 			"fan-note",
 			asNonBlankString(bookCopy.get("fanNoteTitle"), defaultFanNoteTitle),
 			asNonBlankString(bookCopy.get("fanNoteBody"), defaultFanNoteBody),
@@ -127,15 +107,28 @@ public class ProjectPreviewAssembler {
 				"fanNote", asString(personalization.get("fanNote"), ""),
 				"uploadedImageUrl", memoryImageUrl
 			)
-		));
+		);
 
-		pages.add(new ProjectViews.Page(
+		ProjectViews.Page officialClosingPage = new ProjectViews.Page(
 			"official-closing",
 			asCopyText(edition.snapshot().officialClosing(), "title", "heading", "마지막 인사"),
 			asCopyText(edition.snapshot().officialClosing(), "message", "body", ""),
 			firstAssetImage(edition.snapshot().curatedAssets(), edition.coverImageUrl()),
 			edition.snapshot().officialClosing()
-		));
+		);
+
+		List<ProjectViews.Page> pages = buildBookPreviewPages(
+			coverPage,
+			List.of(
+				officialIntroPage,
+				relationshipPage,
+				fanPickPage,
+				fanNotePage,
+				officialClosingPage
+			),
+			edition.snapshot().curatedAssets(),
+			edition.coverImageUrl()
+		);
 
 		return new ProjectViews.Preview(
 			project.id(),
@@ -149,6 +142,44 @@ public class ProjectPreviewAssembler {
 			project.sweetbookFinalizedAt(),
 			pages
 		);
+	}
+
+	private List<ProjectViews.Page> buildBookPreviewPages(
+		ProjectViews.Page coverPage,
+		List<ProjectViews.Page> narrativePages,
+		List<EditionViews.CuratedAsset> curatedAssets,
+		String fallbackImage
+	) {
+		List<ProjectViews.Page> pages = new ArrayList<>();
+		pages.add(coverPage);
+
+		List<List<String>> imageGroups = groupCuratedImages(curatedAssets, Math.max(23 - narrativePages.size(), 1));
+		if (narrativePages.isEmpty() && imageGroups.isEmpty()) {
+			return pages;
+		}
+
+		int groupsPerNarrative = narrativePages.isEmpty()
+			? imageGroups.size()
+			: Math.max(1, (int) Math.ceil(imageGroups.size() / (double) narrativePages.size()));
+		int imageGroupIndex = 0;
+
+		for (ProjectViews.Page narrativePage : narrativePages) {
+			if (pages.size() >= 24) {
+				break;
+			}
+			pages.add(narrativePage);
+			for (int count = 0; count < groupsPerNarrative && imageGroupIndex < imageGroups.size() && pages.size() < 24; count++) {
+				pages.add(buildGalleryPreviewPage(imageGroups.get(imageGroupIndex), imageGroupIndex, fallbackImage));
+				imageGroupIndex++;
+			}
+		}
+
+		while (imageGroupIndex < imageGroups.size() && pages.size() < 24) {
+			pages.add(buildGalleryPreviewPage(imageGroups.get(imageGroupIndex), imageGroupIndex, fallbackImage));
+			imageGroupIndex++;
+		}
+
+		return pages;
 	}
 
 	private long computeDaysTogether(String subscribedSince) {
@@ -171,6 +202,59 @@ public class ProjectPreviewAssembler {
 			.filter(video -> favoriteVideoId.equals(video.get("videoId")))
 			.findFirst()
 			.orElseGet(() -> topVideos.isEmpty() ? Map.of() : topVideos.get(0));
+	}
+
+	private List<List<String>> groupCuratedImages(List<EditionViews.CuratedAsset> assets, int targetGroupCount) {
+		List<String> imageUrls = collectCuratedImageUrls(assets);
+		if (imageUrls.isEmpty()) {
+			return List.of();
+		}
+
+		int safeGroupCount = Math.max(1, Math.min(targetGroupCount, imageUrls.size()));
+		int baseGroupSize = imageUrls.size() / safeGroupCount;
+		int remainder = imageUrls.size() % safeGroupCount;
+		List<List<String>> groups = new ArrayList<>();
+		int cursor = 0;
+		for (int index = 0; index < safeGroupCount; index++) {
+			int groupSize = baseGroupSize + (index < remainder ? 1 : 0);
+			int nextCursor = Math.min(cursor + groupSize, imageUrls.size());
+			groups.add(imageUrls.subList(cursor, nextCursor));
+			cursor = nextCursor;
+		}
+		return groups;
+	}
+
+	private List<String> collectCuratedImageUrls(List<EditionViews.CuratedAsset> assets) {
+		if (assets == null || assets.isEmpty()) {
+			return List.of();
+		}
+		return assets.stream()
+			.filter(asset -> "IMAGE".equals(asset.assetType()))
+			.map(EditionViews.CuratedAsset::content)
+			.map(publicAssetUrlResolver::resolve)
+			.toList();
+	}
+
+	private ProjectViews.Page buildGalleryPreviewPage(List<String> imageUrls, int index, String fallbackImage) {
+		String imageUrl = imageUrls.isEmpty() ? publicAssetUrlResolver.resolve(fallbackImage) : imageUrls.get(0);
+		String chapterTitle = switch (index % 3) {
+			case 0 -> "Collab Archive Grid";
+			case 1 -> "Daylight Sequence";
+			default -> "Night Memo Spread";
+		};
+		String description = imageUrls.size()
+			+ "개의 장면을 한 spread 안에 묶어 실제 포토북처럼 장면 밀도를 높인 갤러리 페이지입니다.";
+		return new ProjectViews.Page(
+			"gallery-" + (index + 1),
+			chapterTitle,
+			description,
+			imageUrl,
+			Map.of(
+				"assetType", "IMAGE_GROUP",
+				"imageCount", imageUrls.size(),
+				"imageUrls", List.copyOf(imageUrls)
+			)
+		);
 	}
 
 	private List<ProjectViews.Page> buildCuratedAssetPages(

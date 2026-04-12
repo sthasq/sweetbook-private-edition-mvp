@@ -222,6 +222,7 @@ export interface MyProjectSummary {
   lastFulfillmentEventAt: string | null;
   updatedAt: string;
   continuePath: string;
+  deletable: boolean;
 }
 
 export interface StudioOrderSummary {
@@ -412,5 +413,6 @@ export interface AdminUserSummary {
   displayName: string;
   role: string;
   createdAt: string;
+  creatorProfileId: number | null;
   creatorVerified: boolean | null;
 }

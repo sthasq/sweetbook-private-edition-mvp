@@ -71,10 +71,11 @@ class ProjectPreviewAssemblerTest {
 
 		ProjectViews.Preview preview = assembler.assemble(project, edition);
 
-		assertThat(preview.pages()).hasSize(8);
+		assertThat(preview.pages()).hasSize(7);
 		assertThat(preview.pages().get(0).description()).contains("온도로그가 경신님에게 건네는 한 권");
 		assertThat(findPageByKey(preview, "relationship").description()).contains("1332일");
 		assertThat(findPageByKey(preview, "fan-note").title()).isEqualTo("당신이 남긴 문장은 여기 둘게요");
+		assertThat(findPageByKey(preview, "gallery-1").description()).contains("1개의 장면");
 	}
 
 	@Test
@@ -207,6 +208,78 @@ class ProjectPreviewAssemblerTest {
 		assertThat(findPageByKey(preview, "relationship").imageUrl()).isEqualTo("https://playpick.example.com/demo-assets/banner.jpg");
 		assertThat(findPageByKey(preview, "fan-pick").imageUrl()).isEqualTo("https://playpick.example.com/demo-assets/video.jpg");
 		assertThat(findPageByKey(preview, "fan-note").imageUrl()).isEqualTo("https://playpick.example.com/api/assets/memory.jpg");
+	}
+
+	@Test
+	void compressesLargeCuratedImageSetsIntoTwentyFourPagePreview() {
+		List<EditionViews.CuratedAsset> curatedAssets = new java.util.ArrayList<>();
+		for (int index = 1; index <= 70; index++) {
+			curatedAssets.add(new EditionViews.CuratedAsset(
+				(long) index,
+				"IMAGE",
+				"Generated Asset " + index,
+				"/demo-assets/generated/asset-" + index + ".jpg",
+				index
+			));
+		}
+
+		EditionViews.Detail edition = new EditionViews.Detail(
+			1L,
+			"Collab Archive",
+			"샘플",
+			"https://playpick.example.com/demo-assets/cover.jpg",
+			"PUBLISHED",
+			new EditionViews.Creator(1L, "Astra Vale · Mina Loop · Noah Reed", "@playpick", "https://playpick.example.com/demo-assets/avatar.jpg", true),
+			new EditionViews.Snapshot(
+				10L,
+				1,
+				"SQUAREBOOK_HC",
+				"demo-cover-template",
+				"demo-publish-template",
+				"demo-content-template",
+				Map.of("title", "크리에이터 인사", "message", "같이 펼쳐봐요."),
+				Map.of("title", "마지막 인사", "message", "끝까지 함께해줘서 고마워요."),
+				Instant.parse("2026-04-08T00:00:00Z"),
+				curatedAssets,
+				List.of()
+			),
+			Instant.parse("2026-04-01T00:00:00Z"),
+			Instant.parse("2026-04-08T00:00:00Z")
+		);
+
+		ProjectViews.Snapshot project = new ProjectViews.Snapshot(
+			99L,
+			1L,
+			10L,
+			"PERSONALIZED",
+			Map.of(
+				"mode", "demo",
+				"fanNickname", "루나",
+				"subscribedSince", "2023-07-01",
+				"favoriteVideoId", "video-1",
+				"fanNote", "이 순간들을 함께 나눌 수 있어 감사해요",
+				"channel", Map.of(
+					"title", "Collab Archive",
+					"bannerUrl", "/demo-assets/banner.jpg",
+					"thumbnailUrl", "/demo-assets/thumb.jpg"
+				),
+				"topVideos", List.of(
+					Map.of("videoId", "video-1", "title", "첫 콜라보 무드", "thumbnailUrl", "/demo-assets/video.jpg", "viewCount", 100)
+				)
+			),
+			null,
+			null,
+			null,
+			null,
+			Instant.parse("2026-04-07T00:00:00Z"),
+			Instant.parse("2026-04-08T00:00:00Z")
+		);
+
+		ProjectViews.Preview preview = assembler.assemble(project, edition);
+
+		assertThat(preview.pages()).hasSize(24);
+		assertThat(preview.pages().stream().filter(page -> page.key().startsWith("gallery-"))).hasSize(18);
+		assertThat(preview.pages().get(23).key()).startsWith("gallery-");
 	}
 
 	private static PublicAssetUrlResolver publicAssetUrlResolver() {

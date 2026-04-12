@@ -83,6 +83,7 @@ public final class AdminViews {
 		String displayName,
 		String role,
 		Instant createdAt,
+		Long creatorProfileId,
 		Boolean creatorVerified
 	) {
 	}

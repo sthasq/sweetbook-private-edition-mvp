@@ -208,3 +208,9 @@ export function patch<T>(path: string, body?: unknown) {
     body: body != null ? JSON.stringify(body) : undefined,
   });
 }
+
+export function del<T>(path: string) {
+  return request<T>(path, {
+    method: "DELETE",
+  });
+}

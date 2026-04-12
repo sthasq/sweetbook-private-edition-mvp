@@ -17,13 +17,16 @@ export default function PaymentSuccessPage() {
       ? "결제 승인에 필요한 정보가 누락되었습니다."
       : "";
   const [error, setError] = useState(initialError);
+  const [submitting, setSubmitting] = useState(!initialError);
 
   useEffect(() => {
     if (initialError || !projectId || !paymentKey || !orderId || Number.isNaN(amount) || amount <= 0) {
+      setSubmitting(false);
       return;
     }
 
     let cancelled = false;
+    setSubmitting(true);
 
     void confirmPayment(Number(projectId), { paymentKey, orderId, amount })
       .then(() => {
@@ -35,6 +38,11 @@ export default function PaymentSuccessPage() {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : "결제 승인에 실패했습니다.");
         }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setSubmitting(false);
+        }
       });
 
     return () => {
@@ -42,11 +50,33 @@ export default function PaymentSuccessPage() {
     };
   }, [amount, initialError, navigate, orderId, paymentKey, projectId]);
 
+  async function handleRetry() {
+    if (!projectId || !paymentKey || !orderId || Number.isNaN(amount) || amount <= 0) {
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+    try {
+      await confirmPayment(Number(projectId), { paymentKey, orderId, amount });
+      navigate(`/projects/${projectId}/complete`, { replace: true });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "결제 승인에 실패했습니다.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   if (error) {
     return (
       <div className="page-shell-narrow">
         <ErrorBox message={error} />
-        <div className="mt-8 flex justify-center">
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          {projectId && paymentKey && orderId && !Number.isNaN(amount) && amount > 0 && (
+            <button onClick={handleRetry} className="editorial-button-primary" disabled={submitting}>
+              {submitting ? "주문 제출 다시 시도 중..." : "주문 제출 다시 시도"}
+            </button>
+          )}
           <Link to={`/projects/${projectId}/shipping`} className="editorial-button-primary">
             배송 정보 화면으로 돌아가기
           </Link>

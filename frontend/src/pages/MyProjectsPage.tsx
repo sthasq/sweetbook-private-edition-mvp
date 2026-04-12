@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getMyProjects } from "../api/me";
+import { deleteProject as deleteProjectApi } from "../api/projects";
 import type { MyProjectSummary } from "../types/api";
 import Spinner from "../components/Spinner";
 import ErrorBox from "../components/ErrorBox";
@@ -16,6 +17,8 @@ export default function MyProjectsPage() {
   const [projects, setProjects] = useState<MyProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [deletingProjectId, setDeletingProjectId] = useState<number | null>(null);
 
   useEffect(() => {
     getMyProjects()
@@ -29,6 +32,28 @@ export default function MyProjectsPage() {
 
   const featured = projects[0];
   const remainder = projects.slice(1);
+
+  async function handleDelete(project: MyProjectSummary) {
+    if (!project.deletable || deletingProjectId === project.projectId) {
+      return;
+    }
+
+    const confirmed = window.confirm(`"${project.editionTitle}" 프로젝트를 삭제할까요?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setActionError("");
+    setDeletingProjectId(project.projectId);
+    try {
+      await deleteProjectApi(project.projectId);
+      setProjects((current) => current.filter((item) => item.projectId !== project.projectId));
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "프로젝트를 삭제하지 못했습니다.");
+    } finally {
+      setDeletingProjectId(null);
+    }
+  }
 
   return (
     <div className="page-shell">
@@ -44,7 +69,16 @@ export default function MyProjectsPage() {
             작업 중인 포토북, 미리보기 확인 중인 포토북, 주문 완료된 포토북까지 한곳에서
             관리할 수 있어요.
           </p>
+          <p className="mt-3 text-sm leading-relaxed text-warm-500">
+            주문이나 결제 이력이 없는 프로젝트만 여기에서 삭제할 수 있어요.
+          </p>
         </header>
+
+        {actionError && (
+          <div className="mb-8 rounded-2xl border border-red-200 bg-red-50/80 px-5 py-4 text-sm text-red-600">
+            {actionError}
+          </div>
+        )}
 
         {projects.length === 0 ? (
           <div className="editorial-card px-8 py-20 text-center">
@@ -89,6 +123,12 @@ export default function MyProjectsPage() {
                       >
                         에디션 보기
                       </Link>
+                      {featured.deletable && (
+                        <DeleteProjectButton
+                          deleting={deletingProjectId === featured.projectId}
+                          onClick={() => handleDelete(featured)}
+                        />
+                      )}
                     </div>
                   </div>
 
@@ -177,6 +217,12 @@ export default function MyProjectsPage() {
                     >
                       에디션 보기
                     </Link>
+                    {project.deletable && (
+                      <DeleteProjectButton
+                        deleting={deletingProjectId === project.projectId}
+                        onClick={() => handleDelete(project)}
+                      />
+                    )}
                   </div>
                 </div>
               </article>
@@ -185,6 +231,25 @@ export default function MyProjectsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function DeleteProjectButton({
+  deleting,
+  onClick,
+}: {
+  deleting: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={deleting}
+      className="inline-flex items-center justify-center rounded-full border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-500 transition-colors hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {deleting ? "삭제 중..." : "삭제"}
+    </button>
   );
 }
 

@@ -169,7 +169,8 @@ public final class ProjectViews {
 		String lastFulfillmentEvent,
 		Instant lastFulfillmentEventAt,
 		Instant updatedAt,
-		String continuePath
+		String continuePath,
+		boolean deletable
 	) {
 	}
 }
