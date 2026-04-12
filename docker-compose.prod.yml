@@ -1,0 +1,14 @@
+services:
+  mysql:
+    restart: unless-stopped
+
+  redis:
+    restart: unless-stopped
+
+  backend:
+    restart: unless-stopped
+    volumes:
+      - ./frontend/public/demo-assets:/app/demo-assets:ro
+
+  frontend:
+    restart: unless-stopped
