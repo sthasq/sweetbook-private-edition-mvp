@@ -17,6 +17,7 @@ import ProjectStepper from "../components/ProjectStepper";
 import { formatBookSpecLabel, formatTemplateLabel } from "../lib/sweetbookDisplay";
 import { estimateEditionPricing } from "../lib/sweetbookWorkflow";
 import { imageObjectPosition } from "../lib/imageFocus";
+import { resolveMediaUrl } from "../lib/appPaths";
 
 export default function EditionDetailPage() {
   const { editionId } = useParams<{ editionId: string }>();
@@ -132,7 +133,7 @@ export default function EditionDetailPage() {
               <div className="relative">
                 <div className="paper-stack relative aspect-[4/5] w-full">
                   <img
-                    src={edition.coverImageUrl || "/demo-assets/playpick-hero.svg"}
+                    src={resolveMediaUrl(edition.coverImageUrl)}
                     alt={edition.title}
                     className="absolute inset-0 h-full w-full rounded border border-slate-200/50 object-cover shadow-sm"
                   />
@@ -163,7 +164,7 @@ export default function EditionDetailPage() {
                 <div className="mt-8 flex items-center gap-4 rounded-lg bg-slate-50 p-4 border border-slate-100">
                   {edition.creator.avatarUrl && (
                     <img
-                      src={edition.creator.avatarUrl}
+                      src={resolveMediaUrl(edition.creator.avatarUrl)}
                       alt={edition.creator.displayName}
                       className="h-12 w-12 rounded-full border-2 border-white object-cover shadow-sm"
                     />
@@ -211,7 +212,7 @@ export default function EditionDetailPage() {
                 {imageAssets.map((asset) => (
                   <div key={asset.id} className="overflow-hidden rounded bg-slate-50 border border-slate-100 p-3 shadow-sm">
                     <img
-                      src={asset.content || edition.coverImageUrl || "/demo-assets/playpick-hero.svg"}
+                      src={resolveMediaUrl(asset.content || edition.coverImageUrl)}
                       alt={asset.title}
                       className="aspect-[4/3] w-full rounded object-cover"
                       style={{ objectPosition: imageObjectPosition(asset.content) }}
@@ -288,10 +289,14 @@ export default function EditionDetailPage() {
                   <div className="overflow-hidden rounded bg-white p-2 shadow-sm">
                     <div className="relative overflow-hidden rounded">
                       <img
-                        src={quickPreviewImages[0].url}
+                        src={resolveMediaUrl(quickPreviewImages[0].url)}
                         alt={quickPreviewImages[0].label}
                         className="aspect-[4/5] w-full object-cover"
-                        style={{ objectPosition: imageObjectPosition(quickPreviewImages[0].url) }}
+                        style={{
+                          objectPosition: imageObjectPosition(
+                            resolveMediaUrl(quickPreviewImages[0].url),
+                          ),
+                        }}
                       />
                       <span className="absolute left-3 top-3 rounded-full bg-white/92 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-900 shadow-sm">
                         {quickPreviewImages[0].label}
@@ -312,10 +317,14 @@ export default function EditionDetailPage() {
                         >
                           <div className="relative overflow-hidden rounded">
                             <img
-                              src={image.url}
+                              src={resolveMediaUrl(image.url)}
                               alt={image.label}
                               className="aspect-[4/5] w-full object-cover"
-                              style={{ objectPosition: imageObjectPosition(image.url) }}
+                              style={{
+                                objectPosition: imageObjectPosition(
+                                  resolveMediaUrl(image.url),
+                                ),
+                              }}
                             />
                             <span className="absolute left-2 top-2 rounded-full bg-white/92 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 shadow-sm">
                               {image.label}

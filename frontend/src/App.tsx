@@ -20,10 +20,11 @@ import AdminUsersPage from "./pages/AdminUsersPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import MyProjectsPage from "./pages/MyProjectsPage";
+import { getRouterBasename } from "./lib/appPaths";
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={getRouterBasename()}>
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<LandingPage />} />

@@ -52,5 +52,6 @@ if (isWindows && hasNonAsciiPath) {
   rmSync(path.join(cwd, "dist"), { recursive: true, force: true });
   cpSync(path.join(tempDir, "dist"), path.join(cwd, "dist"), { recursive: true });
 } else {
+  rmSync(path.join(cwd, "dist"), { recursive: true, force: true });
   run(npmCommand, [...npmPreludeArgs, "run", "build:raw"], { cwd });
 }

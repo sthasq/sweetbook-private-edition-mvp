@@ -1,4 +1,6 @@
-const BASE = "/api";
+import { resolveAppUrl } from "../lib/appPaths";
+
+const BASE = resolveAppUrl("/api");
 const responseCache = new Map<string, { expiresAt: number; data: unknown }>();
 const inflightRequests = new Map<string, Promise<unknown>>();
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"]);
