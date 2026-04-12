@@ -14,9 +14,9 @@ import VerifiedBadge from "../components/VerifiedBadge";
 import Spinner from "../components/Spinner";
 import ErrorBox from "../components/ErrorBox";
 import ProjectStepper from "../components/ProjectStepper";
-import { formatChannelHandle } from "../lib/channelHandle";
 import { formatBookSpecLabel, formatTemplateLabel } from "../lib/sweetbookDisplay";
 import { estimateEditionPricing } from "../lib/sweetbookWorkflow";
+import { imageObjectPosition } from "../lib/imageFocus";
 
 export default function EditionDetailPage() {
   const { editionId } = useParams<{ editionId: string }>();
@@ -111,13 +111,9 @@ export default function EditionDetailPage() {
   if (!edition) return <ErrorBox message="에디션을 찾을 수 없습니다." />;
 
   const snap = edition.snapshot;
-  const intro = snap?.officialIntro as Record<string, string> | undefined;
-  const introTitle = intro?.title ?? intro?.heading;
-  const introBody = intro?.message ?? intro?.body;
   const officialAssets = snap?.curatedAssets ?? [];
   const fanFields = snap?.personalizationFields ?? [];
   const imageAssets = officialAssets.filter((asset) => asset.assetType === "IMAGE");
-  const textAssets = officialAssets.filter((asset) => asset.assetType !== "IMAGE");
   const pricingHint = estimateEditionPricing(snap?.bookSpecUid);
   const quickPreviewImages = buildQuickPreviewImages(
     edition.coverImageUrl,
@@ -125,142 +121,124 @@ export default function EditionDetailPage() {
   );
 
   return (
-    <div className="page-shell">
-      <div className="mx-auto max-w-6xl">
-        <ProjectStepper current="edition" className="mb-10" />
-
-        <section className="grid items-center gap-12 lg:grid-cols-12">
-          <div className="relative lg:col-span-5 lg:pr-12">
-            <div className="paper-stack relative">
-              <div className="relative overflow-hidden rounded bg-white p-3 shadow-editorial">
-                <div className="absolute right-6 top-6 z-10 rounded bg-gold-400/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-900">
-                  NOW OPEN
+    <div className="page-shell-narrow mx-auto">
+      <ProjectStepper current="edition" className="mb-10" />
+      
+      <div className="lg:grid lg:grid-cols-[1fr_380px] lg:items-start lg:gap-12">
+        <div className="min-w-0 space-y-12">
+          {/* Main Info */}
+          <section className="editorial-card overflow-hidden p-6 md:p-10">
+            <div className="grid items-start gap-10 md:grid-cols-2">
+              <div className="relative">
+                <div className="paper-stack relative aspect-[4/5] w-full">
+                  <img
+                    src={edition.coverImageUrl || "/demo-assets/playpick-hero.svg"}
+                    alt={edition.title}
+                    className="absolute inset-0 h-full w-full rounded border border-slate-200/50 object-cover shadow-sm"
+                  />
+                  <div className="absolute right-4 top-4 z-10 rounded bg-slate-900/90 px-3 py-1 text-[10px] font-bold tracking-[0.2em] text-white backdrop-blur">
+                    NOW OPEN
+                  </div>
                 </div>
-                <img
-                  src={
-                    edition.coverImageUrl ||
-                    "/demo-assets/playpick-hero.svg"
-                  }
-                  alt={edition.title}
-                  className="aspect-[4/5] w-full rounded object-cover"
-                />
               </div>
-            </div>
-          </div>
 
-          <div className="lg:col-span-7">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="rounded bg-gold-400/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-500">
-                {editionStatusLabel(edition.status)}
-              </span>
-              {edition.creator.verified && <VerifiedBadge />}
-            </div>
+              <div className="flex flex-col justify-center">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="rounded bg-slate-100 px-3 py-1 text-[10px] font-bold tracking-[0.2em] text-slate-600">
+                    {editionStatusLabel(edition.status)}
+                  </span>
+                  {edition.creator.verified && <VerifiedBadge />}
+                </div>
 
-            <div className="mt-6 flex items-center gap-4">
-              {edition.creator.avatarUrl && (
-                <img
-                  src={edition.creator.avatarUrl}
-                  alt={edition.creator.displayName}
-                  className="h-12 w-12 rounded-full border border-stone-200/70 object-cover"
-                />
-              )}
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-warm-500">
-                  크리에이터
-                </p>
-                <p className="mt-1 text-lg text-stone-900">{edition.creator.displayName}</p>
-                <p className="text-sm text-warm-500">
-                  {formatChannelHandle(edition.creator.channelHandle)}
-                </p>
-              </div>
-            </div>
-
-            <h1 className="mt-8 text-5xl font-bold leading-tight tracking-tight text-brand-700 md:text-7xl">
-              {edition.title}
-            </h1>
-            {edition.subtitle && (
-              <p className="mt-6 max-w-2xl text-lg leading-relaxed text-warm-500">
-                {edition.subtitle}
-              </p>
-            )}
-
-            {(introTitle || introBody) && (
-              <div className="mt-8 rounded bg-surface-low px-6 py-6">
-                <p className="editorial-label">크리에이터의 한마디</p>
-                {introTitle && (
-                  <p className="mt-4 font-headline text-2xl text-brand-700">{introTitle}</p>
+                <h1 className="mt-6 font-display text-4xl font-bold leading-tight tracking-tight text-slate-900 md:text-5xl">
+                  {edition.title}
+                </h1>
+                
+                {edition.subtitle && (
+                  <p className="mt-4 text-lg leading-relaxed text-slate-500">
+                    {edition.subtitle}
+                  </p>
                 )}
-                {introBody && (
-                  <p className="mt-3 text-sm leading-relaxed text-warm-500">{introBody}</p>
-                )}
-              </div>
-            )}
 
-            <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-              <button
-                disabled={creating}
-                onClick={() => startProject()}
-                className="editorial-button-primary min-w-[220px]"
-              >
-                {creating ? "준비 중..." : "질문으로 포토북 만들기"}
-              </button>
-            </div>
-            <p className="mt-4 text-sm leading-relaxed text-warm-500">
-              몇 가지 질문에 답하면 LLM이 개인화 내용을 제안하고, 바로 내 포토북 미리보기로 이어집니다.
-            </p>
-            {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-
-            <div className="mt-8 grid gap-4 md:grid-cols-2">
-              <div className="rounded bg-surface-low px-5 py-5">
-                <p className="editorial-label text-brand-700">예상 가격</p>
-                <p className="mt-3 text-3xl font-semibold text-stone-900">
-                  {pricingHint.productPrice.toLocaleString("ko-KR")}원~
-                </p>
-                <p className="mt-2 text-sm leading-relaxed text-warm-500">
-                  1권 기준 예상 가격이에요. 배송비는 배송지 입력 시 자동으로 계산됩니다.
-                </p>
-              </div>
-              <div className="rounded bg-surface-low px-5 py-5">
-                <p className="editorial-label text-brand-700">제작 방식</p>
-                <p className="mt-3 text-lg font-semibold text-stone-900">LLM 대화형 추천</p>
-                <p className="mt-2 text-sm leading-relaxed text-warm-500">
-                  질문-답변 기반으로 개인화 문구를 자동 제안받고, 필요하면 바로 수정할 수 있어요.
-                </p>
+                <div className="mt-8 flex items-center gap-4 rounded-lg bg-slate-50 p-4 border border-slate-100">
+                  {edition.creator.avatarUrl && (
+                    <img
+                      src={edition.creator.avatarUrl}
+                      alt={edition.creator.displayName}
+                      className="h-12 w-12 rounded-full border-2 border-white object-cover shadow-sm"
+                    />
+                  )}
+                  <div>
+                    <p className="text-[10px] font-bold tracking-[0.2em] text-slate-400">
+                      CREATOR
+                    </p>
+                    <p className="mt-0.5 font-semibold text-slate-900">
+                      {edition.creator.displayName}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section className="mt-20 grid gap-10 lg:grid-cols-12">
+        <section className="grid gap-10 lg:grid-cols-12">
           <div className="editorial-panel p-8 lg:col-span-5">
-            <p className="font-headline text-2xl italic text-brand-700">에디션에 담긴 장면</p>
-            <p className="mt-3 text-sm leading-relaxed text-warm-500">
+            <p className="font-headline text-2xl italic text-slate-900">에디션에 담긴 장면</p>
+            <p className="mt-3 text-sm leading-relaxed text-slate-500">
               크리에이터가 직접 고른 메시지와 이미지가 포토북의 분위기를 만들어줘요.
             </p>
 
             {officialAssets.length > 0 ? (
               <div className="mt-8 space-y-4">
-                {officialAssets.slice(0, 4).map((asset) => (
+                {officialAssets.map((asset) => (
                   <AssetRow key={asset.id} asset={asset} />
                 ))}
               </div>
             ) : (
-              <p className="mt-8 text-sm text-warm-500">
+              <p className="mt-8 text-sm text-slate-500">
                 크리에이터가 장면을 준비 중이에요. 곧 새로운 콘텐츠로 채워집니다.
               </p>
             )}
           </div>
 
+          <div className="editorial-card p-8 lg:col-span-7">
+            <h2 className="text-3xl font-bold text-slate-900">포토북 미리보기</h2>
+            <p className="mt-4 text-sm leading-relaxed text-slate-500">
+              크리에이터가 담은 장면 위에 나의 이야기가 더해져 한 권의 포토북이 완성돼요.
+            </p>
+            {imageAssets.length > 0 ? (
+              <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {imageAssets.map((asset) => (
+                  <div key={asset.id} className="overflow-hidden rounded bg-slate-50 border border-slate-100 p-3 shadow-sm">
+                    <img
+                      src={asset.content || edition.coverImageUrl || "/demo-assets/playpick-hero.svg"}
+                      alt={asset.title}
+                      className="aspect-[4/3] w-full rounded object-cover"
+                      style={{ objectPosition: imageObjectPosition(asset.content) }}
+                    />
+                    <p className="mt-4 text-sm font-semibold text-slate-900">{asset.title}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-8 rounded bg-slate-50 border border-slate-100 px-5 py-10 text-center text-sm leading-relaxed text-slate-500">
+                미리보기 이미지를 준비 중이에요. 공식 장면이 추가되면 이곳에 바로 보여드릴게요.
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="grid gap-10 lg:grid-cols-12">
           <div className="editorial-card p-8 lg:col-span-7 md:p-12">
             <div className="max-w-2xl">
               <div className="flex items-center gap-3">
                 <div className="h-px w-10 bg-brand-700" />
-                <p className="editorial-label text-brand-700">여기서부터 내 버전</p>
+                <p className="editorial-label text-slate-900">여기서부터 내 버전</p>
               </div>
-              <h2 className="mt-5 text-4xl font-bold leading-tight text-stone-900">
+              <h2 className="mt-5 text-4xl font-bold leading-tight text-slate-900">
                 내 이야기로 채우기
               </h2>
-              <p className="mt-4 text-sm leading-relaxed text-warm-500">
+              <p className="mt-4 text-sm leading-relaxed text-slate-500">
                 몇 가지 질문에 나만의 답을 적으면, 같은 에디션도 완전히 다른 포토북이 됩니다.
               </p>
             </div>
@@ -268,12 +246,12 @@ export default function EditionDetailPage() {
             {fanFields.length > 0 ? (
               <div className="mt-10 grid gap-6 md:grid-cols-2">
                 {fanFields.map((field) => (
-                  <div key={field.id} className="rounded bg-surface-low px-5 py-5">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-warm-500">
+                  <div key={field.id} className="rounded bg-slate-50 border border-slate-100 px-5 py-5">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                       {field.required ? "필수 입력" : "선택 입력"}
                     </p>
-                    <p className="mt-3 text-xl text-brand-700">{field.label}</p>
-                    <p className="mt-2 text-sm leading-relaxed text-warm-500">
+                    <p className="mt-3 text-xl text-slate-900">{field.label}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-500">
                       입력 타입: {inputTypeLabel(field.inputType)}
                       {field.maxLength ? ` · 최대 ${field.maxLength}자` : ""}
                     </p>
@@ -288,121 +266,142 @@ export default function EditionDetailPage() {
                   "관계를 설명하는 한 문장",
                   "크리에이터에게 남길 메시지",
                 ].map((label) => (
-                  <div key={label} className="rounded bg-surface-low px-5 py-5">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-warm-500">
+                  <div key={label} className="rounded bg-slate-50 border border-slate-100 px-5 py-5">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                       개인화 항목
                     </p>
-                    <p className="mt-3 text-xl text-brand-700">{label}</p>
+                    <p className="mt-3 text-xl text-slate-900">{label}</p>
                   </div>
                 ))}
               </div>
             )}
           </div>
-        </section>
 
-        {(imageAssets.length > 0 || textAssets.length > 0) && (
-          <section className="mt-20 bg-surface-low py-16">
-            <div className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-12">
-              <div className="lg:col-span-7">
-                <h2 className="text-3xl font-bold text-brand-700">포토북 미리보기</h2>
-                <p className="mt-4 text-sm leading-relaxed text-warm-500">
-                  크리에이터가 담은 장면 위에 나의 이야기가 더해져 한 권의 포토북이 완성돼요.
+          <div className="editorial-card p-8 lg:col-span-5">
+            <p className="editorial-label text-slate-600">한눈에 보기</p>
+            {quickPreviewImages.length > 0 && (
+              <div className="mt-5 rounded bg-slate-50 border border-slate-100 p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  미리보기 구성
                 </p>
-                {imageAssets.length > 0 && (
-                  <div className="mt-8 grid gap-4 md:grid-cols-2">
-                    {imageAssets.slice(0, 2).map((asset) => (
-                      <div key={asset.id} className="overflow-hidden rounded bg-white p-3 shadow-sm">
-                        <img
-                          src={asset.content || edition.coverImageUrl || "/demo-assets/playpick-hero.svg"}
-                          alt={asset.title}
-                          className="aspect-[4/3] w-full rounded object-cover"
-                        />
-                        <p className="mt-4 text-sm font-semibold text-stone-900">{asset.title}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="editorial-card p-8 lg:col-span-5">
-                <p className="editorial-label text-gold-500">한눈에 보기</p>
-                {quickPreviewImages.length > 0 && (
-                  <div className="mt-5 rounded bg-surface-low p-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-500">
-                      미리보기 구성
-                    </p>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1.15fr)_minmax(148px,0.85fr)]">
-                      <div className="overflow-hidden rounded bg-white p-2 shadow-sm">
-                        <div className="relative overflow-hidden rounded">
-                          <img
-                            src={quickPreviewImages[0].url}
-                            alt={quickPreviewImages[0].label}
-                            className="aspect-[4/5] w-full object-cover"
-                          />
-                          <span className="absolute left-3 top-3 rounded-full bg-white/92 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-700 shadow-sm">
-                            {quickPreviewImages[0].label}
-                          </span>
-                        </div>
-                      </div>
-
-                      {quickPreviewImages.length > 1 && (
-                        <div
-                          className={`grid gap-3 ${
-                            quickPreviewImages.length > 2 ? "grid-rows-2" : "grid-cols-1"
-                          }`}
-                        >
-                          {quickPreviewImages.slice(1).map((image) => (
-                            <div
-                              key={`${image.label}-${image.url}`}
-                              className="overflow-hidden rounded bg-white p-1.5 shadow-sm"
-                            >
-                              <div className="relative overflow-hidden rounded">
-                                <img
-                                  src={image.url}
-                                  alt={image.label}
-                                  className="aspect-[4/5] w-full object-cover"
-                                />
-                                <span className="absolute left-2 top-2 rounded-full bg-white/92 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-warm-500 shadow-sm">
-                                  {image.label}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1.15fr)_minmax(148px,0.85fr)]">
+                  <div className="overflow-hidden rounded bg-white p-2 shadow-sm">
+                    <div className="relative overflow-hidden rounded">
+                      <img
+                        src={quickPreviewImages[0].url}
+                        alt={quickPreviewImages[0].label}
+                        className="aspect-[4/5] w-full object-cover"
+                        style={{ objectPosition: imageObjectPosition(quickPreviewImages[0].url) }}
+                      />
+                      <span className="absolute left-3 top-3 rounded-full bg-white/92 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-900 shadow-sm">
+                        {quickPreviewImages[0].label}
+                      </span>
                     </div>
                   </div>
-                )}
-                <div className="mt-5 space-y-5">
-                  <SpecRow
-                    label="사이즈"
-                    value={formatBookSpecLabel(snap?.bookSpecUid, bookSpecs)}
-                  />
-                  <SpecRow
-                    label="표지 스타일"
-                    value={formatTemplateLabel(
-                      snap?.sweetbookCoverTemplateUid,
-                      "cover",
-                      templates,
-                    )}
-                  />
-                  <SpecRow
-                    label="내지 스타일"
-                    value={formatTemplateLabel(
-                      snap?.sweetbookContentTemplateUid,
-                      "content",
-                      templates,
-                    )}
-                  />
-                  <SpecRow
-                    label="기본 구성"
-                    value={`${officialAssets.length}개`}
-                  />
+
+                  {quickPreviewImages.length > 1 && (
+                    <div
+                      className={`grid gap-3 ${
+                        quickPreviewImages.length > 2 ? "grid-rows-2" : "grid-cols-1"
+                      }`}
+                    >
+                      {quickPreviewImages.slice(1).map((image) => (
+                        <div
+                          key={`${image.label}-${image.url}`}
+                          className="overflow-hidden rounded bg-white p-1.5 shadow-sm"
+                        >
+                          <div className="relative overflow-hidden rounded">
+                            <img
+                              src={image.url}
+                              alt={image.label}
+                              className="aspect-[4/5] w-full object-cover"
+                              style={{ objectPosition: imageObjectPosition(image.url) }}
+                            />
+                            <span className="absolute left-2 top-2 rounded-full bg-white/92 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 shadow-sm">
+                              {image.label}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
+            )}
+            <div className="mt-5 space-y-5">
+              <SpecRow
+                label="사이즈"
+                value={formatBookSpecLabel(snap?.bookSpecUid, bookSpecs)}
+              />
+              <SpecRow
+                label="표지 스타일"
+                value={formatTemplateLabel(
+                  snap?.sweetbookCoverTemplateUid,
+                  "cover",
+                  templates,
+                )}
+              />
+              <SpecRow
+                label="내지 스타일"
+                value={formatTemplateLabel(
+                  snap?.sweetbookContentTemplateUid,
+                  "content",
+                  templates,
+                )}
+              />
+              <SpecRow
+                label="기본 구성"
+                value={`${officialAssets.length}개`}
+              />
             </div>
-          </section>
-        )}
+          </div>
+        </section>
+
+        </div>
+
+        <aside className="mt-10 h-fit lg:sticky lg:top-28 lg:mt-0 lg:self-start">
+          <div className="editorial-card p-6 md:p-7 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+            <p className="editorial-label text-slate-900">질문으로 포토북 만들기</p>
+            <h2 className="mt-4 text-2xl font-bold leading-tight text-slate-900">
+              몇 가지 답변만 남기면
+              <br />
+              바로 내 책 초안이 잡혀요
+            </h2>
+            <p className="mt-4 text-sm leading-relaxed text-slate-500">
+              LLM이 개인화 내용을 정리해주고, 곧바로 내 포토북 미리보기까지 이어집니다.
+            </p>
+
+            <button
+              disabled={creating}
+              onClick={() => startProject()}
+              className="editorial-button-primary mt-6 w-full"
+            >
+              {creating ? "준비 중..." : "질문으로 포토북 만들기"}
+            </button>
+
+            <div className="mt-6 rounded bg-slate-50 border border-slate-100 px-5 py-5">
+              <p className="editorial-label text-slate-900">예상 가격</p>
+              <p className="mt-3 text-3xl font-semibold text-slate-900">
+                {pricingHint.productPrice.toLocaleString("ko-KR")}원~
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                1권 기준 예상 가격이에요. 배송비는 배송지 입력 시 자동으로 계산됩니다.
+              </p>
+            </div>
+
+            <div className="mt-4 rounded bg-slate-50 border border-slate-100 px-5 py-5">
+              <p className="editorial-label text-slate-900">제작 방식</p>
+              <p className="mt-3 text-lg font-semibold text-slate-900">LLM 대화형 추천</p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                질문에 답하면 분위기와 문장을 먼저 정리해주고, 필요한 경우 바로 다듬어 볼 수 있어요.
+              </p>
+            </div>
+
+            {error && (
+              <p className="mt-4 text-sm leading-relaxed text-red-600">{error}</p>
+            )}
+          </div>
+        </aside>
       </div>
     </div>
   );
@@ -417,23 +416,23 @@ function AssetRow({ asset }: { asset: CuratedAsset }) {
         : asset.content;
 
   return (
-    <div className="rounded bg-white/80 px-5 py-5 shadow-sm">
+    <div className="rounded bg-white border border-slate-100 px-5 py-5 shadow-sm">
       <div className="flex items-center gap-3">
-        <span className="rounded bg-gold-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-gold-500">
+        <span className="rounded bg-slate-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600">
           {assetTypeLabel(asset.assetType)}
         </span>
-        <p className="text-base font-semibold text-stone-900">{asset.title}</p>
+        <p className="text-base font-semibold text-slate-900">{asset.title}</p>
       </div>
-      <p className="mt-3 text-sm leading-relaxed text-warm-500">{summary}</p>
+      <p className="mt-3 text-sm leading-relaxed text-slate-500">{summary}</p>
     </div>
   );
 }
 
 function SpecRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border-b border-stone-200/60 pb-4 last:border-none last:pb-0">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-warm-500">{label}</p>
-      <p className="mt-2 break-all text-sm text-stone-900">{value}</p>
+    <div className="border-b border-slate-100 pb-4 last:border-none last:pb-0">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</p>
+      <p className="mt-2 break-all text-sm text-slate-900">{value}</p>
     </div>
   );
 }
@@ -470,10 +469,6 @@ function inputTypeLabel(inputType: string) {
       return "긴 글 입력";
     case "DATE":
       return "날짜";
-    case "VIDEO_PICKER":
-      return "영상 선택";
-    case "IMAGE_URL":
-      return "이미지 링크";
     default:
       return inputType;
   }
@@ -485,7 +480,7 @@ function buildQuickPreviewImages(
 ) {
   const previewItems = [
     { label: "표지", url: coverImageUrl },
-    ...imageAssets.slice(0, 2).map((asset, index) => ({
+    ...imageAssets.slice(0, 5).map((asset, index) => ({
       label: `내지 ${index + 1}`,
       url: asset.content,
     })),
@@ -500,3 +495,5 @@ function buildQuickPreviewImages(
     return true;
   });
 }
+
+

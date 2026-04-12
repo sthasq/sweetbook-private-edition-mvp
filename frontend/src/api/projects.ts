@@ -3,7 +3,6 @@ import type {
   ProjectSnapshot,
   ProjectPreview,
   BookGeneration,
-  AiCollabGenerationResponse,
   ChatMessage,
   ChatPersonalizationResponse,
   EstimateResponse,
@@ -53,17 +52,6 @@ export async function finalizeBook(id: number) {
   invalidateApiCache(`/projects/${id}/preview`);
   invalidateApiCache("/me/projects");
   return result;
-}
-
-export function generateAiCollab(
-  id: number,
-  body: {
-    templateKey: string;
-    sourceImageUrl: string;
-    officialImageUrl: string;
-  },
-) {
-  return post<AiCollabGenerationResponse>(`/projects/${id}/ai-collab/generate`, body);
 }
 
 export function chatPersonalization(id: number, messages: ChatMessage[]) {

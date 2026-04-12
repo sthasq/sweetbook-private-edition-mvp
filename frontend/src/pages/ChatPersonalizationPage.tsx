@@ -9,6 +9,7 @@ import type {
 import Spinner from "../components/Spinner";
 import ErrorBox from "../components/ErrorBox";
 import ProjectStepper from "../components/ProjectStepper";
+import { imageObjectPosition } from "../lib/imageFocus";
 
 export default function ChatPersonalizationPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -25,6 +26,7 @@ export default function ChatPersonalizationPage() {
   const [sending, setSending] = useState(false);
   const [proposal, setProposal] = useState<Record<string, unknown> | null>(null);
   const [done, setDone] = useState(false);
+  const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -83,6 +85,13 @@ export default function ChatPersonalizationPage() {
         !!response.proposal && Object.keys(response.proposal).length > 0;
       setProposal(response.proposal);
       setDone(Boolean(response.done && hasProposal));
+      setSuggestedReplies(
+        Array.isArray(response.suggestedReplies)
+          ? response.suggestedReplies.filter(
+              (item): item is string => typeof item === "string" && item.trim().length > 0,
+            )
+          : [],
+      );
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "개인화 대화를 불러오지 못했어요.");
     } finally {
@@ -109,6 +118,7 @@ export default function ChatPersonalizationPage() {
     const history = [...messages, userMessage];
     setMessages(history);
     setInput("");
+    setSuggestedReplies([]);
     await requestAssistantReply(history);
   }
 
@@ -148,6 +158,7 @@ export default function ChatPersonalizationPage() {
     setMessages([]);
     setProposal(null);
     setDone(false);
+    setSuggestedReplies([]);
     await requestAssistantReply([]);
   }
 
@@ -161,6 +172,7 @@ export default function ChatPersonalizationPage() {
   const selectedFavoriteVideoId = readString(
     proposal?.favoriteVideoId ?? preview.personalizationData.favoriteVideoId,
   );
+  const lastAssistantIndex = findLastAssistantIndex(messages);
 
   return (
     <div className="page-shell">
@@ -227,6 +239,7 @@ export default function ChatPersonalizationPage() {
                                 src={video.thumbnailUrl}
                                 alt={video.title}
                                 className="aspect-video w-full object-cover"
+                                style={{ objectPosition: imageObjectPosition(video.thumbnailUrl) }}
                               />
                             ) : (
                               <div className="flex aspect-video w-full items-center justify-center bg-white text-xs text-warm-500">
@@ -249,7 +262,21 @@ export default function ChatPersonalizationPage() {
                 )}
 
                 {messages.map((message, index) => (
-                  <MessageBubble key={`${message.role}-${index}`} message={message} />
+                  <div key={`${message.role}-${index}`} className="space-y-3">
+                    <MessageBubble message={message} />
+                    {message.role === "assistant" &&
+                      index === lastAssistantIndex &&
+                      suggestedReplies.length > 0 &&
+                      !done && (
+                        <SuggestedReplyChips
+                          replies={suggestedReplies}
+                          disabled={sending || saving}
+                          onSelect={(reply) => {
+                            void handleSend(reply);
+                          }}
+                        />
+                      )}
+                  </div>
                 ))}
 
                 {messages.length === 0 && sending && (
@@ -409,6 +436,39 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           {isUser ? "fan" : "assistant"}
         </p>
         <p className="whitespace-pre-line">{message.content}</p>
+      </div>
+    </div>
+  );
+}
+
+function SuggestedReplyChips({
+  replies,
+  disabled,
+  onSelect,
+}: {
+  replies: string[];
+  disabled: boolean;
+  onSelect: (reply: string) => void;
+}) {
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[88%] rounded border border-stone-200/70 bg-white/92 px-4 py-3 shadow-sm">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-500">
+          바로 답하기
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {replies.map((reply) => (
+            <button
+              key={reply}
+              type="button"
+              onClick={() => onSelect(reply)}
+              disabled={disabled}
+              className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 transition-colors hover:border-brand-400 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {reply}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -583,4 +643,13 @@ function readTopVideos(value: unknown): TopVideo[] {
 
 function readString(value: unknown) {
   return typeof value === "string" ? value : "";
+}
+
+function findLastAssistantIndex(messages: ChatMessage[]) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index]?.role === "assistant") {
+      return index;
+    }
+  }
+  return -1;
 }

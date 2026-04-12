@@ -31,6 +31,8 @@ public class ChatPersonalizationService {
 	private static final int MAX_MESSAGE_LENGTH = 1200;
 	private static final int BOOK_COPY_TITLE_MAX_LENGTH = 48;
 	private static final int BOOK_COPY_BODY_MAX_LENGTH = 180;
+	private static final int MAX_SUGGESTED_REPLIES = 4;
+	private static final int SUGGESTED_REPLY_MAX_LENGTH = 72;
 
 	private final OpenRouterProperties properties;
 	private final AppProperties appProperties;
@@ -89,7 +91,13 @@ public class ChatPersonalizationService {
 				);
 			}
 
-			return parseChatResponse(response.body(), fields);
+			return parseChatResponse(
+				response.body(),
+				edition,
+				personalizationData == null ? Map.of() : personalizationData,
+				fields,
+				safeMessages
+			);
 		} catch (AppException exception) {
 			throw exception;
 		} catch (Exception exception) {
@@ -99,7 +107,10 @@ public class ChatPersonalizationService {
 
 	private ProjectViews.ChatPersonalization parseChatResponse(
 		String body,
-		List<EditionViews.PersonalizationField> fields
+		EditionViews.Detail edition,
+		Map<String, Object> personalizationData,
+		List<EditionViews.PersonalizationField> fields,
+		List<ProjectCommands.ChatMessage> messages
 	) {
 		try {
 			JsonNode root = objectMapper.readTree(body);
@@ -112,17 +123,37 @@ public class ChatPersonalizationService {
 				String plainReply = assistantContent.trim();
 				if (plainReply.isBlank()) {
 					log.warn("ChatPersonalization: LLM returned empty content, returning safe fallback");
-					return new ProjectViews.ChatPersonalization("잠시 후 다시 시도해 주세요.", null, false);
+					return new ProjectViews.ChatPersonalization(
+						"잠시 후 다시 시도해 주세요.",
+						null,
+						false,
+						buildSuggestedReplies(edition, personalizationData, fields, null, messages)
+					);
 				}
 				log.debug("ChatPersonalization: LLM returned plain text – using as reply directly");
-				return new ProjectViews.ChatPersonalization(plainReply, null, false);
+				return new ProjectViews.ChatPersonalization(
+					plainReply,
+					null,
+					false,
+					buildSuggestedReplies(edition, personalizationData, fields, null, messages)
+				);
 			}
 
 			String reply = extractReplyText(structured, assistantContent);
 			boolean done = structured.path("done").asBoolean(false);
 			Map<String, Object> proposal = normalizeProposal(structured.path("proposal"), fields);
 			boolean completed = done && proposal != null && !proposal.isEmpty();
-			return new ProjectViews.ChatPersonalization(reply, proposal, completed);
+			List<String> suggestedReplies = completed
+				? List.of()
+				: buildSuggestedReplies(
+					edition,
+					personalizationData,
+					fields,
+					proposal,
+					messages,
+					normalizeSuggestedReplies(structured.path("suggestedReplies"))
+				);
+			return new ProjectViews.ChatPersonalization(reply, proposal, completed, suggestedReplies);
 		} catch (IOException exception) {
 			throw new AppException(HttpStatus.BAD_GATEWAY, "Failed to parse OpenRouter chat response", exception);
 		}
@@ -197,7 +228,6 @@ public class ChatPersonalizationService {
                         - Aim to gather enough information in 2-4 questions.
                         - First turn (empty user message history): First, greet them warmly. Then ask how to address them: "가장 먼저, 이 특별한 포토북의 주인공이 될 팬님의 예쁜 이름이나 닉네임을 알려주시겠어요?"
                         - Do NOT open by asking for a companion.
-                        - When asking about favoriteVideoId, ask them to recall a specific magical moment: "유독 마음이 몽글몽글해지거나 위로받았던 순간이 있다면 언제인가요?"
                         - Accept user inputs in any natural Korean form (e.g., "2022년 여름", "3년 전 비 오던 날").
                         - The generated copy must stay faithful to the interview facts. Do not invent events.
                         - When done=true, the reply should briefly say: "정말 감동적인 이야기네요. 들려주신 소중한 마음들을 모아, 세상에 하나뿐인 포토북 문구를 지금 바로 완성해 드릴게요!"
@@ -214,18 +244,21 @@ public class ChatPersonalizationService {
                         - Your ENTIRE response must be a single valid JSON object with NO extra text before or after.
                         - Never wrap in markdown code fences.
                         - Always use exactly this shape:
-                          {"reply":"<Korean message to the fan>","done":false,"proposal":null}
+                          {"reply":"<Korean message to the fan>","done":false,"proposal":null,"suggestedReplies":["<short tap-ready reply>", "<short tap-ready reply>", "<short tap-ready reply>"]}
                           or, when you have collected enough information:
-                          {"reply":"<Korean message saying the preview is being prepared now>","done":true,"proposal":{"fieldKey":"value",...,"bookCopy":{"relationshipTitle":"...","relationshipBody":"...","momentTitle":"...","momentBody":"...","fanNoteTitle":"...","fanNoteBody":"..."}}}
+                          {"reply":"<Korean message saying the preview is being prepared now>","done":true,"proposal":{"fieldKey":"value",...,"bookCopy":{"relationshipTitle":"...","relationshipBody":"...","momentTitle":"...","momentBody":"...","fanNoteTitle":"...","fanNoteBody":"..."}},"suggestedReplies":[]}
                         - "reply" must contain your conversational Korean message. It must NEVER be empty.
                         - "reply" must be short, natural Korean. Keep it to 1-3 sentences.
                         - "reply" must NOT contain markdown, bullet points, or internal key names.
+                        - "suggestedReplies" must always be an array.
+                        - When done=false, include 2-4 short Korean replies the fan can tap immediately.
+                        - Each suggested reply must sound like the FAN speaking in first person, not like a question from the assistant.
+                        - Keep each suggested reply under 36 Korean characters when possible.
                         - proposal keys must only be from: %s
                         - proposal may additionally contain one optional key named "bookCopy".
                         - When done=true, include bookCopy unless the information is too thin.
                         - All polished print-ready copy belongs inside proposal.bookCopy.
                         - For DATE fields, normalize any Korean/natural-language date to YYYY-MM-DD.
-                        - For IMAGE_URL fields, never invent URLs.
                         - Even if the user's input is unusual, always output valid JSON.
 			""".formatted(
 			edition.title(),
@@ -356,6 +389,209 @@ public class ChatPersonalizationService {
 		});
 
 		return result.isEmpty() ? null : result;
+	}
+
+	private List<String> normalizeSuggestedReplies(JsonNode suggestedRepliesNode) {
+		if (suggestedRepliesNode == null || suggestedRepliesNode.isMissingNode() || suggestedRepliesNode.isNull()) {
+			return List.of();
+		}
+
+		Set<String> uniqueReplies = new LinkedHashSet<>();
+		if (suggestedRepliesNode.isArray()) {
+			for (JsonNode item : suggestedRepliesNode) {
+				String normalized = normalizeSuggestedReply(item.asText(""));
+				if (!normalized.isBlank()) {
+					uniqueReplies.add(normalized);
+				}
+				if (uniqueReplies.size() >= MAX_SUGGESTED_REPLIES) {
+					break;
+				}
+			}
+		}
+		return List.copyOf(uniqueReplies);
+	}
+
+	private List<String> buildSuggestedReplies(
+		EditionViews.Detail edition,
+		Map<String, Object> personalizationData,
+		List<EditionViews.PersonalizationField> fields,
+		Map<String, Object> proposal,
+		List<ProjectCommands.ChatMessage> messages
+	) {
+		return buildSuggestedReplies(edition, personalizationData, fields, proposal, messages, List.of());
+	}
+
+	private List<String> buildSuggestedReplies(
+		EditionViews.Detail edition,
+		Map<String, Object> personalizationData,
+		List<EditionViews.PersonalizationField> fields,
+		Map<String, Object> proposal,
+		List<ProjectCommands.ChatMessage> messages,
+		List<String> modelSuggestedReplies
+	) {
+		Set<String> replies = new LinkedHashSet<>();
+		for (String reply : modelSuggestedReplies) {
+			String normalized = normalizeSuggestedReply(reply);
+			if (!normalized.isBlank()) {
+				replies.add(normalized);
+			}
+			if (replies.size() >= MAX_SUGGESTED_REPLIES) {
+				return List.copyOf(replies);
+			}
+		}
+
+		for (String fallback : buildFallbackSuggestedReplies(edition, personalizationData, fields, proposal, messages)) {
+			String normalized = normalizeSuggestedReply(fallback);
+			if (!normalized.isBlank()) {
+				replies.add(normalized);
+			}
+			if (replies.size() >= MAX_SUGGESTED_REPLIES) {
+				break;
+			}
+		}
+
+		return List.copyOf(replies);
+	}
+
+	private List<String> buildFallbackSuggestedReplies(
+		EditionViews.Detail edition,
+		Map<String, Object> personalizationData,
+		List<EditionViews.PersonalizationField> fields,
+		Map<String, Object> proposal,
+		List<ProjectCommands.ChatMessage> messages
+	) {
+		Map<String, Object> mergedValues = mergeKnownValues(personalizationData, fields, proposal);
+		EditionViews.PersonalizationField nextField = fields.stream()
+			.filter(field -> !hasMeaningfulValue(mergedValues.get(field.fieldKey())))
+			.findFirst()
+			.orElse(null);
+
+		if (nextField == null) {
+			return buildRefinementSuggestions(edition, personalizationData, messages);
+		}
+
+		String fieldKey = nullToEmpty(nextField.fieldKey()).trim();
+		if ("fanNickname".equals(fieldKey)) {
+			return List.of(
+				"연두예요.",
+				"소연이라고 불러주세요.",
+				"주은이에요."
+			);
+		}
+		if ("subscribedSince".equals(fieldKey)) {
+			return List.of(
+				"2023년 여름부터 봤어요.",
+				"작년 겨울부터 자주 챙겨봤어요.",
+				"정확한 날짜는 모르지만 2년 전쯤부터예요."
+			);
+		}
+		if ("fanNote".equals(fieldKey)) {
+			String rememberedMoment = firstTopVideoTitle(personalizationData);
+			return List.of(
+				"그 장면을 볼 때마다 마음이 놓였어요.",
+				rememberedMoment.isBlank()
+					? "힘들 때마다 다시 보게 되는 순간이었어요."
+					: "'" + rememberedMoment + "'을 다시 볼 때마다 위로받았어요.",
+				"이번 책에 그때의 마음을 꼭 남기고 싶어요."
+			);
+		}
+		return buildRefinementSuggestions(edition, personalizationData, messages);
+	}
+
+	private Map<String, Object> mergeKnownValues(
+		Map<String, Object> personalizationData,
+		List<EditionViews.PersonalizationField> fields,
+		Map<String, Object> proposal
+	) {
+		Map<String, Object> merged = new LinkedHashMap<>(extractExistingFieldValues(personalizationData, fields));
+		if (proposal == null || proposal.isEmpty()) {
+			return merged;
+		}
+
+		for (Map.Entry<String, Object> entry : proposal.entrySet()) {
+			if ("bookCopy".equals(entry.getKey())) {
+				continue;
+			}
+			merged.put(entry.getKey(), entry.getValue());
+		}
+		return merged;
+	}
+
+	private List<String> buildRefinementSuggestions(
+		EditionViews.Detail edition,
+		Map<String, Object> personalizationData,
+		List<ProjectCommands.ChatMessage> messages
+	) {
+		String creatorName = edition.creator() == null ? "크리에이터" : nullToEmpty(edition.creator().displayName());
+		String lastUserMessage = lastUserMessage(messages);
+		String rememberedMoment = firstTopVideoTitle(personalizationData);
+
+		List<String> suggestions = new ArrayList<>();
+		if (!rememberedMoment.isBlank()) {
+			suggestions.add("'" + rememberedMoment + "'을 볼 때 특히 마음이 움직였어요.");
+		}
+		if (!lastUserMessage.isBlank()) {
+			suggestions.add("그때의 공기랑 표정이 아직도 또렷해요.");
+		}
+		suggestions.add(creatorName.isBlank()
+			? "그 순간 덕분에 오래 버틸 수 있었어요."
+			: creatorName + "의 장면이 제 하루를 자주 붙잡아줬어요.");
+		suggestions.add("이번 포토북에 그 감정을 자연스럽게 남기고 싶어요.");
+		return suggestions;
+	}
+
+	private String lastUserMessage(List<ProjectCommands.ChatMessage> messages) {
+		for (int index = messages.size() - 1; index >= 0; index--) {
+			ProjectCommands.ChatMessage message = messages.get(index);
+			if ("user".equals(message.role())) {
+				return nullToEmpty(message.content()).trim();
+			}
+		}
+		return "";
+	}
+
+	private String firstTopVideoTitle(Map<String, Object> personalizationData) {
+		Object raw = personalizationData.get("topVideos");
+		if (!(raw instanceof List<?> list) || list.isEmpty()) {
+			return "";
+		}
+		for (Object item : list) {
+			if (item instanceof Map<?, ?> video) {
+				Object title = video.get("title");
+				if (title != null) {
+					return String.valueOf(title).trim();
+				}
+			}
+		}
+		return "";
+	}
+
+	private boolean hasMeaningfulValue(Object value) {
+		if (value == null) {
+			return false;
+		}
+		if (value instanceof String stringValue) {
+			return !stringValue.trim().isBlank();
+		}
+		if (value instanceof Map<?, ?> mapValue) {
+			return !mapValue.isEmpty();
+		}
+		return true;
+	}
+
+	private String normalizeSuggestedReply(String raw) {
+		String normalized = nullToEmpty(raw)
+			.replace('\n', ' ')
+			.replace('\r', ' ')
+			.replaceAll("\\s+", " ")
+			.trim();
+		if (normalized.isBlank()) {
+			return "";
+		}
+		if (normalized.length() > SUGGESTED_REPLY_MAX_LENGTH) {
+			normalized = normalized.substring(0, SUGGESTED_REPLY_MAX_LENGTH).trim();
+		}
+		return normalized;
 	}
 
 	private Map<String, Object> normalizeBookCopy(JsonNode bookCopyNode) {

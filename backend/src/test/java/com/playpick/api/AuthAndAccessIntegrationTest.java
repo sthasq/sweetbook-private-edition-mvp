@@ -183,8 +183,8 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(jsonPath("$.edition.id").value(editionId))
 			.andExpect(jsonPath("$.pages[1].title").value("어서 와요"))
 			.andExpect(jsonPath("$.pages[1].description").value("크리에이터 인사"))
-			.andExpect(jsonPath("$.pages[6].title").value("다음에도 만나요"))
-			.andExpect(jsonPath("$.pages[6].description").value("마지막 한마디"));
+			.andExpect(jsonPath("$.pages[7].title").value("다음에도 만나요"))
+			.andExpect(jsonPath("$.pages[7].description").value("마지막 한마디"));
 	}
 
 	@Test
@@ -307,7 +307,7 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(jsonPath("$.siteOrderUid").isNotEmpty())
 			.andExpect(jsonPath("$.siteOrderStatus").value("PAID"))
 			.andExpect(jsonPath("$.fulfillmentStatus").isNotEmpty())
-			.andExpect(jsonPath("$.edition.title").value("Astra Vale 사막 횡단 메모리북 데모"))
+			.andExpect(jsonPath("$.edition.title").value("Astra Vale · Mina Loop · Noah Reed Collab Archive"))
 			.andExpect(jsonPath("$.shipping.recipientName").value("천경신"));
 	}
 
@@ -515,7 +515,7 @@ class AuthAndAccessIntegrationTest {
 		return """
 			{
 			  "title": "%s",
-			  "subtitle": "지금 공개 중인 드롭",
+			  "subtitle": "지금 공개 중인 에디션",
 			  "coverImageUrl": "https://picsum.photos/seed/studio-auth/600/600",
 			  "bookSpecUid": "SQUAREBOOK_HC",
 			  "officialIntro": {

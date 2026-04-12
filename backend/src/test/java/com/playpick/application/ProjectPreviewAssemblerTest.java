@@ -17,7 +17,7 @@ class ProjectPreviewAssemblerTest {
 		EditionViews.Detail edition = new EditionViews.Detail(
 			1L,
 			"2주년 기념 메모리북",
-			"기념 드롭",
+			"기념 에디션",
 			"https://picsum.photos/seed/cover/1200/1200",
 			"PUBLISHED",
 			new EditionViews.Creator(1L, "온도로그", "@ondolog", "https://picsum.photos/seed/avatar/240/240", true),
@@ -71,63 +71,10 @@ class ProjectPreviewAssemblerTest {
 
 		ProjectViews.Preview preview = assembler.assemble(project, edition);
 
-		assertThat(preview.pages()).hasSize(7);
+		assertThat(preview.pages()).hasSize(8);
 		assertThat(preview.pages().get(0).description()).contains("온도로그가 경신님에게 건네는 한 권");
-		assertThat(preview.pages().get(2).description()).contains("1332일");
-		assertThat(preview.pages().get(5).title()).isEqualTo("당신이 남긴 문장은 여기 둘게요");
-	}
-
-	@Test
-	void usesPaniCollabCutWhenSelectedImageExists() {
-		EditionViews.Detail edition = new EditionViews.Detail(
-			1L,
-			"Astra Vale 사막 횡단 메모리북 데모",
-			"가상 여행 크리에이터 Astra Vale의 기록 감성으로 구성한 메모리북 데모",
-			"/demo-assets/panibottle-cover.jpg",
-			"PUBLISHED",
-			new EditionViews.Creator(1L, "Astra Vale", "@astravale", "/demo-assets/panibottle-avatar.jpg", true),
-			new EditionViews.Snapshot(
-				10L,
-				1,
-				"SQUAREBOOK_HC",
-				"demo-cover-template",
-				"demo-publish-template",
-				"demo-content-template",
-				Map.of("title", "크리에이터 인사", "message", "같이 여행 가듯 넘겨 보세요."),
-				Map.of("title", "마지막 인사", "message", "다음 장면도 같이 저장해요."),
-				Instant.parse("2026-04-08T00:00:00Z"),
-				List.of(new EditionViews.CuratedAsset(1L, "IMAGE", "Intro Visual", "/demo-assets/panibottle-cover.jpg", 1)),
-				List.of()
-			),
-			Instant.parse("2026-04-01T00:00:00Z"),
-			Instant.parse("2026-04-08T00:00:00Z")
-		);
-
-		ProjectViews.Snapshot project = new ProjectViews.Snapshot(
-			99L,
-			1L,
-			10L,
-			"PERSONALIZED",
-			Map.of(
-				"mode", "demo",
-				"fanNickname", "연두",
-				"fanNote", "같이 여행 다녀온 듯한 컷이 마음에 들어요.",
-				"aiCollabSelectedUrl", "data:image/jpeg;base64,collab-demo",
-				"aiCollabTemplateLabel", "여행 동행 셀카"
-			),
-			null,
-			null,
-			null,
-			null,
-			Instant.parse("2026-04-07T00:00:00Z"),
-			Instant.parse("2026-04-08T00:00:00Z")
-		);
-
-		ProjectViews.Preview preview = assembler.assemble(project, edition);
-
-		assertThat(preview.pages().get(5).title()).isEqualTo("이 한 컷에 당신의 마음도 같이 담아둘게요");
-		assertThat(preview.pages().get(5).imageUrl()).isEqualTo("data:image/jpeg;base64,collab-demo");
-		assertThat(preview.pages().get(5).description()).contains("같이 여행 다녀온 듯한 컷");
+		assertThat(findPageByKey(preview, "relationship").description()).contains("1332일");
+		assertThat(findPageByKey(preview, "fan-note").title()).isEqualTo("당신이 남긴 문장은 여기 둘게요");
 	}
 
 	@Test
@@ -195,11 +142,11 @@ class ProjectPreviewAssemblerTest {
 
 		ProjectViews.Preview preview = assembler.assemble(project, edition);
 
-		assertThat(preview.pages().get(2).title()).isEqualTo("처음 멈춰 서서 오래 본 계절");
-		assertThat(preview.pages().get(2).description()).contains("연두님이 Astra Vale의 기록");
-		assertThat(preview.pages().get(4).title()).isEqualTo("플랫폼에 남은 잔상");
-		assertThat(preview.pages().get(5).title()).isEqualTo("연두님이 붙잡아 둔 한 문장");
-		assertThat(preview.pages().get(5).description()).contains("그 밤의 플랫폼");
+		assertThat(findPageByKey(preview, "relationship").title()).isEqualTo("처음 멈춰 서서 오래 본 계절");
+		assertThat(findPageByKey(preview, "relationship").description()).contains("연두님이 Astra Vale의 기록");
+		assertThat(findPageByKey(preview, "fan-pick").title()).isEqualTo("플랫폼에 남은 잔상");
+		assertThat(findPageByKey(preview, "fan-note").title()).isEqualTo("연두님이 붙잡아 둔 한 문장");
+		assertThat(findPageByKey(preview, "fan-note").description()).contains("그 밤의 플랫폼");
 	}
 
 	@Test
@@ -257,14 +204,21 @@ class ProjectPreviewAssemblerTest {
 		ProjectViews.Preview preview = assembler.assemble(project, edition);
 
 		assertThat(preview.pages().get(1).imageUrl()).isEqualTo("https://playpick.example.com/demo-assets/intro.jpg");
-		assertThat(preview.pages().get(2).imageUrl()).isEqualTo("https://playpick.example.com/demo-assets/banner.jpg");
-		assertThat(preview.pages().get(3).imageUrl()).isEqualTo("https://playpick.example.com/demo-assets/video.jpg");
-		assertThat(preview.pages().get(5).imageUrl()).isEqualTo("https://playpick.example.com/api/assets/memory.jpg");
+		assertThat(findPageByKey(preview, "relationship").imageUrl()).isEqualTo("https://playpick.example.com/demo-assets/banner.jpg");
+		assertThat(findPageByKey(preview, "fan-pick").imageUrl()).isEqualTo("https://playpick.example.com/demo-assets/video.jpg");
+		assertThat(findPageByKey(preview, "fan-note").imageUrl()).isEqualTo("https://playpick.example.com/api/assets/memory.jpg");
 	}
 
 	private static PublicAssetUrlResolver publicAssetUrlResolver() {
 		AppProperties appProperties = new AppProperties();
 		appProperties.setFrontendBaseUrl("https://playpick.example.com");
 		return new PublicAssetUrlResolver(appProperties);
+	}
+
+	private static ProjectViews.Page findPageByKey(ProjectViews.Preview preview, String key) {
+		return preview.pages().stream()
+			.filter(page -> key.equals(page.key()))
+			.findFirst()
+			.orElseThrow();
 	}
 }

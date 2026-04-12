@@ -37,7 +37,6 @@ public class ProjectService {
 	private final ProjectPreviewAssembler projectPreviewAssembler;
 	private final SweetbookService sweetbookService;
 	private final TossPaymentsService tossPaymentsService;
-	private final OpenRouterImageService openRouterImageService;
 	private final ChatPersonalizationService chatPersonalizationService;
 	private final CurrentUserService currentUserService;
 	private final AppProperties appProperties;
@@ -76,112 +75,64 @@ public class ProjectService {
 	private Map<String, Object> createDemoPersonalization(Long editionId, String creatorName, String creatorHandle) {
 		Map<String, Object> data = new LinkedHashMap<>();
 		data.put("mode", "demo");
-		if (editionId == 1L) {
-			data.put("channel", Map.of(
-				"channelId", "VC_ASTRA_VALE",
-				"title", creatorName,
-				"subscriberCount", "2500000",
-				"thumbnailUrl", "/demo-assets/astra-vale-avatar.png",
-				"bannerUrl", "/demo-assets/astra-vale-banner.png",
-				"handle", creatorHandle
-			));
-			data.put("topVideos", List.of(
-				Map.of(
-					"videoId", "astra-demo-1",
-					"title", "사막 협곡에서 꺼낸 첫 문장",
-					"thumbnailUrl", "/demo-assets/astra-vale-story-1.png",
-					"viewCount", 630000,
-					"publishedAt", "2024-06-01T00:00:00Z"
-				),
-				Map.of(
-					"videoId", "astra-demo-2",
-					"title", "차창 밖으로 흘러가던 황금빛 사막",
-					"thumbnailUrl", "/demo-assets/astra-vale-story-2.png",
-					"viewCount", 520000,
-					"publishedAt", "2024-10-01T00:00:00Z"
-				),
-				Map.of(
-					"videoId", "astra-demo-3",
-					"title", "노트에 적어둔 야간열차 메모",
-					"thumbnailUrl", "/demo-assets/astra-vale-story-3.png",
-					"viewCount", 410000,
-					"publishedAt", "2025-01-01T00:00:00Z"
-				),
-				Map.of(
-					"videoId", "astra-demo-4",
-					"title", "플랫폼에서 다시 고쳐 든 여행 노트",
-					"thumbnailUrl", "/demo-assets/astra-vale-story-4.png",
-					"viewCount", 360000,
-					"publishedAt", "2025-02-08T00:00:00Z"
-				)
-			));
-			return data;
-		}
-
-		if (editionId == 2L) {
-			data.put("channel", Map.of(
-				"channelId", "VC_MINA_LOOP",
-				"title", creatorName,
-				"subscriberCount", "2100000",
-				"thumbnailUrl", "/demo-assets/mina-loop-avatar.png",
-				"bannerUrl", "/demo-assets/mina-loop-banner.png",
-				"handle", creatorHandle
-			));
-			data.put("topVideos", List.of(
-				Map.of(
-					"videoId", "mina-demo-1",
-					"title", "언덕 위에서 시작한 시티 드라이브",
-					"thumbnailUrl", "/demo-assets/mina-loop-cover.png",
-					"viewCount", 540000,
-					"publishedAt", "2024-05-14T00:00:00Z"
-				),
-				Map.of(
-					"videoId", "mina-demo-2",
-					"title", "차창에 기대 웃던 오후",
-					"thumbnailUrl", "/demo-assets/mina-loop-story-2.png",
-					"viewCount", 490000,
-					"publishedAt", "2024-09-22T00:00:00Z"
-				),
-				Map.of(
-					"videoId", "mina-demo-3",
-					"title", "해질녘 도시를 마주한 한 컷",
-					"thumbnailUrl", "/demo-assets/mina-loop-story-3.png",
-					"viewCount", 430000,
-					"publishedAt", "2025-01-17T00:00:00Z"
-				)
-			));
-			return data;
-		}
-
 		data.put("channel", Map.of(
-			"channelId", "VC_NOAH_REED",
+			"channelId", "VC_TRINITY_ARCHIVE",
 			"title", creatorName,
-			"subscriberCount", "3100000",
-			"thumbnailUrl", "/demo-assets/noah-reed-avatar.png",
-			"bannerUrl", "/demo-assets/noah-reed-banner.png",
+			"subscriberCount", "7700000",
+			"thumbnailUrl", "/demo-assets/collab-trio-sunset.png",
+			"bannerUrl", "/demo-assets/collab-trio-sunset.png",
 			"handle", creatorHandle
 		));
+		data.put("uploadedImageUrl", "/demo-assets/collab-trio-sunset.png");
 		data.put("topVideos", List.of(
 			Map.of(
-				"videoId", "noah-demo-1",
-				"title", "조용히 눈을 맞추는 오프닝",
-				"thumbnailUrl", "/demo-assets/noah-reed-cover.png",
+				"videoId", "collab-demo-1",
+				"title", "세 사람이 한 프레임에 들어온 골든아워 오프닝",
+				"thumbnailUrl", "/demo-assets/collab-trio-sunset.png",
+				"viewCount", 1450000,
+				"publishedAt", "2025-09-01T00:00:00Z"
+			),
+			Map.of(
+				"videoId", "collab-demo-2",
+				"title", "Astra Vale의 사막 협곡 포토 다이어리",
+				"thumbnailUrl", "/demo-assets/astra-vale-story-1.png",
 				"viewCount", 980000,
-				"publishedAt", "2024-05-01T00:00:00Z"
+				"publishedAt", "2025-09-04T00:00:00Z"
 			),
 			Map.of(
-				"videoId", "noah-demo-2",
-				"title", "노트 위에 남겨둔 대화의 잔상",
-				"thumbnailUrl", "/demo-assets/noah-reed-story-1.png",
+				"videoId", "collab-demo-3",
+				"title", "Mina Loop의 시티 드라이브 컷",
+				"thumbnailUrl", "/demo-assets/mina-loop-story-2.png",
+				"viewCount", 910000,
+				"publishedAt", "2025-09-09T00:00:00Z"
+			),
+			Map.of(
+				"videoId", "collab-demo-4",
+				"title", "Noah Reed의 스튜디오 나이트 노트",
+				"thumbnailUrl", "/demo-assets/noah-reed-story-2.png",
 				"viewCount", 870000,
-				"publishedAt", "2024-11-01T00:00:00Z"
+				"publishedAt", "2025-09-14T00:00:00Z"
 			),
 			Map.of(
-				"videoId", "noah-demo-3",
-				"title", "웃음 끝에 오래 남는 밤",
-				"thumbnailUrl", "/demo-assets/noah-reed-story-3.png",
+				"videoId", "collab-demo-5",
+				"title", "플랫폼에서 다시 맞춘 세 사람의 시선",
+				"thumbnailUrl", "/demo-assets/astra-vale-story-4.png",
 				"viewCount", 790000,
-				"publishedAt", "2025-02-01T00:00:00Z"
+				"publishedAt", "2025-09-20T00:00:00Z"
+			),
+			Map.of(
+				"videoId", "collab-demo-6",
+				"title", "해질녘 도시 위에 겹친 로드트립 무드",
+				"thumbnailUrl", "/demo-assets/mina-loop-banner.png",
+				"viewCount", 730000,
+				"publishedAt", "2025-09-24T00:00:00Z"
+			),
+			Map.of(
+				"videoId", "collab-demo-7",
+				"title", "창가에 남겨둔 밤의 끝 인사",
+				"thumbnailUrl", "/demo-assets/noah-reed-banner.png",
+				"viewCount", 710000,
+				"publishedAt", "2025-09-28T00:00:00Z"
 			)
 		));
 		return data;
@@ -209,15 +160,6 @@ public class ProjectService {
 		FanProject project = requireOwnedProject(projectId);
 		EditionViews.Detail edition = editionService.getEdition(project.getEditionVersion().getEdition().getId());
 		return projectPreviewAssembler.assemble(toSnapshot(project), edition);
-	}
-
-	public ProjectViews.AiCollabGeneration generateAiCollab(Long projectId, ProjectCommands.GenerateAiCollab command) {
-		FanProject project = requireOwnedProject(projectId);
-		Long editionId = project.getEditionVersion().getEdition().getId();
-		if (editionId != 1L) {
-			throw new AppException(HttpStatus.BAD_REQUEST, "AI collab is only enabled for the Astra Vale edition");
-		}
-		return openRouterImageService.generatePaniCollab(command);
 	}
 
 	public ProjectViews.ChatPersonalization chatPersonalization(

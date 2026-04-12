@@ -49,11 +49,11 @@ export default function SignupPage() {
           <div>
             <p className="editorial-label">바로 시작하기</p>
             <h1 className="mt-5 text-4xl text-brand-700 md:text-5xl">
-              {role === "CREATOR" ? "새 드롭 올릴 준비." : "내 굿즈 만들 준비."}
+              {role === "CREATOR" ? "새 에디션 올릴 준비." : "내 굿즈 만들 준비."}
             </h1>
             <p className="mt-5 max-w-md text-base leading-8 text-stone-700">
               {role === "CREATOR"
-                ? "크리에이터 계정으로 드롭 제목, 소개, 커버, 메시지를 올리고 바로 공개할 수 있어요."
+                ? "크리에이터 계정으로 에디션 제목, 소개, 커버, 메시지를 올리고 바로 공개할 수 있어요."
                 : "팬 계정은 개인화 프로젝트를 저장하고, 미리보기와 주문 흐름을 이어서 진행할 수 있습니다."}
             </p>
           </div>
@@ -73,7 +73,7 @@ export default function SignupPage() {
             {role === "CREATOR" ? "크리에이터 계정 만들기" : "팬 계정 만들기"}
           </h2>
           <p className="mt-3 editorial-muted">
-            드롭을 올리거나 굿즈 제작을 이어가기 위한 기본 정보예요.
+            에디션을 올리거나 굿즈 제작을 이어가기 위한 기본 정보예요.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-5">
@@ -105,7 +105,7 @@ export default function SignupPage() {
                 >
                   <span className="block font-semibold">크리에이터</span>
                   <span className="mt-1 block text-xs leading-5 text-inherit">
-                    스튜디오에서 드롭 제작용 계정
+                    스튜디오에서 에디션 제작용 계정
                   </span>
                 </button>
               </div>

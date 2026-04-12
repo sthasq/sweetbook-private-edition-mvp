@@ -19,13 +19,6 @@ public final class ProjectCommands {
 	) {
 	}
 
-	public record GenerateAiCollab(
-		String templateKey,
-		String sourceImageUrl,
-		String officialImageUrl
-	) {
-	}
-
 	public record ChatMessage(
 		String role,
 		String content

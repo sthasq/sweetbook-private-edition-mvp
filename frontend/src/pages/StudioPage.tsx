@@ -31,7 +31,7 @@ import {
 } from "../lib/sweetbookWorkflow";
 
 const ASSET_TYPES = ["IMAGE", "VIDEO", "MESSAGE"] as const;
-const FIELD_TYPES = ["TEXT", "TEXTAREA", "DATE", "VIDEO_PICKER", "IMAGE_URL"] as const;
+const FIELD_TYPES = ["TEXT", "TEXTAREA", "DATE"] as const;
 const STUDIO_STEPS = [
   {
     id: "structure",
@@ -112,6 +112,7 @@ const PLAYPICK_CONTENT_TEMPLATE_CATEGORY_PRIORITY = [
 
 type StudioStepId = (typeof STUDIO_STEPS)[number]["id"];
 type SweetbookEditModeId = (typeof SWEETBOOK_EDIT_MODES)[number]["id"];
+type SupportedFieldType = (typeof FIELD_TYPES)[number];
 
 export default function StudioPage() {
   const { editionId } = useParams<{ editionId: string }>();
@@ -1139,7 +1140,14 @@ function createAsset(overrides?: Partial<StudioCuratedAssetInput>): StudioCurate
 }
 
 function createField(overrides?: Partial<StudioPersonalizationFieldInput>): StudioPersonalizationFieldInput {
-  return { fieldKey: overrides?.fieldKey ?? "", label: overrides?.label ?? "", inputType: overrides?.inputType ?? "TEXT", required: overrides?.required ?? false, maxLength: overrides?.maxLength, sortOrder: overrides?.sortOrder ?? 1 };
+  return {
+    fieldKey: overrides?.fieldKey ?? "",
+    label: overrides?.label ?? "",
+    inputType: normalizeFieldType(overrides?.inputType) ?? "TEXT",
+    required: overrides?.required ?? false,
+    maxLength: overrides?.maxLength,
+    sortOrder: overrides?.sortOrder ?? 1,
+  };
 }
 
 function resequenceAssets(items: StudioCuratedAssetInput[]) {
@@ -1150,7 +1158,34 @@ function resequenceFields(items: StudioPersonalizationFieldInput[]) {
   return items.map((item, index) => ({ ...item, sortOrder: index + 1 }));
 }
 
+function isSupportedFieldType(inputType: string): inputType is SupportedFieldType {
+  return FIELD_TYPES.includes(inputType as SupportedFieldType);
+}
+
+function normalizeFieldType(inputType?: string | null) {
+  const normalized = inputType?.trim().toUpperCase() ?? "";
+  return isSupportedFieldType(normalized) ? normalized : null;
+}
+
 function buildSubmitPayload(form: StudioEditionInput): StudioEditionInput {
+  const personalizationFields = (form.personalizationFields ?? []).reduce<StudioPersonalizationFieldInput[]>(
+    (result, field) => {
+      const inputType = normalizeFieldType(field.inputType);
+      if (!inputType) {
+        return result;
+      }
+      result.push({
+        ...field,
+        fieldKey: field.fieldKey.trim(),
+        label: field.label.trim(),
+        inputType,
+        maxLength: typeof field.maxLength === "string" ? Number(field.maxLength) || undefined : field.maxLength,
+      });
+      return result;
+    },
+    [],
+  );
+
   return {
     title: form.title.trim(),
     subtitle: form.subtitle?.trim() ?? "",
@@ -1162,11 +1197,23 @@ function buildSubmitPayload(form: StudioEditionInput): StudioEditionInput {
     officialIntro: { title: form.officialIntro?.title.trim() ?? "", message: form.officialIntro?.message.trim() ?? "" },
     officialClosing: { title: form.officialClosing?.title.trim() ?? "", message: form.officialClosing?.message.trim() ?? "" },
     curatedAssets: resequenceAssets((form.curatedAssets ?? []).map((asset) => ({ ...asset, title: asset.title.trim(), content: asset.content.trim() }))),
-    personalizationFields: resequenceFields((form.personalizationFields ?? []).map((field) => ({ ...field, fieldKey: field.fieldKey.trim(), label: field.label.trim(), maxLength: typeof field.maxLength === "string" ? Number(field.maxLength) || undefined : field.maxLength }))),
+    personalizationFields: resequenceFields(personalizationFields),
   };
 }
 
 function normalizeEditionToForm(edition: EditionDetail): StudioEditionInput {
+  const personalizationFields = (edition.snapshot?.personalizationFields ?? []).reduce<StudioPersonalizationFieldInput[]>(
+    (result, field) => {
+      const inputType = normalizeFieldType(field.inputType);
+      if (!inputType) {
+        return result;
+      }
+      result.push(createField({ ...field, inputType, maxLength: field.maxLength ?? undefined }));
+      return result;
+    },
+    [],
+  );
+
   return {
     title: edition.title,
     subtitle: edition.subtitle,
@@ -1178,7 +1225,7 @@ function normalizeEditionToForm(edition: EditionDetail): StudioEditionInput {
     officialIntro: readCopyBlock(edition.snapshot?.officialIntro),
     officialClosing: readCopyBlock(edition.snapshot?.officialClosing),
     curatedAssets: resequenceAssets((edition.snapshot?.curatedAssets ?? []).map((asset) => createAsset(asset))),
-    personalizationFields: resequenceFields((edition.snapshot?.personalizationFields ?? []).map((field) => createField({ ...field, inputType: field.inputType.toUpperCase(), maxLength: field.maxLength ?? undefined }))),
+    personalizationFields: resequenceFields(personalizationFields),
   };
 }
 

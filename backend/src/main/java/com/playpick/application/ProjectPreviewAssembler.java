@@ -19,6 +19,8 @@ public class ProjectPreviewAssembler {
 
 	public ProjectViews.Preview assemble(ProjectViews.Snapshot project, EditionViews.Detail edition) {
 		Map<String, Object> personalization = new LinkedHashMap<>(project.personalizationData());
+		personalization.remove("aiCollabSelectedUrl");
+		personalization.remove("aiCollabTemplateLabel");
 		String mode = normalizeMode(asString(personalization.get("mode"), "demo"));
 		personalization.put("mode", mode);
 		String fanNickname = asNonBlankString(personalization.get("fanNickname"), "팬");
@@ -47,6 +49,12 @@ public class ProjectPreviewAssembler {
 			asCopyText(edition.snapshot().officialIntro(), "message", "body", ""),
 			firstAssetImage(edition.snapshot().curatedAssets(), edition.coverImageUrl()),
 			edition.snapshot().officialIntro()
+		));
+		pages.addAll(buildCuratedAssetPages(
+			edition.snapshot().curatedAssets(),
+			edition.coverImageUrl(),
+			creatorName,
+			fanNickname
 		));
 
 		String subscribedSince = asString(personalization.get("subscribedSince"), "");
@@ -100,29 +108,24 @@ public class ProjectPreviewAssembler {
 			)
 		));
 
-		boolean hasAiCollabCut = edition.id() == 1L && hasText(personalization.get("aiCollabSelectedUrl"));
-		String aiCollabImageUrl = resolveImageUrl(personalization.get("aiCollabSelectedUrl"), "");
-		String aiCollabTemplateLabel = asNonBlankString(personalization.get("aiCollabTemplateLabel"), "공식 콜라보 컷");
 		String memoryImageUrl = resolveImageUrl(
 			personalization.get("uploadedImageUrl"),
 			resolveImageUrl(personalization.get("memoryImageUrl"), resolveImageUrl(channel.get("thumbnailUrl"), edition.coverImageUrl()))
 		);
-		String defaultFanNoteTitle = hasAiCollabCut
-			? "이 한 컷에 당신의 마음도 같이 담아둘게요"
-			: "당신이 남긴 문장은 여기 둘게요";
-		String defaultFanNoteBody = hasAiCollabCut
-			? asNonBlankString(personalization.get("fanNote"), aiCollabTemplateLabel + " 안에 당신이 기억한 분위기도 함께 눌러 담아둘게요.")
-			: asNonBlankString(personalization.get("fanNote"), fanNickname + "님이 남긴 마음을 내가 대신 조용히 적어둔 페이지처럼 읽히면 좋겠어요.");
+		String defaultFanNoteTitle = "당신이 남긴 문장은 여기 둘게요";
+		String defaultFanNoteBody = asNonBlankString(
+			personalization.get("fanNote"),
+			fanNickname + "님이 남긴 마음을 내가 대신 조용히 적어둔 페이지처럼 읽히면 좋겠어요."
+		);
 		pages.add(new ProjectViews.Page(
 			"fan-note",
 			asNonBlankString(bookCopy.get("fanNoteTitle"), defaultFanNoteTitle),
 			asNonBlankString(bookCopy.get("fanNoteBody"), defaultFanNoteBody),
-			hasAiCollabCut ? aiCollabImageUrl : memoryImageUrl,
+			memoryImageUrl,
 			Map.of(
 				"fanNickname", fanNickname,
 				"fanNote", asString(personalization.get("fanNote"), ""),
-				"uploadedImageUrl", hasAiCollabCut ? aiCollabImageUrl : memoryImageUrl,
-				"aiCollabTemplateLabel", aiCollabTemplateLabel
+				"uploadedImageUrl", memoryImageUrl
 			)
 		));
 
@@ -168,6 +171,62 @@ public class ProjectPreviewAssembler {
 			.filter(video -> favoriteVideoId.equals(video.get("videoId")))
 			.findFirst()
 			.orElseGet(() -> topVideos.isEmpty() ? Map.of() : topVideos.get(0));
+	}
+
+	private List<ProjectViews.Page> buildCuratedAssetPages(
+		List<EditionViews.CuratedAsset> assets,
+		String fallbackImage,
+		String creatorName,
+		String fanNickname
+	) {
+		if (assets == null || assets.isEmpty()) {
+			return List.of();
+		}
+
+		List<String> imagePool = assets.stream()
+			.filter(asset -> "IMAGE".equals(asset.assetType()))
+			.map(EditionViews.CuratedAsset::content)
+			.map(publicAssetUrlResolver::resolve)
+			.toList();
+		List<ProjectViews.Page> pages = new ArrayList<>();
+		for (int index = 0; index < assets.size(); index++) {
+			EditionViews.CuratedAsset asset = assets.get(index);
+			Map<String, Object> payload = new LinkedHashMap<>();
+			payload.put("assetType", asset.assetType());
+			payload.put("title", asset.title());
+			payload.put("content", asset.content());
+			pages.add(new ProjectViews.Page(
+				"curated-" + asset.assetType().toLowerCase() + "-" + (index + 1),
+				asset.title(),
+				describeCuratedAsset(asset, creatorName, fanNickname),
+				resolveCuratedAssetImage(asset, imagePool, fallbackImage, index),
+				payload
+			));
+		}
+		return pages;
+	}
+
+	private String resolveCuratedAssetImage(
+		EditionViews.CuratedAsset asset,
+		List<String> imagePool,
+		String fallbackImage,
+		int index
+	) {
+		if ("IMAGE".equals(asset.assetType())) {
+			return publicAssetUrlResolver.resolve(asset.content());
+		}
+		if (!imagePool.isEmpty()) {
+			return imagePool.get(index % imagePool.size());
+		}
+		return publicAssetUrlResolver.resolve(fallbackImage);
+	}
+
+	private String describeCuratedAsset(EditionViews.CuratedAsset asset, String creatorName, String fanNickname) {
+		return switch (asset.assetType()) {
+			case "MESSAGE" -> asNonBlankString(asset.content(), creatorName + "가 이번 협업 에디션을 위해 남긴 메모입니다.");
+			case "VIDEO" -> creatorName + "가 함께 고른 하이라이트 장면이에요. " + fanNickname + "님이 책장을 넘길 때 흐름이 자연스럽게 이어지도록 중간 호흡을 만들어주는 레퍼런스예요.";
+			default -> creatorName + "가 이 에디션의 결을 만들기 위해 직접 고른 공식 장면이에요. " + fanNickname + "님의 문장과 나란히 놓였을 때 한 권의 포토북으로 읽히도록 배치했어요.";
+		};
 	}
 
 	private String firstAssetImage(List<EditionViews.CuratedAsset> assets, String fallback) {
@@ -239,13 +298,6 @@ public class ProjectPreviewAssembler {
 			}
 		}
 		return fallback;
-	}
-
-	private boolean hasText(Object value) {
-		if (value instanceof String text) {
-			return !text.isBlank();
-		}
-		return value != null && !String.valueOf(value).isBlank();
 	}
 
 	private String asCopyText(Map<String, Object> source, String primaryKey, String aliasKey, String fallback) {

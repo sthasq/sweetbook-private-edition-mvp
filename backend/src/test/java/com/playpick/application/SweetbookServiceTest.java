@@ -83,8 +83,8 @@ class SweetbookServiceTest {
 		);
 		verify(sweetbookClient, atLeastOnce()).addContents(
 			eq("bk_test"),
-			eq("46VqZhVNOfAp"),
-			argThat(params -> "https://playpick.example.com/demo-assets/page-1.jpg".equals(params.get("photo"))),
+			eq("3FhSEhJ94c0T"),
+			argThat(params -> "https://playpick.example.com/demo-assets/page-1.jpg".equals(params.get("photo1"))),
 			eq("page")
 		);
 	}
@@ -120,8 +120,8 @@ class SweetbookServiceTest {
 		verify(publicAssetPublishingService, atLeastOnce()).publishDataUrl("data:image/jpeg;base64,ZmFrZQ==");
 		verify(sweetbookClient, atLeastOnce()).addContents(
 			eq("bk_test"),
-			eq("46VqZhVNOfAp"),
-			argThat(params -> "https://gscheon.com/playpick-assets/generated.jpg".equals(params.get("photo"))),
+			eq("3FhSEhJ94c0T"),
+			argThat(params -> "https://gscheon.com/playpick-assets/generated.jpg".equals(params.get("photo1"))),
 			eq("page")
 		);
 	}
@@ -133,7 +133,10 @@ class SweetbookServiceTest {
 		properties.setBaseUrl("https://api-sandbox.sweetbook.com/v1");
 		properties.setDefaultCoverTemplateUid("4MY2fokVjkeY");
 		properties.setDefaultPublishTemplateUid("75vMl9IeyPMI");
-		properties.setDefaultContentTemplateUid("46VqZhVNOfAp");
+		properties.setDefaultContentTemplateUid("3FhSEhJ94c0T");
+		properties.setDefaultContentTextTemplateUid("vHA59XPPKqak");
+		properties.setDefaultContentGalleryTemplateUid("y5Ih0Uo7tuQ3");
+		properties.setDefaultDividerTemplateUid("1N8i0MR6Ro1D");
 		return properties;
 	}
 
@@ -141,7 +144,10 @@ class SweetbookServiceTest {
 		return List.of(
 			new SweetbookViews.Template("4MY2fokVjkeY", "표지", "album", "cover", ""),
 			new SweetbookViews.Template("75vMl9IeyPMI", "발행면", "album", "publish", ""),
-			new SweetbookViews.Template("46VqZhVNOfAp", "내지", "album", "content", "")
+			new SweetbookViews.Template("3FhSEhJ94c0T", "내지a_contain", "album", "content", ""),
+			new SweetbookViews.Template("vHA59XPPKqak", "내지b", "album", "content", ""),
+			new SweetbookViews.Template("y5Ih0Uo7tuQ3", "내지_gallery", "album", "content", ""),
+			new SweetbookViews.Template("1N8i0MR6Ro1D", "간지", "album", "divider", "")
 		);
 	}
 
@@ -159,7 +165,7 @@ class SweetbookServiceTest {
 				"SQUAREBOOK_HC",
 				"4MY2fokVjkeY",
 				"75vMl9IeyPMI",
-				"46VqZhVNOfAp",
+				"3FhSEhJ94c0T",
 				Map.of("title", "인트로", "message", "안녕하세요"),
 				Map.of("title", "아웃트로", "message", "고마워요"),
 				Instant.parse("2026-04-08T00:00:00Z"),
