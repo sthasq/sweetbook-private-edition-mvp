@@ -99,8 +99,8 @@ export default function ChatPersonalizationPage() {
     void handleApplyProposal();
   }, [done, proposal, saving, preview]);
 
-  async function handleSend() {
-    const trimmed = input.trim();
+  async function handleSend(forcedInput?: string) {
+    const trimmed = (forcedInput !== undefined ? forcedInput : input).trim();
     if (!trimmed || sending) {
       return;
     }
@@ -214,10 +214,7 @@ export default function ChatPersonalizationPage() {
                             key={video.videoId}
                             type="button"
                             onClick={() => {
-                              setInput(`'${video.title}' 장면을 이번 포토북의 중심으로 담고 싶어요.`);
-                              window.requestAnimationFrame(() => {
-                                inputRef.current?.focus();
-                              });
+                                handleSend(`'${video.title}' 장면을 이번 포토북의 중심으로 담고 싶어요.`);
                             }}
                             className={`overflow-hidden rounded border bg-white text-left transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-sm ${
                               isSelected
@@ -266,8 +263,10 @@ export default function ChatPersonalizationPage() {
                 )}
 
                 {messages.length > 0 && sending && (
-                  <div className="max-w-[88%] rounded border border-brand-100 bg-brand-50/70 px-4 py-3 text-sm text-brand-700">
-                    개인화 제안을 정리하는 중...
+                    <div className="flex animate-pulse items-center gap-1.5 rounded-2xl rounded-tl-sm bg-brand-50/70 px-4 py-3 text-brand-600 shadow-sm w-fit max-w-[88%] border border-brand-100">
+                      <div className="h-1.5 w-1.5 rounded-full bg-brand-400"></div>
+                      <div className="h-1.5 w-1.5 rounded-full bg-brand-400 animation-delay-200"></div>
+                      <div className="h-1.5 w-1.5 rounded-full bg-brand-400 animation-delay-400"></div>
                   </div>
                 )}
 
