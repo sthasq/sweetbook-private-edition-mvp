@@ -75,6 +75,27 @@ public class SweetbookClient {
 		return result;
 	}
 
+	public SweetbookViews.TemplateDetail getTemplateDetail(String templateUid) {
+		JsonNode item = unwrapEnvelope(getJson("/templates/" + templateUid));
+		return new SweetbookViews.TemplateDetail(
+			field(item, "uid", "templateUid"),
+			field(item, "name", "templateName", "displayName", "title"),
+			field(item, "category", "group"),
+			field(item, "role", "templateKind", "type", "kind"),
+			field(item, "theme"),
+			nestedField(item, new String[][] {
+				{"thumbnails", "layout"},
+				{"thumbnail", "layout"},
+				{"thumbnail"},
+				{"thumbnailUrl"}
+			}),
+			toMap(item.path("parameters")),
+			toMap(item.path("layout")),
+			toMap(item.path("layoutRules")),
+			toMap(item.path("baseLayer"))
+		);
+	}
+
 	public String createBook(Map<String, Object> payload, String idempotencyKey) {
 		JsonNode response = unwrapEnvelope(postJson("/books", payload, headers -> {
 			if (idempotencyKey != null && !idempotencyKey.isBlank()) {

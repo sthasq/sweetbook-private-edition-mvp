@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { chatPersonalization, getPreview, updateProject } from "../api/projects";
 import type {
@@ -43,14 +43,6 @@ export default function ChatPersonalizationPage() {
   }, [projectId]);
 
   useEffect(() => {
-    if (!projectId || !preview || initialPromptRequestedRef.current) {
-      return;
-    }
-    initialPromptRequestedRef.current = true;
-    void requestAssistantReply([]);
-  }, [projectId, preview]);
-
-  useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, sending]);
 
@@ -66,7 +58,7 @@ export default function ChatPersonalizationPage() {
     return () => window.cancelAnimationFrame(frame);
   }, [sending, saving, done, messages.length]);
 
-  async function requestAssistantReply(history: ChatMessage[]) {
+  const requestAssistantReply = useCallback(async (history: ChatMessage[]) => {
     if (!projectId) {
       return;
     }
@@ -98,16 +90,7 @@ export default function ChatPersonalizationPage() {
     } finally {
       setSending(false);
     }
-  }
-
-  useEffect(() => {
-    if (!done || !proposal || saving || !preview || autoApplyTriggeredRef.current) {
-      return;
-    }
-
-    autoApplyTriggeredRef.current = true;
-    void handleApplyProposal();
-  }, [done, proposal, saving, preview]);
+  }, [projectId]);
 
   async function handleSend(forcedInput?: string) {
     const trimmed = (forcedInput !== undefined ? forcedInput : input).trim();
@@ -123,7 +106,7 @@ export default function ChatPersonalizationPage() {
     await requestAssistantReply(history);
   }
 
-  async function handleApplyProposal() {
+  const handleApplyProposal = useCallback(async () => {
     if (!projectId || !preview || !proposal) {
       return;
     }
@@ -148,7 +131,7 @@ export default function ChatPersonalizationPage() {
     } finally {
       setSaving(false);
     }
-  }
+  }, [navigate, preview, projectId, proposal]);
 
   async function handleRestart() {
     if (sending) {
@@ -162,6 +145,23 @@ export default function ChatPersonalizationPage() {
     await requestAssistantReply([]);
   }
 
+  useEffect(() => {
+    if (!projectId || !preview || initialPromptRequestedRef.current) {
+      return;
+    }
+    initialPromptRequestedRef.current = true;
+    void requestAssistantReply([]);
+  }, [projectId, preview, requestAssistantReply]);
+
+  useEffect(() => {
+    if (!done || !proposal || saving || !preview || autoApplyTriggeredRef.current) {
+      return;
+    }
+
+    autoApplyTriggeredRef.current = true;
+    void handleApplyProposal();
+  }, [done, proposal, saving, preview, handleApplyProposal]);
+
   if (loading) return <Spinner />;
   if (error && !preview) return <ErrorBox message={error} />;
   if (!preview) return <ErrorBox message="프로젝트를 찾을 수 없습니다." />;
@@ -172,6 +172,9 @@ export default function ChatPersonalizationPage() {
   const selectedFavoriteVideoId = readString(
     proposal?.favoriteVideoId ?? preview.personalizationData.favoriteVideoId,
   );
+  const selectedFavoriteVideo = topVideos.find((video) => video.videoId === selectedFavoriteVideoId) ?? null;
+  const personalizationSummary = buildPersonalizationSummary(preview, proposal, topVideos);
+  const quickPromptIdeas = buildQuickPromptIdeas(preview, topVideos);
   const lastAssistantIndex = findLastAssistantIndex(messages);
 
   return (
@@ -182,6 +185,59 @@ export default function ChatPersonalizationPage() {
         <div className="grid gap-10 lg:grid-cols-12 lg:items-start">
           <section className="lg:col-span-8">
             <div className="editorial-card overflow-hidden p-6 md:p-8">
+              <div className="mb-6 grid gap-3 md:grid-cols-4">
+                <InterviewMetricCard label="에디션" value={preview.edition.title} hint="지금 개인화 중인 책" />
+                <InterviewMetricCard label="장면 후보" value={`${topVideos.length}개`} hint="바로 고를 수 있는 대표 장면" />
+                <InterviewMetricCard label="제안 필드" value={`${proposalEntries.length}개`} hint="자동으로 채워진 개인화 문구" />
+                <InterviewMetricCard label="진행도" value={personalizationSummary.progressLabel} hint="답변이 쌓일수록 바로 저장" />
+              </div>
+
+              <div className="mb-6 rounded bg-surface-low px-5 py-5">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <p className="editorial-label text-brand-700">지금 만든 책 재료</p>
+                    <p className="mt-2 text-sm leading-relaxed text-warm-500">
+                      socialBook-demo처럼, 어떤 재료로 책을 만드는지 먼저 보여주고 바로 답변할 수 있게 정리했어요.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-warm-500 shadow-sm">
+                    live summary
+                  </span>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <SummaryTile label="팬 이름" value={personalizationSummary.fanNickname} />
+                  <SummaryTile label="제작 방식" value={personalizationSummary.modeLabel} />
+                  <SummaryTile label="대표 장면" value={selectedFavoriteVideo?.title ?? personalizationSummary.favoriteSceneFallback} />
+                  <SummaryTile label="한마디 메시지" value={personalizationSummary.fanNotePreview} />
+                </div>
+              </div>
+
+              {quickPromptIdeas.length > 0 && (
+                <div className="mb-6 rounded bg-surface-low px-5 py-5">
+                  <p className="editorial-label text-brand-700">빠르게 답하기</p>
+                  <p className="mt-2 text-sm leading-relaxed text-warm-500">
+                    막막하면 아래 문장을 눌러서 바로 시작해도 괜찮아요.
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {quickPromptIdeas.map((idea) => (
+                      <button
+                        key={idea}
+                        type="button"
+                        onClick={() => {
+                          setInput(idea);
+                          void handleSend(idea);
+                        }}
+                        disabled={sending || saving}
+                        className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 transition-colors hover:border-brand-400 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {idea}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-wrap items-start justify-between gap-4 border-b border-stone-200/60 pb-5">
                 <div>
                   <p className="editorial-label">LLM 개인화 인터뷰</p>
@@ -409,6 +465,16 @@ export default function ChatPersonalizationPage() {
               )}
 
               <div className="mt-8 space-y-3">
+                {selectedFavoriteVideo && (
+                  <div className="rounded bg-white/85 p-4 shadow-sm">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-500">
+                      현재 선택된 대표 장면
+                    </p>
+                    <p className="mt-2 text-sm font-semibold leading-relaxed text-stone-900">
+                      {selectedFavoriteVideo.title}
+                    </p>
+                  </div>
+                )}
                 {saving ? (
                   <div className="rounded bg-emerald-50 px-4 py-3 text-sm leading-relaxed text-emerald-700">
                     인터뷰 내용을 바탕으로 문구를 저장했고, 미리보기 페이지로 이동 중이에요.
@@ -451,6 +517,39 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         </p>
         <p className="whitespace-pre-line">{message.content}</p>
       </div>
+    </div>
+  );
+}
+
+function InterviewMetricCard({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <div className="rounded bg-surface-low px-4 py-4">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-500">
+        {label}
+      </p>
+      <p className="mt-2 line-clamp-2 text-lg font-bold leading-snug text-brand-700">
+        {value}
+      </p>
+      <p className="mt-2 text-xs leading-relaxed text-warm-500">{hint}</p>
+    </div>
+  );
+}
+
+function SummaryTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded bg-white/85 px-4 py-4 shadow-sm">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-500">
+        {label}
+      </p>
+      <p className="mt-2 text-sm leading-relaxed text-stone-900">{value}</p>
     </div>
   );
 }
@@ -657,6 +756,49 @@ function readTopVideos(value: unknown): TopVideo[] {
 
 function readString(value: unknown) {
   return typeof value === "string" ? value : "";
+}
+
+function buildPersonalizationSummary(
+  preview: ProjectPreview,
+  proposal: Record<string, unknown> | null,
+  topVideos: TopVideo[],
+) {
+  const fanNickname = readString(
+    proposal?.fanNickname ?? preview.personalizationData.fanNickname,
+  ) || "팬";
+  const fanNote =
+    readString(proposal?.fanNote ?? preview.personalizationData.fanNote) ||
+    "아직 한마디 메시지를 정리하는 중이에요.";
+  const modeValue = readString(
+    proposal?.mode ?? preview.personalizationData.mode,
+  );
+  const favoriteVideoId = readString(
+    proposal?.favoriteVideoId ?? preview.personalizationData.favoriteVideoId,
+  );
+  const favoriteVideo =
+    topVideos.find((video) => video.videoId === favoriteVideoId) ?? null;
+
+  return {
+    fanNickname,
+    fanNotePreview:
+      fanNote.length > 48 ? `${fanNote.slice(0, 48)}...` : fanNote,
+    modeLabel: modeValue === "demo" ? "LLM 대화형 추천" : modeValue || "대화형 추천",
+    favoriteSceneFallback: favoriteVideo?.title ?? "아직 선택 전",
+    progressLabel: proposal && Object.keys(proposal).length > 0 ? "정리 중" : "인터뷰 시작",
+  };
+}
+
+function buildQuickPromptIdeas(preview: ProjectPreview, topVideos: TopVideo[]) {
+  const creatorName = preview.edition.creator.displayName;
+  const firstVideo = topVideos[0]?.title;
+  const ideas = [
+    firstVideo ? `'${firstVideo}' 장면이 가장 기억에 남아서 책의 중심으로 넣고 싶어요.` : "",
+    `${creatorName}의 분위기 중에서 가장 좋아하는 건 조용하고 오래 남는 감성이에요.`,
+    "책 마지막에는 조금 뭉클하지만 과하지 않은 문장으로 마무리하고 싶어요.",
+    "내가 이 크리에이터를 좋아하게 된 계절감과 이유가 드러났으면 좋겠어요.",
+  ];
+
+  return ideas.filter((idea) => idea.length > 0).slice(0, 4);
 }
 
 function findLastAssistantIndex(messages: ChatMessage[]) {

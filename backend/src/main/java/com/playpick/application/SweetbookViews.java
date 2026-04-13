@@ -1,5 +1,7 @@
 package com.playpick.application;
 
+import java.util.Map;
+
 public final class SweetbookViews {
 
 	private SweetbookViews() {
@@ -20,6 +22,20 @@ public final class SweetbookViews {
 		String category,
 		String role,
 		String thumbnailUrl
+	) {
+	}
+
+	public record TemplateDetail(
+		String uid,
+		String name,
+		String category,
+		String role,
+		String theme,
+		String thumbnailUrl,
+		Map<String, Object> parameters,
+		Map<String, Object> layout,
+		Map<String, Object> layoutRules,
+		Map<String, Object> baseLayer
 	) {
 	}
 

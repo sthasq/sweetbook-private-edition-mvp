@@ -420,9 +420,7 @@ function AssetRow({ asset }: { asset: CuratedAsset }) {
   const summary =
     asset.assetType === "IMAGE"
       ? "포토북 전체 분위기를 만들어주는 대표 이미지예요."
-      : asset.assetType === "VIDEO"
-        ? "이 에디션의 영감이 된 대표 영상이에요."
-        : asset.content;
+      : asset.content;
 
   return (
     <div className="rounded bg-white border border-slate-100 px-5 py-5 shadow-sm">
@@ -461,8 +459,6 @@ function assetTypeLabel(assetType: string) {
   switch (assetType) {
     case "IMAGE":
       return "이미지";
-    case "VIDEO":
-      return "영상";
     case "MESSAGE":
       return "메시지";
     default:

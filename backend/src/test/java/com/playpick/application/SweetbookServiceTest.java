@@ -88,12 +88,12 @@ class SweetbookServiceTest {
 			eq("4MY2fokVjkeY"),
 			argThat(params ->
 				"https://playpick.example.com/api/assets/cover.jpg".equals(params.get("frontPhoto"))
-					&& "https://playpick.example.com/demo-assets/page-1.jpg".equals(params.get("backPhoto"))
+					&& "팬 Diary Book".equals(params.get("spineTitle"))
 			)
 		);
 		verify(sweetbookClient, atLeastOnce()).addContents(
 			eq("bk_test"),
-			eq("vHA59XPPKqak"),
+			eq("3FhSEhJ94c0T"),
 			argThat(params -> "인트로".equals(params.get("title"))),
 			eq("page")
 		);
@@ -131,7 +131,7 @@ class SweetbookServiceTest {
 		verify(sweetbookClient).addCover(
 			eq("bk_test"),
 			eq("4MY2fokVjkeY"),
-			argThat(params -> "https://gscheon.com/playpick-assets/generated.jpg".equals(params.get("backPhoto")))
+			argThat(params -> "https://playpick.example.com/demo-assets/cover.jpg".equals(params.get("frontPhoto")))
 		);
 	}
 
@@ -174,7 +174,6 @@ class SweetbookServiceTest {
 			eq("4MY2fokVjkeY"),
 			argThat(params ->
 				String.valueOf(params.get("frontPhoto")).startsWith("https://gscheon.com/playpick-assets/")
-					&& String.valueOf(params.get("backPhoto")).startsWith("https://gscheon.com/playpick-assets/")
 			)
 		);
 	}
@@ -216,7 +215,7 @@ class SweetbookServiceTest {
 	}
 
 	@Test
-	void skipsTextAndGalleryLayoutsWhenDedicatedTemplatesAreUnavailable() {
+	void mixesPhotoTextTextOnlyAndGalleryTemplatesAcrossContentPages() {
 		SweetbookClient sweetbookClient = mock(SweetbookClient.class);
 		PublicAssetPublishingService publicAssetPublishingService = mock(PublicAssetPublishingService.class);
 		SweetbookProperties sweetbookProperties = liveSweetbookProperties();
@@ -225,13 +224,21 @@ class SweetbookServiceTest {
 
 		when(sweetbookClient.getBookSpecs()).thenReturn(List.of(new SweetbookViews.BookSpec("SQUAREBOOK_HC", "Square", 24, 130, 2)));
 		when(sweetbookClient.getTemplates("SQUAREBOOK_HC")).thenReturn(List.of(
-			new SweetbookViews.Template("4MY2fokVjkeY", "표지", "album", "cover", ""),
-			new SweetbookViews.Template("75vMl9IeyPMI", "발행면", "album", "publish", ""),
-			new SweetbookViews.Template("3FhSEhJ94c0T", "내지a_contain", "album", "content", ""),
-			new SweetbookViews.Template("1N8i0MR6Ro1D", "간지", "album", "divider", "")
+			new SweetbookViews.Template("4MY2fokVjkeY", "일기장B_표지", "일기장B", "cover", ""),
+			new SweetbookViews.Template("75vMl9IeyPMI", "일기장B_발행면", "일기장B", "publish", ""),
+			new SweetbookViews.Template("3FhSEhJ94c0T", "일기장B_내지a_contain", "album", "content", ""),
+			new SweetbookViews.Template("vHA59XPPKqak", "일기장B_내지b", "album", "content", ""),
+			new SweetbookViews.Template("y5Ih0Uo7tuQ3", "일기장B_내지_gallery", "album", "content", ""),
+			new SweetbookViews.Template("2mi1ao0Z4Vxl", "공용_빈내지", "album", "content", "")
 		));
 		when(sweetbookClient.createBook(anyMap(), anyString())).thenReturn("bk_test");
 		when(publicAssetPublishingService.isConfigured()).thenReturn(false);
+
+		List<String> templateUids = new ArrayList<>();
+		doAnswer(invocation -> {
+			templateUids.add(invocation.getArgument(1));
+			return null;
+		}).when(sweetbookClient).addContents(anyString(), anyString(), anyMap(), anyString());
 
 		SweetbookService service = new SweetbookService(
 			sweetbookClient,
@@ -240,28 +247,12 @@ class SweetbookServiceTest {
 			publicAssetPublishingService
 		);
 
-		service.prepareBookDraft(
-			previewWithImages(
-				"https://playpick.example.com/demo-assets/cover.jpg",
-				"https://playpick.example.com/demo-assets/page-1.jpg"
-			),
-			"ext",
-			"idem",
-			false
-		);
+		service.prepareBookDraft(previewWithCuratedImages(24), "ext", "idem", false);
 
-		verify(sweetbookClient, never()).addContents(
-			eq("bk_test"),
-			eq("3FhSEhJ94c0T"),
-			argThat(params -> !params.containsKey("photo1")),
-			eq("page")
-		);
-		verify(sweetbookClient, never()).addContents(
-			eq("bk_test"),
-			eq("3FhSEhJ94c0T"),
-			argThat(params -> params.containsKey("collagePhotos")),
-			eq("page")
-		);
+		assertThat(templateUids)
+			.isNotEmpty()
+			.filteredOn(uid -> !"75vMl9IeyPMI".equals(uid) && !"2mi1ao0Z4Vxl".equals(uid))
+			.contains("3FhSEhJ94c0T", "vHA59XPPKqak", "y5Ih0Uo7tuQ3");
 	}
 
 	@Test
@@ -294,25 +285,28 @@ class SweetbookServiceTest {
 		ProjectViews.BookGeneration generation = service.prepareBookDraft(preview, "ext", "idem", false);
 
 		LinkedHashSet<String> usedImageUrls = new LinkedHashSet<>();
+		List<List<String>> galleryPayloads = new ArrayList<>();
 		for (Map<String, Object> params : contentPayloads) {
-			Object photo1 = params.get("photo1");
-			if (photo1 instanceof String imageUrl && !imageUrl.isBlank()) {
-				usedImageUrls.add(imageUrl);
-			}
-			Object collagePhotos = params.get("collagePhotos");
-			if (collagePhotos instanceof List<?> photos) {
+			Object photosValue = params.get("photos");
+			if (photosValue instanceof List<?> photos) {
+				List<String> galleryUrls = new ArrayList<>();
 				for (Object photo : photos) {
 					if (photo instanceof String imageUrl && !imageUrl.isBlank()) {
 						usedImageUrls.add(imageUrl);
+						galleryUrls.add(imageUrl);
 					}
 				}
+				galleryPayloads.add(galleryUrls);
 			}
 		}
 
 		assertThat(generation.plannedPageCount()).isEqualTo(24);
 		assertThat(usedImageUrls)
-			.hasSize(70)
-			.allMatch(url -> url.startsWith("https://playpick.example.com/demo-assets/generated/"));
+			.filteredOn(url -> url.startsWith("https://playpick.example.com/demo-assets/generated/"))
+			.hasSize(40);
+		assertThat(galleryPayloads)
+			.isNotEmpty()
+			.allSatisfy(photos -> assertThat(photos).hasSizeBetween(1, 4));
 	}
 
 	private SweetbookProperties liveSweetbookProperties() {
@@ -325,18 +319,19 @@ class SweetbookServiceTest {
 		properties.setDefaultContentTemplateUid("3FhSEhJ94c0T");
 		properties.setDefaultContentTextTemplateUid("vHA59XPPKqak");
 		properties.setDefaultContentGalleryTemplateUid("y5Ih0Uo7tuQ3");
-		properties.setDefaultDividerTemplateUid("1N8i0MR6Ro1D");
+		properties.setDefaultDividerTemplateUid("");
+		properties.setDefaultBlankTemplateUid("2mi1ao0Z4Vxl");
 		return properties;
 	}
 
 	private List<SweetbookViews.Template> defaultTemplates() {
 		return List.of(
-			new SweetbookViews.Template("4MY2fokVjkeY", "표지", "album", "cover", ""),
-			new SweetbookViews.Template("75vMl9IeyPMI", "발행면", "album", "publish", ""),
-			new SweetbookViews.Template("3FhSEhJ94c0T", "내지a_contain", "album", "content", ""),
-			new SweetbookViews.Template("vHA59XPPKqak", "내지b", "album", "content", ""),
-			new SweetbookViews.Template("y5Ih0Uo7tuQ3", "내지_gallery", "album", "content", ""),
-			new SweetbookViews.Template("1N8i0MR6Ro1D", "간지", "album", "divider", "")
+			new SweetbookViews.Template("4MY2fokVjkeY", "일기장B_표지", "일기장B", "cover", ""),
+			new SweetbookViews.Template("75vMl9IeyPMI", "일기장B_발행면", "일기장B", "publish", ""),
+			new SweetbookViews.Template("3FhSEhJ94c0T", "일기장B_내지a_contain", "album", "content", ""),
+			new SweetbookViews.Template("vHA59XPPKqak", "일기장B_내지b", "album", "content", ""),
+			new SweetbookViews.Template("y5Ih0Uo7tuQ3", "일기장B_내지_gallery", "album", "content", ""),
+			new SweetbookViews.Template("2mi1ao0Z4Vxl", "공용_빈내지", "album", "content", "")
 		);
 	}
 
@@ -436,10 +431,10 @@ class SweetbookServiceTest {
 			List.of(
 				new ProjectViews.Page("cover", "표지", "설명", "https://playpick.example.com/demo-assets/cover.jpg", Map.of()),
 				new ProjectViews.Page("official-intro", "인트로", "설명", "https://playpick.example.com/demo-assets/intro.jpg", Map.of()),
-				new ProjectViews.Page("relationship", "관계", "설명", "https://playpick.example.com/demo-assets/relationship.jpg", Map.of()),
+				new ProjectViews.Page("relationship", "관계", "설명", "", Map.of()),
 				new ProjectViews.Page("fan-pick", "픽", "설명", "https://playpick.example.com/demo-assets/pick.jpg", Map.of()),
 				new ProjectViews.Page("fan-note", "팬노트", "설명", "https://playpick.example.com/demo-assets/note.jpg", Map.of()),
-				new ProjectViews.Page("official-closing", "클로징", "설명", "https://playpick.example.com/demo-assets/closing.jpg", Map.of())
+				new ProjectViews.Page("official-closing", "클로징", "설명", "", Map.of())
 			)
 		);
 	}

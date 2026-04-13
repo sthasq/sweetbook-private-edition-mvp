@@ -71,11 +71,13 @@ class ProjectPreviewAssemblerTest {
 
 		ProjectViews.Preview preview = assembler.assemble(project, edition);
 
-		assertThat(preview.pages()).hasSize(7);
-		assertThat(preview.pages().get(0).description()).contains("온도로그가 경신님에게 건네는 한 권");
-		assertThat(findPageByKey(preview, "relationship").description()).contains("1332일");
-		assertThat(findPageByKey(preview, "fan-note").title()).isEqualTo("당신이 남긴 문장은 여기 둘게요");
-		assertThat(findPageByKey(preview, "gallery-1").description()).contains("1개의 장면");
+		assertThat(preview.pages()).hasSize(24);
+		assertThat(preview.pages().get(0).payload()).containsEntry("previewTemplate", "MIXED_COVER");
+		assertThat(preview.pages().get(0).payload()).containsEntry("spineTitle", "경신 Diary Book");
+		assertThat(storyPages(preview))
+			.anySatisfy(page -> assertThat(page.description()).contains("1332일"))
+			.anySatisfy(page -> assertThat(page.title()).isEqualTo("당신이 남긴 문장은 여기 둘게요"))
+			.anySatisfy(page -> assertThat(page.imageUrl()).isNotBlank());
 	}
 
 	@Test
@@ -143,11 +145,12 @@ class ProjectPreviewAssemblerTest {
 
 		ProjectViews.Preview preview = assembler.assemble(project, edition);
 
-		assertThat(findPageByKey(preview, "relationship").title()).isEqualTo("처음 멈춰 서서 오래 본 계절");
-		assertThat(findPageByKey(preview, "relationship").description()).contains("연두님이 Astra Vale의 기록");
-		assertThat(findPageByKey(preview, "fan-pick").title()).isEqualTo("플랫폼에 남은 잔상");
-		assertThat(findPageByKey(preview, "fan-note").title()).isEqualTo("연두님이 붙잡아 둔 한 문장");
-		assertThat(findPageByKey(preview, "fan-note").description()).contains("그 밤의 플랫폼");
+		assertThat(storyPages(preview))
+			.anySatisfy(page -> assertThat(page.title()).isEqualTo("처음 멈춰 서서 오래 본 계절"))
+			.anySatisfy(page -> assertThat(page.description()).contains("연두님이 Astra Vale의 기록"))
+			.anySatisfy(page -> assertThat(page.title()).isEqualTo("플랫폼에 남은 잔상"))
+			.anySatisfy(page -> assertThat(page.title()).isEqualTo("연두님이 붙잡아 둔 한 문장"))
+			.anySatisfy(page -> assertThat(page.description()).contains("그 밤의 플랫폼"));
 	}
 
 	@Test
@@ -204,10 +207,11 @@ class ProjectPreviewAssemblerTest {
 
 		ProjectViews.Preview preview = assembler.assemble(project, edition);
 
-		assertThat(preview.pages().get(1).imageUrl()).isEqualTo("https://playpick.example.com/demo-assets/intro.jpg");
-		assertThat(findPageByKey(preview, "relationship").imageUrl()).isEqualTo("https://playpick.example.com/demo-assets/banner.jpg");
-		assertThat(findPageByKey(preview, "fan-pick").imageUrl()).isEqualTo("https://playpick.example.com/demo-assets/video.jpg");
-		assertThat(findPageByKey(preview, "fan-note").imageUrl()).isEqualTo("https://playpick.example.com/api/assets/memory.jpg");
+		assertThat(preview.pages().get(0).imageUrl()).isEqualTo("https://playpick.example.com/demo-assets/cover.jpg");
+		assertThat(storyPages(preview))
+			.anySatisfy(page -> assertThat(page.imageUrl()).isEqualTo("https://playpick.example.com/demo-assets/intro.jpg"))
+			.anySatisfy(page -> assertThat(page.imageUrl()).isEqualTo("https://playpick.example.com/demo-assets/video.jpg"))
+			.anySatisfy(page -> assertThat(page.imageUrl()).isEqualTo("https://playpick.example.com/api/assets/memory.jpg"));
 	}
 
 	@Test
@@ -278,8 +282,13 @@ class ProjectPreviewAssemblerTest {
 		ProjectViews.Preview preview = assembler.assemble(project, edition);
 
 		assertThat(preview.pages()).hasSize(24);
-		assertThat(preview.pages().stream().filter(page -> page.key().startsWith("gallery-"))).hasSize(18);
-		assertThat(preview.pages().get(23).key()).startsWith("gallery-");
+		assertThat(galleryPages(preview)).isNotEmpty();
+		assertThat(galleryPages(preview))
+			.allSatisfy(page -> assertThat((List<?>) page.payload().get("imageUrls")).hasSizeBetween(1, 4));
+		assertThat(galleryPages(preview).stream()
+			.flatMap(page -> ((List<String>) page.payload().get("imageUrls")).stream())
+			.distinct()
+			.toList()).hasSize(37);
 	}
 
 	private static PublicAssetUrlResolver publicAssetUrlResolver() {
@@ -288,10 +297,18 @@ class ProjectPreviewAssemblerTest {
 		return new PublicAssetUrlResolver(appProperties);
 	}
 
-	private static ProjectViews.Page findPageByKey(ProjectViews.Preview preview, String key) {
+	private static List<ProjectViews.Page> storyPages(ProjectViews.Preview preview) {
 		return preview.pages().stream()
-			.filter(page -> key.equals(page.key()))
-			.findFirst()
-			.orElseThrow();
+			.filter(page -> {
+				Object payload = page.payload().get("pageKind");
+				return "PHOTO_STORY".equals(payload) || "TEXT_STORY".equals(payload);
+			})
+			.toList();
+	}
+
+	private static List<ProjectViews.Page> galleryPages(ProjectViews.Preview preview) {
+		return preview.pages().stream()
+			.filter(page -> "IMAGE_GROUP".equals(page.payload().get("assetType")))
+			.toList();
 	}
 }
