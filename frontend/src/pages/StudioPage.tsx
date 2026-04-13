@@ -799,7 +799,7 @@ export default function StudioPage() {
                         ) : asset.assetType === "IMAGE" ? (
                           <div className="space-y-3 rounded-2xl border border-stone-200 bg-white p-4">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                              <p className="text-xs text-warm-500">업로드 또는 URL.</p>
+                              <p className="text-sm text-warm-500">커버와 같이 파일을 올리거나, 아래에 이미지 URL을 직접 넣을 수 있습니다.</p>
                               <label
                                 className={`editorial-button-secondary px-4 py-2.5 ${uploadingCuratedAssetIndex !== null ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
                               >

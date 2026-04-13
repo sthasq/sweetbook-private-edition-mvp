@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { chatPersonalization, getPreview, updateProject } from "../api/projects";
 import type {
@@ -29,6 +29,12 @@ export default function ChatPersonalizationPage() {
   const [done, setDone] = useState(false);
   const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const requestInitialAssistantReply = useEffectEvent(() => {
+    void requestAssistantReply([]);
+  });
+  const applyProposalFromEffect = useEffectEvent(() => {
+    void handleApplyProposal();
+  });
 
   useEffect(() => {
     if (!projectId) {
@@ -41,6 +47,14 @@ export default function ChatPersonalizationPage() {
       })
       .finally(() => setLoading(false));
   }, [projectId]);
+
+  useEffect(() => {
+    if (!projectId || !preview || initialPromptRequestedRef.current) {
+      return;
+    }
+    initialPromptRequestedRef.current = true;
+    requestInitialAssistantReply();
+  }, [projectId, preview]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -146,21 +160,13 @@ export default function ChatPersonalizationPage() {
   }
 
   useEffect(() => {
-    if (!projectId || !preview || initialPromptRequestedRef.current) {
-      return;
-    }
-    initialPromptRequestedRef.current = true;
-    void requestAssistantReply([]);
-  }, [projectId, preview, requestAssistantReply]);
-
-  useEffect(() => {
     if (!done || !proposal || saving || !preview || autoApplyTriggeredRef.current) {
       return;
     }
 
     autoApplyTriggeredRef.current = true;
-    void handleApplyProposal();
-  }, [done, proposal, saving, preview, handleApplyProposal]);
+    applyProposalFromEffect();
+  }, [done, proposal, saving, preview]);
 
   if (loading) return <Spinner />;
   if (error && !preview) return <ErrorBox message={error} />;

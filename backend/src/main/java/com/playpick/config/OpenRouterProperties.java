@@ -13,7 +13,7 @@ public class OpenRouterProperties {
 
 	private String apiKey = "";
 
-	private String chatModel = "deepseek/deepseek-v3.2";
+	private String chatModel = "google/gemini-3-flash-preview";
 
 	public boolean isChatReady() {
 		return !apiKey.isBlank() && !chatModel.isBlank();
