@@ -201,14 +201,7 @@ export default function EditionDetailPage() {
               <div className="mt-10 grid gap-6 md:grid-cols-2">
                 {fanFields.map((field) => (
                   <div key={field.id} className="rounded bg-slate-50 border border-slate-100 px-5 py-5">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                      {field.required ? "필수 입력" : "선택 입력"}
-                    </p>
-                    <p className="mt-3 text-xl text-slate-900">{field.label}</p>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                      입력 타입: {inputTypeLabel(field.inputType)}
-                      {field.maxLength ? ` · 최대 ${field.maxLength}자` : ""}
-                    </p>
+                    <p className="text-xl text-slate-900">{field.label}</p>
                   </div>
                 ))}
               </div>
@@ -221,10 +214,7 @@ export default function EditionDetailPage() {
                   "크리에이터에게 남길 메시지",
                 ].map((label) => (
                   <div key={label} className="rounded bg-slate-50 border border-slate-100 px-5 py-5">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                      개인화 항목
-                    </p>
-                    <p className="mt-3 text-xl text-slate-900">{label}</p>
+                    <p className="text-xl text-slate-900">{label}</p>
                   </div>
                 ))}
               </div>
@@ -389,19 +379,6 @@ function editionStatusLabel(status: string) {
       return "초안";
     default:
       return status;
-  }
-}
-
-function inputTypeLabel(inputType: string) {
-  switch (inputType) {
-    case "TEXT":
-      return "한 줄 입력";
-    case "TEXTAREA":
-      return "긴 글 입력";
-    case "DATE":
-      return "날짜";
-    default:
-      return inputType;
   }
 }
 

@@ -10,7 +10,6 @@ import type { SweetbookIntegrationStatus } from "../types/api";
 import {
   estimateEditionPricing,
   integrationTone,
-  projectModeLabel,
   projectStageLabel,
 } from "../lib/sweetbookWorkflow";
 import { imageObjectPosition } from "../lib/imageFocus";
@@ -248,7 +247,6 @@ export default function PreviewPage() {
               <div className="mt-6 space-y-5">
                 <SummaryRow label="현재 단계" value={projectStageLabel(preview.status)} />
                 <SummaryRow label="에디션" value={preview.edition.title} />
-                <SummaryRow label="제작 방식" value={projectModeLabel(preview.mode)} />
                 <SummaryRow label="총 페이지" value={`${pages.length}p`} />
                 <SummaryRow
                   label="예상 가격"
@@ -1486,7 +1484,7 @@ function buildSummaryHighlight(
 
   switch (key) {
     case "mode":
-      return { key, label: "제작 방식", value: projectModeLabel(trimmed) };
+      return null;
     case "favoriteVideoId": {
       const selectedVideo = topVideos.find((video) => video.videoId === trimmed);
       return {
