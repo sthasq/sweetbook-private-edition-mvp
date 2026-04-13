@@ -310,7 +310,7 @@ export default function PreviewPage() {
                 <div className="mt-6 rounded bg-surface-low px-5 py-5">
                   <p className="editorial-label text-brand-700">자동 반영 항목</p>
                   <p className="mt-2 text-sm leading-relaxed text-warm-500">
-                    `diaryBook-demo`처럼 표지와 발행면에 들어가는 핵심 정보가 자동 정리돼요.
+                    표지와 발행면에 들어갈 핵심 문구를 책 구성에 맞춰 자동으로 정리해 보여드려요.
                   </p>
                   <div className="mt-4 space-y-4">
                     <div className="rounded bg-white/85 px-4 py-4 shadow-sm">

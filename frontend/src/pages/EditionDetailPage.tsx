@@ -183,53 +183,6 @@ export default function EditionDetailPage() {
           </section>
 
         <section className="grid gap-10 lg:grid-cols-12">
-          <div className="editorial-panel p-8 lg:col-span-5">
-            <p className="font-headline text-2xl italic text-slate-900">에디션에 담긴 장면</p>
-            <p className="mt-3 text-sm leading-relaxed text-slate-500">
-              크리에이터가 직접 고른 메시지와 이미지가 포토북의 분위기를 만들어줘요.
-            </p>
-
-            {officialAssets.length > 0 ? (
-              <div className="mt-8 space-y-4">
-                {officialAssets.map((asset) => (
-                  <AssetRow key={asset.id} asset={asset} />
-                ))}
-              </div>
-            ) : (
-              <p className="mt-8 text-sm text-slate-500">
-                크리에이터가 장면을 준비 중이에요. 곧 새로운 콘텐츠로 채워집니다.
-              </p>
-            )}
-          </div>
-
-          <div className="editorial-card p-8 lg:col-span-7">
-            <h2 className="text-3xl font-bold text-slate-900">포토북 미리보기</h2>
-            <p className="mt-4 text-sm leading-relaxed text-slate-500">
-              크리에이터가 담은 장면 위에 나의 이야기가 더해져 한 권의 포토북이 완성돼요.
-            </p>
-            {imageAssets.length > 0 ? (
-              <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {imageAssets.map((asset) => (
-                  <div key={asset.id} className="overflow-hidden rounded bg-slate-50 border border-slate-100 p-3 shadow-sm">
-                    <img
-                      src={resolveMediaUrl(asset.content || edition.coverImageUrl)}
-                      alt={asset.title}
-                      className="aspect-[4/3] w-full rounded object-cover"
-                      style={{ objectPosition: imageObjectPosition(asset.content) }}
-                    />
-                    <p className="mt-4 text-sm font-semibold text-slate-900">{asset.title}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="mt-8 rounded bg-slate-50 border border-slate-100 px-5 py-10 text-center text-sm leading-relaxed text-slate-500">
-                미리보기 이미지를 준비 중이에요. 공식 장면이 추가되면 이곳에 바로 보여드릴게요.
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="grid gap-10 lg:grid-cols-12">
           <div className="editorial-card p-8 lg:col-span-7 md:p-12">
             <div className="max-w-2xl">
               <div className="flex items-center gap-3">
@@ -280,6 +233,9 @@ export default function EditionDetailPage() {
 
           <div className="editorial-card p-8 lg:col-span-5">
             <p className="editorial-label text-slate-600">한눈에 보기</p>
+            <p className="mt-3 text-sm leading-relaxed text-slate-500">
+              크리에이터가 직접 고른 메시지와 이미지가 이 에디션의 분위기를 먼저 만들어줘요.
+            </p>
             {quickPreviewImages.length > 0 && (
               <div className="mt-5 rounded bg-slate-50 border border-slate-100 p-4">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -416,25 +372,6 @@ export default function EditionDetailPage() {
   );
 }
 
-function AssetRow({ asset }: { asset: CuratedAsset }) {
-  const summary =
-    asset.assetType === "IMAGE"
-      ? "포토북 전체 분위기를 만들어주는 대표 이미지예요."
-      : asset.content;
-
-  return (
-    <div className="rounded bg-white border border-slate-100 px-5 py-5 shadow-sm">
-      <div className="flex items-center gap-3">
-        <span className="rounded bg-slate-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600">
-          {assetTypeLabel(asset.assetType)}
-        </span>
-        <p className="text-base font-semibold text-slate-900">{asset.title}</p>
-      </div>
-      <p className="mt-3 text-sm leading-relaxed text-slate-500">{summary}</p>
-    </div>
-  );
-}
-
 function SpecRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="border-b border-slate-100 pb-4 last:border-none last:pb-0">
@@ -452,17 +389,6 @@ function editionStatusLabel(status: string) {
       return "초안";
     default:
       return status;
-  }
-}
-
-function assetTypeLabel(assetType: string) {
-  switch (assetType) {
-    case "IMAGE":
-      return "이미지";
-    case "MESSAGE":
-      return "메시지";
-    default:
-      return assetType;
   }
 }
 

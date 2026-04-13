@@ -203,7 +203,7 @@ export default function ChatPersonalizationPage() {
                   <div>
                     <p className="editorial-label text-brand-700">지금 만든 책 재료</p>
                     <p className="mt-2 text-sm leading-relaxed text-warm-500">
-                      socialBook-demo처럼, 어떤 재료로 책을 만드는지 먼저 보여주고 바로 답변할 수 있게 정리했어요.
+                      어떤 장면과 문장이 책에 들어갈지 먼저 보여드리고, 바로 답변을 이어갈 수 있게 정리했어요.
                     </p>
                   </div>
                   <span className="rounded-full bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-warm-500 shadow-sm">
@@ -317,7 +317,7 @@ export default function ChatPersonalizationPage() {
                                 {video.title}
                               </p>
                               <p className="mt-2 text-xs text-warm-500">
-                                클릭하면 답변 예시로 자동 입력돼요
+                                눌러서 이 장면으로 바로 시작할 수 있어요
                               </p>
                             </div>
                           </button>
@@ -415,7 +415,7 @@ export default function ChatPersonalizationPage() {
                       }
                     }}
                     className="editorial-input"
-                    placeholder="예: 가장 기억나는 장면은 밤기차 창가 장면이었어요."
+                    placeholder="예: 세 사람이 같이 웃던 골든아워 장면을 책의 중심에 두고 싶어요."
                     disabled={sending || saving}
                   />
                   <button
