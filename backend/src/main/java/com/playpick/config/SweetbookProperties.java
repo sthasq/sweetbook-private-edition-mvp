@@ -31,6 +31,8 @@ public class SweetbookProperties {
 
 	private String defaultDividerTemplateUid = "";
 
+	private String defaultBlankTemplateUid = "";
+
 	private String webhookSecret = "";
 
 	public boolean isLiveEnabled() {

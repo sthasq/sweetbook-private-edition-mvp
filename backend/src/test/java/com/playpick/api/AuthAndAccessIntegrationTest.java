@@ -1,5 +1,6 @@
 package com.playpick.api;
 
+import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -187,10 +188,13 @@ class AuthAndAccessIntegrationTest {
 		mockMvc.perform(get("/api/projects/{projectId}/preview", fanProjectId).session(fanSession))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.edition.id").value(editionId))
-			.andExpect(jsonPath("$.pages[1].title").value("어서 와요"))
-			.andExpect(jsonPath("$.pages[1].description").value("크리에이터 인사"))
-			.andExpect(jsonPath("$.pages[6].title").value("다음에도 만나요"))
-			.andExpect(jsonPath("$.pages[6].description").value("마지막 한마디"));
+			.andExpect(jsonPath("$.contentTemplateDetail.uid").value("3FhSEhJ94c0T"))
+			.andExpect(jsonPath("$.pages[0].key").value("cover"))
+			.andExpect(jsonPath("$.pages[1].key").value("publish"))
+			.andExpect(jsonPath("$.pages[?(@.key=='official-intro')].title").value(hasItem("어서 와요")))
+			.andExpect(jsonPath("$.pages[?(@.key=='official-intro')].description").value(hasItem("크리에이터 인사")))
+			.andExpect(jsonPath("$.pages[?(@.key=='official-closing')].title").value(hasItem("다음에도 만나요")))
+			.andExpect(jsonPath("$.pages[?(@.key=='official-closing')].description").value(hasItem("마지막 한마디")));
 	}
 
 	@Test

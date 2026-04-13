@@ -7,13 +7,23 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.time.format.TextStyle;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
 public class ProjectPreviewAssembler {
+
+	private static final int MAX_PREVIEW_PAGES = 24;
+	private static final int MAX_GALLERY_IMAGES_PER_LAYOUT = 4;
+	private static final int MAX_SELECTED_CURATED_IMAGES = 40;
+	private static final Set<String> NOTEBOOK_ACCENT_MONTHS_SPRING = Set.of("3", "4", "5");
+	private static final Set<String> NOTEBOOK_ACCENT_MONTHS_SUMMER = Set.of("6", "7", "8");
+	private static final Set<String> NOTEBOOK_ACCENT_MONTHS_AUTUMN = Set.of("9", "10", "11");
 
 	private final PublicAssetUrlResolver publicAssetUrlResolver;
 
@@ -31,23 +41,11 @@ public class ProjectPreviewAssembler {
 		Map<String, Object> favoriteVideo = findFavoriteVideo(topVideos, asString(personalization.get("favoriteVideoId"), ""));
 		String favoriteMomentTitle = asNonBlankString(favoriteVideo.get("title"), "오래 남은 장면");
 
-		ProjectViews.Page coverPage = new ProjectViews.Page(
-			"cover",
-			edition.title(),
-			creatorName + "가 " + fanNickname + "님에게 건네는 한 권",
-			edition.coverImageUrl(),
-			Map.of(
-				"fanNickname", fanNickname,
-				"subtitle", edition.subtitle()
-			)
-		);
-
-		ProjectViews.Page officialIntroPage = new ProjectViews.Page(
+		ProjectViews.Page officialIntroPage = buildStoryPreviewPage(
 			"official-intro",
-			asCopyText(edition.snapshot().officialIntro(), "title", "heading", "크리에이터 인사"),
+			asCopyText(edition.snapshot().officialIntro(), "title", "heading", "크리에이터의 첫 장"),
 			asCopyText(edition.snapshot().officialIntro(), "message", "body", ""),
-			firstAssetImage(edition.snapshot().curatedAssets(), edition.coverImageUrl()),
-			edition.snapshot().officialIntro()
+			nthAssetImage(edition.snapshot().curatedAssets(), 0, edition.coverImageUrl())
 		);
 
 		String subscribedSince = asString(personalization.get("subscribedSince"), "");
@@ -59,33 +57,23 @@ public class ProjectPreviewAssembler {
 		String defaultRelationshipBody = subscribedSince.isBlank()
 			? fanNickname + "님, " + channelTitle + "의 장면들 곁에 와줘서 고마워요. 오늘은 당신이 오래 붙잡아 둔 마음을 한 장씩 같이 펼쳐볼게요."
 			: fanNickname + "님, " + subscribedSince.substring(0, Math.min(10, subscribedSince.length())) + "부터 이어진 " + daysTogether + "일의 마음을 여기 조용히 꺼내둘게요.";
-		ProjectViews.Page relationshipPage = new ProjectViews.Page(
+		ProjectViews.Page relationshipPage = buildStoryPreviewPage(
 			"relationship",
 			asNonBlankString(bookCopy.get("relationshipTitle"), defaultRelationshipTitle),
 			asNonBlankString(bookCopy.get("relationshipBody"), defaultRelationshipBody),
-			resolveImageUrl(channel.get("bannerUrl"), edition.coverImageUrl()),
-			Map.of(
-				"daysTogether", daysTogether,
-				"subscribedSince", subscribedSince,
-				"channel", channel
-			)
+			nthAssetImage(edition.snapshot().curatedAssets(), 1, "")
 		);
 
 		String defaultMomentTitle = "이 장면을 고른 당신의 마음";
 		String defaultMomentBody = "'" + favoriteMomentTitle + "'을 떠올린 이유를 이 페이지 한가운데에 남겨둘게요. 당신이 오래 붙잡고 있던 순간이 이 책의 표정이 됩니다.";
-		ProjectViews.Page fanPickPage = new ProjectViews.Page(
+		ProjectViews.Page fanPickPage = buildStoryPreviewPage(
 			"fan-pick",
 			asNonBlankString(bookCopy.get("momentTitle"), defaultMomentTitle),
 			asNonBlankString(
 				bookCopy.get("momentBody"),
 				defaultMomentBody
 			),
-			resolveImageUrl(favoriteVideo.get("thumbnailUrl"), edition.coverImageUrl()),
-			Map.of(
-				"favoriteVideo", favoriteVideo,
-				"favoriteReason", asString(personalization.get("favoriteReason"), ""),
-				"fanNote", asString(personalization.get("fanNote"), "")
-			)
+			resolveImageUrl(favoriteVideo.get("thumbnailUrl"), edition.coverImageUrl())
 		);
 
 		String memoryImageUrl = resolveImageUrl(
@@ -97,28 +85,21 @@ public class ProjectPreviewAssembler {
 			personalization.get("fanNote"),
 			fanNickname + "님이 남긴 마음을 내가 대신 조용히 적어둔 페이지처럼 읽히면 좋겠어요."
 		);
-		ProjectViews.Page fanNotePage = new ProjectViews.Page(
+		ProjectViews.Page fanNotePage = buildStoryPreviewPage(
 			"fan-note",
 			asNonBlankString(bookCopy.get("fanNoteTitle"), defaultFanNoteTitle),
 			asNonBlankString(bookCopy.get("fanNoteBody"), defaultFanNoteBody),
-			memoryImageUrl,
-			Map.of(
-				"fanNickname", fanNickname,
-				"fanNote", asString(personalization.get("fanNote"), ""),
-				"uploadedImageUrl", memoryImageUrl
-			)
+			memoryImageUrl
 		);
 
-		ProjectViews.Page officialClosingPage = new ProjectViews.Page(
+		ProjectViews.Page officialClosingPage = buildStoryPreviewPage(
 			"official-closing",
-			asCopyText(edition.snapshot().officialClosing(), "title", "heading", "마지막 인사"),
+			asCopyText(edition.snapshot().officialClosing(), "title", "heading", "엔딩 노트"),
 			asCopyText(edition.snapshot().officialClosing(), "message", "body", ""),
-			firstAssetImage(edition.snapshot().curatedAssets(), edition.coverImageUrl()),
-			edition.snapshot().officialClosing()
+			nthAssetImage(edition.snapshot().curatedAssets(), 2, "")
 		);
 
-		List<ProjectViews.Page> pages = buildBookPreviewPages(
-			coverPage,
+		List<ProjectViews.Page> entryPages = buildEntryPages(
 			List.of(
 				officialIntroPage,
 				relationshipPage,
@@ -129,12 +110,19 @@ public class ProjectPreviewAssembler {
 			edition.snapshot().curatedAssets(),
 			edition.coverImageUrl()
 		);
+		List<ProjectViews.Page> pages = composeMixedPreviewPages(
+			edition,
+			fanNickname,
+			personalization,
+			entryPages
+		);
 
 		return new ProjectViews.Preview(
 			project.id(),
 			project.status(),
 			mode,
 			edition,
+			null,
 			personalization,
 			project.sweetbookBookUid(),
 			project.sweetbookExternalRef(),
@@ -144,42 +132,305 @@ public class ProjectPreviewAssembler {
 		);
 	}
 
-	private List<ProjectViews.Page> buildBookPreviewPages(
-		ProjectViews.Page coverPage,
+	private List<ProjectViews.Page> buildEntryPages(
 		List<ProjectViews.Page> narrativePages,
 		List<EditionViews.CuratedAsset> curatedAssets,
 		String fallbackImage
 	) {
 		List<ProjectViews.Page> pages = new ArrayList<>();
-		pages.add(coverPage);
 
-		List<List<String>> imageGroups = groupCuratedImages(curatedAssets, Math.max(23 - narrativePages.size(), 1));
-		if (narrativePages.isEmpty() && imageGroups.isEmpty()) {
+		List<String> curatedImageUrls = collectCuratedImageUrls(curatedAssets);
+		int reservedStoryImages = Math.min(3, curatedImageUrls.size());
+		List<String> galleryPool = curatedImageUrls.subList(reservedStoryImages, curatedImageUrls.size());
+		int contentPageCount = Math.max(1, MAX_PREVIEW_PAGES - 2);
+		List<ProjectViews.Page> selectedNarrativePages = new ArrayList<>(narrativePages);
+
+		List<List<String>> imageGroups = groupCuratedImages(
+			galleryPool,
+			Math.max(contentPageCount - selectedNarrativePages.size(), 1)
+		);
+		if (selectedNarrativePages.isEmpty() && imageGroups.isEmpty()) {
 			return pages;
 		}
 
-		int groupsPerNarrative = narrativePages.isEmpty()
+		int groupsPerNarrative = selectedNarrativePages.isEmpty()
 			? imageGroups.size()
-			: Math.max(1, (int) Math.ceil(imageGroups.size() / (double) narrativePages.size()));
+			: Math.max(1, (int) Math.ceil(imageGroups.size() / (double) selectedNarrativePages.size()));
 		int imageGroupIndex = 0;
 
-		for (ProjectViews.Page narrativePage : narrativePages) {
-			if (pages.size() >= 24) {
+		for (ProjectViews.Page narrativePage : selectedNarrativePages) {
+			if (pages.size() >= contentPageCount) {
 				break;
 			}
 			pages.add(narrativePage);
-			for (int count = 0; count < groupsPerNarrative && imageGroupIndex < imageGroups.size() && pages.size() < 24; count++) {
+			for (int count = 0; count < groupsPerNarrative && imageGroupIndex < imageGroups.size() && pages.size() < contentPageCount; count++) {
 				pages.add(buildGalleryPreviewPage(imageGroups.get(imageGroupIndex), imageGroupIndex, fallbackImage));
 				imageGroupIndex++;
 			}
 		}
 
-		while (imageGroupIndex < imageGroups.size() && pages.size() < 24) {
+		while (imageGroupIndex < imageGroups.size() && pages.size() < contentPageCount) {
 			pages.add(buildGalleryPreviewPage(imageGroups.get(imageGroupIndex), imageGroupIndex, fallbackImage));
 			imageGroupIndex++;
 		}
 
 		return pages;
+	}
+
+	private List<ProjectViews.Page> composeMixedPreviewPages(
+		EditionViews.Detail edition,
+		String fanNickname,
+		Map<String, Object> personalization,
+		List<ProjectViews.Page> storyPages
+	) {
+		List<ProjectViews.Page> result = new ArrayList<>();
+		LocalDate today = LocalDate.now(ZoneOffset.UTC);
+		result.add(buildMixedCoverPreviewPage(edition, fanNickname, personalization, today));
+		result.add(buildMixedPublishPreviewPage(edition, today));
+		result.addAll(storyPages);
+		while (result.size() < MAX_PREVIEW_PAGES) {
+			result.add(buildMixedBlankPreviewPage(edition.title(), today.plusDays(result.size())));
+		}
+		return result.size() > MAX_PREVIEW_PAGES ? result.subList(0, MAX_PREVIEW_PAGES) : result;
+	}
+
+	private ProjectViews.Page buildStoryPreviewPage(
+		String key,
+		String title,
+		String description,
+		String imageUrl
+	) {
+		boolean textOnly = imageUrl == null || imageUrl.isBlank();
+		Map<String, Object> payload = new LinkedHashMap<>();
+		payload.put("pageKind", textOnly ? "TEXT_STORY" : "PHOTO_STORY");
+		payload.put("templateLabel", textOnly ? "일기장B 글만" : "일기장B 사진+글");
+		return new ProjectViews.Page(
+			key,
+			title,
+			description,
+			imageUrl,
+			Map.copyOf(payload)
+		);
+	}
+
+	private ProjectViews.Page buildMixedCoverPreviewPage(
+		EditionViews.Detail edition,
+		String fanNickname,
+		Map<String, Object> personalization,
+		LocalDate today
+	) {
+		String subscribedSince = asString(personalization.get("subscribedSince"), "");
+		return new ProjectViews.Page(
+			"cover",
+			edition.title(),
+			edition.subtitle(),
+			edition.coverImageUrl(),
+			Map.of(
+				"previewTemplate", "MIXED_COVER",
+				"title", edition.title(),
+				"subtitle", edition.subtitle(),
+				"periodText", formatMixedPeriodText(subscribedSince, today),
+				"spineTitle", fanNickname + " Diary Book",
+				"coverPhoto", edition.coverImageUrl(),
+				"templateLabel", "일기장B 표지"
+			)
+		);
+	}
+
+	private ProjectViews.Page buildMixedPublishPreviewPage(EditionViews.Detail edition, LocalDate today) {
+		return new ProjectViews.Page(
+			"publish",
+			"발행면",
+			edition.creator().displayName(),
+			"",
+			Map.of(
+				"previewTemplate", "MIXED_PUBLISH",
+				"title", edition.title(),
+				"publishDate", today.getYear() + "." + String.format("%02d", today.getMonthValue()) + "." + String.format("%02d", today.getDayOfMonth()),
+				"author", edition.creator().displayName(),
+				"publisher", "(주)스위트북 x PlayPick",
+				"hashtags", "#PlayPick #Sweetbook #CreatorArchive",
+				"templateLabel", "일기장B 발행면"
+			)
+		);
+	}
+
+	private ProjectViews.Page buildMixedBlankPreviewPage(String bookTitle, LocalDate pageDate) {
+		return new ProjectViews.Page(
+			"blank-" + pageDate,
+			"빈내지",
+			bookTitle,
+			"",
+			Map.of(
+				"previewTemplate", "MIXED_BLANK",
+				"bookTitle", bookTitle,
+				"year", pageDate.getYear(),
+				"month", pageDate.getMonthValue(),
+				"templateLabel", "공용 빈내지"
+			)
+		);
+	}
+
+	private String formatMixedPeriodText(String subscribedSince, LocalDate today) {
+		if (subscribedSince != null && subscribedSince.length() >= 10) {
+			return subscribedSince.substring(0, 10).replace("-", ".") + " - " + today.toString().replace("-", ".");
+		}
+		return today.getYear() + "." + String.format("%02d", today.getMonthValue()) + "." + String.format("%02d", today.getDayOfMonth());
+	}
+
+	private List<ProjectViews.Page> applyNotebookPreviewPayload(
+		List<ProjectViews.Page> pages,
+		String bookTitle,
+		String creatorName,
+		String fanNickname
+	) {
+		if (pages.isEmpty()) {
+			return pages;
+		}
+
+		List<ProjectViews.Page> result = new ArrayList<>();
+		for (int index = 0; index < pages.size(); index++) {
+			ProjectViews.Page page = pages.get(index);
+			if ("cover".equals(page.key())) {
+				result.add(page);
+				continue;
+			}
+
+			LocalDate pageDate = LocalDate.now(ZoneOffset.UTC).plusDays(index - 1L);
+			List<String> photos = resolveNotebookPhotos(page);
+			Map<String, Object> payload = new LinkedHashMap<>(page.payload());
+			payload.put("previewTemplate", "NOTEBOOK_C");
+			payload.put("entryTitle", page.title());
+			payload.put("entryDescription", page.description());
+			payload.put("entryImageUrl", page.imageUrl());
+			payload.put("bookTitle", bookTitle);
+			payload.put("creatorName", creatorName);
+			payload.put("fanNickname", fanNickname);
+			payload.put("year", pageDate.getYear());
+			payload.put("month", pageDate.getMonthValue());
+			payload.put("monthLabel", pageDate.getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH).toUpperCase(Locale.ENGLISH));
+			payload.put("dateLabel", String.format("%02d", pageDate.getDayOfMonth()));
+			payload.put("weekdayLabel", pageDate.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH).toUpperCase(Locale.ENGLISH));
+			payload.put("pointColor", resolveNotebookPointColor(pageDate.getMonthValue()));
+			payload.put("showMonthHeading", (index - 1) % 4 == 0);
+			payload.put("photos", photos);
+			payload.put("parentComment", buildNotebookComment(page, fanNickname, true));
+			payload.put("teacherComment", buildNotebookComment(page, creatorName, false));
+			payload.put("weatherEmoji", resolveWeatherEmoji(index - 1));
+
+			result.add(new ProjectViews.Page(
+				page.key(),
+				page.title(),
+				page.description(),
+				page.imageUrl(),
+				Map.copyOf(payload)
+			));
+		}
+		return result;
+	}
+
+	private List<ProjectViews.Page> packNotebookPages(List<ProjectViews.Page> entryPages) {
+		List<ProjectViews.Page> result = new ArrayList<>();
+		for (int index = 0; index < entryPages.size(); index += 2) {
+			List<Map<String, Object>> entries = new ArrayList<>();
+			ProjectViews.Page first = entryPages.get(index);
+			entries.add(first.payload());
+			String imageUrl = first.imageUrl();
+			if (index + 1 < entryPages.size()) {
+				ProjectViews.Page second = entryPages.get(index + 1);
+				entries.add(second.payload());
+				if (imageUrl == null || imageUrl.isBlank()) {
+					imageUrl = second.imageUrl();
+				}
+			}
+			result.add(new ProjectViews.Page(
+				"notebook-page-" + (result.size() + 1),
+				first.title(),
+				first.description(),
+				imageUrl,
+				Map.of(
+					"previewTemplate", "NOTEBOOK_C_PAGE",
+					"entries", List.copyOf(entries)
+				)
+			));
+		}
+		return result;
+	}
+
+	private ProjectViews.Page buildCoverPreviewPage(
+		EditionViews.Detail edition,
+		String fanNickname,
+		Map<String, Object> personalization,
+		LocalDate today
+	) {
+		String subscribedSince = asString(personalization.get("subscribedSince"), "");
+		String periodText = subscribedSince.length() >= 10
+			? subscribedSince.substring(0, 4) + "년 " + subscribedSince.substring(5, 7) + "월 - " + today.getYear() + "년 " + today.getMonthValue() + "월"
+			: today.getYear() + "년 " + today.getMonthValue() + "월";
+		return new ProjectViews.Page(
+			"cover",
+			edition.title(),
+			edition.subtitle(),
+			edition.coverImageUrl(),
+			Map.of(
+				"previewTemplate", "NOTEBOOK_COVER",
+				"childName", fanNickname,
+				"schoolName", edition.creator().displayName() + " 아카이브",
+				"volumeLabel", "#1",
+				"periodText", periodText,
+				"coverPhoto", edition.coverImageUrl()
+			)
+		);
+	}
+
+	private ProjectViews.Page buildPublishPreviewPage(EditionViews.Detail edition, LocalDate today) {
+		return new ProjectViews.Page(
+			"publish",
+			"발행면",
+			edition.creator().displayName(),
+			edition.coverImageUrl(),
+			Map.of(
+				"previewTemplate", "NOTEBOOK_PUBLISH",
+				"photo", edition.coverImageUrl(),
+				"title", edition.title(),
+				"publishDate", today.getYear() + "년 " + today.getMonthValue() + "월 " + today.getDayOfMonth() + "일",
+				"author", edition.creator().displayName(),
+				"publisher", "(주)스위트북 x PlayPick",
+				"hashtags", "#PlayPick #Sweetbook #CreatorArchive"
+			)
+		);
+	}
+
+	private ProjectViews.Page buildDividerPreviewPage(String bookTitle, LocalDate today, int chapterNum) {
+		return new ProjectViews.Page(
+			"divider-" + chapterNum,
+			today.getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH).toUpperCase(Locale.ENGLISH),
+			bookTitle,
+			"",
+			Map.of(
+				"previewTemplate", "NOTEBOOK_DIVIDER",
+				"year", today.getYear(),
+				"monthName", today.getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH).toUpperCase(Locale.ENGLISH),
+				"monthNum", String.format("%02d", today.getMonthValue()),
+				"chapterNum", chapterNum,
+				"bgColor", resolveNotebookPointColor(today.getMonthValue())
+			)
+		);
+	}
+
+	private ProjectViews.Page buildBlankPreviewPage(String bookTitle, LocalDate pageDate) {
+		return new ProjectViews.Page(
+			"blank-" + pageDate,
+			"빈내지",
+			bookTitle,
+			"",
+			Map.of(
+				"previewTemplate", "NOTEBOOK_BLANK",
+				"bookTitle", bookTitle,
+				"year", pageDate.getYear(),
+				"month", pageDate.getMonthValue()
+			)
+		);
 	}
 
 	private long computeDaysTogether(String subscribedSince) {
@@ -204,13 +455,26 @@ public class ProjectPreviewAssembler {
 			.orElseGet(() -> topVideos.isEmpty() ? Map.of() : topVideos.get(0));
 	}
 
-	private List<List<String>> groupCuratedImages(List<EditionViews.CuratedAsset> assets, int targetGroupCount) {
-		List<String> imageUrls = collectCuratedImageUrls(assets);
+	private int requiredGalleryPageCount(int imageCount) {
+		if (imageCount <= 0) {
+			return 0;
+		}
+		return (int) Math.ceil(imageCount / (double) MAX_GALLERY_IMAGES_PER_LAYOUT);
+	}
+
+	private List<List<String>> groupCuratedImages(List<String> imageUrls, int targetGroupCount) {
 		if (imageUrls.isEmpty()) {
 			return List.of();
 		}
 
-		int safeGroupCount = Math.max(1, Math.min(targetGroupCount, imageUrls.size()));
+		int minimumRequiredGroupCount = requiredGalleryPageCount(imageUrls.size());
+		int safeGroupCount = Math.max(
+			1,
+			Math.min(
+				imageUrls.size(),
+				Math.max(minimumRequiredGroupCount, targetGroupCount <= 0 ? minimumRequiredGroupCount : Math.min(targetGroupCount, imageUrls.size()))
+			)
+		);
 		int baseGroupSize = imageUrls.size() / safeGroupCount;
 		int remainder = imageUrls.size() % safeGroupCount;
 		List<List<String>> groups = new ArrayList<>();
@@ -228,28 +492,60 @@ public class ProjectPreviewAssembler {
 		if (assets == null || assets.isEmpty()) {
 			return List.of();
 		}
-		return assets.stream()
+		List<String> imageUrls = assets.stream()
 			.filter(asset -> "IMAGE".equals(asset.assetType()))
 			.map(EditionViews.CuratedAsset::content)
 			.map(publicAssetUrlResolver::resolve)
 			.toList();
+		return selectRepresentativeImages(imageUrls, MAX_SELECTED_CURATED_IMAGES);
+	}
+
+	private List<String> selectRepresentativeImages(List<String> imageUrls, int limit) {
+		if (imageUrls.size() <= limit) {
+			return imageUrls;
+		}
+
+		List<String> selected = new ArrayList<>(limit);
+		double maxIndex = imageUrls.size() - 1;
+		for (int index = 0; index < limit; index++) {
+			int sampledIndex = (int) Math.round(index * maxIndex / (limit - 1));
+			String candidate = imageUrls.get(sampledIndex);
+			if (!selected.contains(candidate)) {
+				selected.add(candidate);
+			}
+		}
+
+		if (selected.size() < limit) {
+			for (String imageUrl : imageUrls) {
+				if (selected.contains(imageUrl)) {
+					continue;
+				}
+				selected.add(imageUrl);
+				if (selected.size() == limit) {
+					break;
+				}
+			}
+		}
+		return List.copyOf(selected);
 	}
 
 	private ProjectViews.Page buildGalleryPreviewPage(List<String> imageUrls, int index, String fallbackImage) {
 		String imageUrl = imageUrls.isEmpty() ? publicAssetUrlResolver.resolve(fallbackImage) : imageUrls.get(0);
 		String chapterTitle = switch (index % 3) {
-			case 0 -> "Collab Archive Grid";
-			case 1 -> "Daylight Sequence";
-			default -> "Night Memo Spread";
+			case 0 -> "공식 컷 아카이브";
+			case 1 -> "무드 컷 셀렉션";
+			default -> "포토북 갤러리";
 		};
 		String description = imageUrls.size()
-			+ "개의 장면을 한 spread 안에 묶어 실제 포토북처럼 장면 밀도를 높인 갤러리 페이지입니다.";
+			+ "개의 장면을 한 번에 담아 템포를 바꿔주는 갤러리 페이지입니다.";
 		return new ProjectViews.Page(
 			"gallery-" + (index + 1),
 			chapterTitle,
 			description,
 			imageUrl,
 			Map.of(
+				"pageKind", "GALLERY",
+				"templateLabel", "일기장B 갤러리",
 				"assetType", "IMAGE_GROUP",
 				"imageCount", imageUrls.size(),
 				"imageUrls", List.copyOf(imageUrls)
@@ -308,8 +604,55 @@ public class ProjectPreviewAssembler {
 	private String describeCuratedAsset(EditionViews.CuratedAsset asset, String creatorName, String fanNickname) {
 		return switch (asset.assetType()) {
 			case "MESSAGE" -> asNonBlankString(asset.content(), creatorName + "가 이번 협업 에디션을 위해 남긴 메모입니다.");
-			case "VIDEO" -> creatorName + "가 함께 고른 하이라이트 장면이에요. " + fanNickname + "님이 책장을 넘길 때 흐름이 자연스럽게 이어지도록 중간 호흡을 만들어주는 레퍼런스예요.";
 			default -> creatorName + "가 이 에디션의 결을 만들기 위해 직접 고른 공식 장면이에요. " + fanNickname + "님의 문장과 나란히 놓였을 때 한 권의 포토북으로 읽히도록 배치했어요.";
+		};
+	}
+
+	private List<String> resolveNotebookPhotos(ProjectViews.Page page) {
+		if (page.payload() != null) {
+			Object photoValue = page.payload().get("imageUrls");
+			if (photoValue instanceof List<?> list) {
+				return list.stream()
+					.filter(String.class::isInstance)
+					.map(String.class::cast)
+					.filter(url -> !url.isBlank())
+					.limit(MAX_GALLERY_IMAGES_PER_LAYOUT)
+					.toList();
+			}
+		}
+		if (page.imageUrl() == null || page.imageUrl().isBlank()) {
+			return List.of();
+		}
+		return List.of(page.imageUrl());
+	}
+
+	private String buildNotebookComment(ProjectViews.Page page, String speaker, boolean parentTone) {
+		String body = asNonBlankString(page.description(), page.title());
+		String prefix = parentTone ? speaker + "님이 남긴 한마디" : speaker + "가 정리한 오늘의 기록";
+		String comment = prefix + "\n" + body;
+		return comment.length() > 320 ? comment.substring(0, 320) : comment;
+	}
+
+	private String resolveNotebookPointColor(int month) {
+		String key = String.valueOf(month);
+		if (NOTEBOOK_ACCENT_MONTHS_SPRING.contains(key)) {
+			return "#F9B96E";
+		}
+		if (NOTEBOOK_ACCENT_MONTHS_SUMMER.contains(key)) {
+			return "#8FE3CF";
+		}
+		if (NOTEBOOK_ACCENT_MONTHS_AUTUMN.contains(key)) {
+			return "#FFB26B";
+		}
+		return "#8CB9FF";
+	}
+
+	private String resolveWeatherEmoji(int index) {
+		return switch (Math.floorMod(index, 4)) {
+			case 0 -> "☀";
+			case 1 -> "☁";
+			case 2 -> "☂";
+			default -> "❄";
 		};
 	}
 
@@ -320,6 +663,24 @@ public class ProjectPreviewAssembler {
 			.map(EditionViews.CuratedAsset::content)
 			.map(publicAssetUrlResolver::resolve)
 			.orElse(publicAssetUrlResolver.resolve(fallback));
+	}
+
+	private String nthAssetImage(List<EditionViews.CuratedAsset> assets, int index, String fallback) {
+		if (assets == null || assets.isEmpty()) {
+			return publicAssetUrlResolver.resolve(fallback);
+		}
+		List<String> imageUrls = selectRepresentativeImages(
+			assets.stream()
+			.filter(asset -> "IMAGE".equals(asset.assetType()))
+			.map(EditionViews.CuratedAsset::content)
+			.map(publicAssetUrlResolver::resolve)
+			.toList(),
+			MAX_SELECTED_CURATED_IMAGES
+		);
+		if (index >= 0 && index < imageUrls.size()) {
+			return imageUrls.get(index);
+		}
+		return publicAssetUrlResolver.resolve(fallback);
 	}
 
 	private String resolveImageUrl(Object value, String fallback) {

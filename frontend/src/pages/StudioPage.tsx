@@ -36,7 +36,7 @@ import {
   toAbsoluteAppUrl,
 } from "../lib/appPaths";
 
-const ASSET_TYPES = ["IMAGE", "VIDEO", "MESSAGE"] as const;
+const ASSET_TYPES = ["IMAGE", "MESSAGE"] as const;
 const FIELD_TYPES = ["TEXT", "TEXTAREA", "DATE"] as const;
 const STUDIO_STEPS = [
   {
@@ -66,12 +66,12 @@ const STUDIO_STEPS = [
 ] as const;
 
 const SWEETBOOK_EDITOR_TOOLS = [
-  { key: "cover", label: "표지 파라미터", description: "커버 이미지와 제목처럼 표지 템플릿에 바로 바인딩될 값을 준비합니다." },
-  { key: "publish", label: "발행면 파라미터", description: "제목, 발행일, 저자 정보처럼 오프닝 페이지에 들어갈 값을 정리합니다." },
-  { key: "content", label: "본문 파라미터", description: "사진과 캡션을 반복 배치할 본문 템플릿 규칙을 정합니다." },
-  { key: "page-rule", label: "페이지 규칙", description: "최소 페이지 수와 증분 단위에 맞는 자동 생성 분량을 확인합니다." },
-  { key: "fallback", label: "실패 대비", description: "시뮬레이션 모드와 실제 샌드박스 모드가 언제 쓰이는지 구분합니다." },
-  { key: "webhook", label: "주문 추적", description: "출력 후에는 주문 웹훅 기준으로 제작/배송 단계를 추적합니다." },
+  { key: "cover", label: "표지 파라미터", description: "표지에 바인딩할 값." },
+  { key: "publish", label: "발행면 파라미터", description: "오프닝 페이지 값." },
+  { key: "content", label: "본문 파라미터", description: "본문 템플릿·사진 배치." },
+  { key: "page-rule", label: "페이지 규칙", description: "최소·증분 페이지." },
+  { key: "fallback", label: "실패 대비", description: "시뮬 / 샌드박스 구분." },
+  { key: "webhook", label: "주문 추적", description: "웹훅으로 제작·배송." },
 ] as const;
 
 const PLAYPICK_COVER_TEMPLATE_LIMIT = 4;
@@ -540,7 +540,7 @@ export default function StudioPage() {
   return (
     <StudioShell
       title={created ? "에디션 편집" : "에디션 제작"}
-      description="에디션을 단계별로 구성하고, 초안을 저장한 뒤 팬에게 공개할 수 있는 제작 전용 화면이에요."
+      description="단계별로 채운 뒤 저장·공개하면 됩니다."
       meta={
         <>
           {created && (
@@ -626,9 +626,7 @@ export default function StudioPage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-stone-900">에디션 기본 정보</h2>
-                <p className="mt-1 text-sm text-stone-600">
-                  팬이 처음 보게 될 제목과 커버 이미지를 설정해주세요. 인쇄 규격과 레이아웃은 이후 단계에서 설정할 수 있어요.
-                </p>
+                <p className="mt-1 text-sm text-stone-600">제목·커버를 먼저 넣어 주세요.</p>
               </div>
               <div className="rounded-full bg-surface-low px-3 py-1 text-[11px] font-medium text-warm-500">
                 예상 제작가 {pricingHint.productPrice.toLocaleString("ko-KR")}원부터
@@ -643,9 +641,7 @@ export default function StudioPage() {
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm font-semibold text-stone-900">커버 이미지</p>
-                      <p className="mt-1 text-sm text-warm-500">
-                        파일 업로드를 우선으로 쓰고, 필요하면 아래 URL을 직접 붙여 넣을 수도 있습니다.
-                      </p>
+                      <p className="mt-1 text-xs text-warm-500">업로드 또는 URL.</p>
                     </div>
                     <label className="editorial-button-secondary cursor-pointer px-4 py-2.5">
                       {uploadingCover ? "업로드 중..." : "파일 업로드"}
@@ -665,7 +661,7 @@ export default function StudioPage() {
               </div>
 
               <div className="rounded-3xl border border-stone-200 bg-stone-50/80 p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-500">미리보기</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-500">커버</p>
                 <div className="mt-4 overflow-hidden rounded-2xl border border-stone-200 bg-white p-3">
                   <img
                     src={resolveMediaUrl(form.coverImageUrl)}
@@ -676,9 +672,7 @@ export default function StudioPage() {
                 <p className="mt-4 text-lg font-semibold text-stone-900">
                   {form.title || "아직 제목이 없습니다"}
                 </p>
-                <p className="mt-2 text-sm leading-relaxed text-warm-500">
-                  {form.subtitle || "부제목을 적으면 팬이 에디션을 이해하기 쉬워집니다."}
-                </p>
+                <p className="mt-2 text-xs text-warm-500">{form.subtitle || "부제목(선택)"}</p>
               </div>
             </div>
           </section>
@@ -692,49 +686,29 @@ export default function StudioPage() {
               <div>
                 <h2 className="text-lg font-semibold text-stone-900">조판 가이드</h2>
                 <p className="mt-1 text-sm text-stone-600">
-                  공개 API 기준으로는 호스팅 에디터 대신 템플릿 조합과 페이지 규칙을 먼저 정하고, 이후 팬 입력이 그 위에 들어갑니다.
+                  표지·발행·본문 템플릿을 고른 뒤, 콘텐츠 단계에서 자산과 팬 입력을 채웁니다.
                 </p>
               </div>
-              <p className="text-xs font-medium text-stone-500">
-                Sweetbook 템플릿 기반
-              </p>
+              <p className="text-xs font-medium text-stone-500">Sweetbook 템플릿</p>
             </div>
 
-            <div className="mt-5 grid gap-4 lg:grid-cols-2">
-              <div className="rounded-3xl border border-brand-200 bg-brand-50/60 p-5 text-left">
-                <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-gold-500">
-                  기본 흐름
-                </span>
-                <h3 className="mt-4 text-2xl font-semibold text-stone-900">템플릿과 자산으로 초안 생성</h3>
-                <p className="mt-3 text-sm leading-relaxed text-warm-500">
-                  표지, 발행면, 본문 템플릿을 고른 뒤 큐레이션 자산과 팬 입력 항목을 조합해 인쇄용 초안을 만듭니다.
-                </p>
-                <p className="mt-4 rounded-2xl bg-white/80 px-4 py-3 text-sm text-stone-700">
-                  현재 Studio는 하나의 조판 흐름만 제공하며, 선택한 템플릿과 페이지 규칙을 기준으로 미리보기와 출력을 이어갑니다.
-                </p>
-              </div>
-              <div className="rounded-3xl border border-stone-200 bg-stone-50/70 p-5 text-left">
-                <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">
-                  체크 포인트
-                </span>
-                <h3 className="mt-4 text-2xl font-semibold text-stone-900">페이지 규칙 먼저 확인</h3>
-                <p className="mt-3 text-sm leading-relaxed text-warm-500">
-                  인쇄 규격마다 최소 페이지 수와 증분 단위가 다르기 때문에, 대표 장면과 메시지가 현재 분량 계획에 맞는지 먼저 확인하는 것이 중요합니다.
-                </p>
-                <p className="mt-4 rounded-2xl bg-white/80 px-4 py-3 text-sm text-stone-700">
-                  본문 템플릿은 사진 중심 구성을 기본으로 쓰고, 팬 참여 텍스트는 후반부 개인화 페이지와 미리보기에서 함께 반영됩니다.
-                </p>
-              </div>
-            </div>
+            <ul className="mt-4 space-y-2 rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-3 text-sm text-stone-600">
+              <li className="flex gap-2">
+                <span className="text-stone-400">·</span>
+                <span>규격마다 최소 페이지·증분 단위가 다릅니다. 검토 단계에서 분량을 확인하세요.</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-stone-400">·</span>
+                <span>팬 텍스트는 개인화·미리보기 흐름에 반영됩니다.</span>
+              </li>
+            </ul>
           </section>
 
           <section className="editorial-card p-6 md:p-8">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-stone-900">템플릿 큐레이션</h2>
-                <p className="mt-1 text-sm text-stone-600">
-                  플레이픽 포토북 컨셉에 맞는 추천 템플릿만 남겨 두었습니다.
-                </p>
+                <h2 className="text-lg font-semibold text-stone-900">템플릿</h2>
+                <p className="mt-1 text-sm text-stone-600">포토북에 맞게 추린 목록입니다.</p>
               </div>
               <p className="text-xs font-medium text-stone-500">
                 규격 {selectedBookSpec?.name ?? form.bookSpecUid}
@@ -753,7 +727,7 @@ export default function StudioPage() {
               <div className="mt-5 space-y-5">
                 <SweetbookTemplateSection
                   title="표지 템플릿"
-                  description="플레이픽 포토북 컨셉에 맞는 표지 4종만 추려서 보여줍니다."
+                  description="표지 4종."
                   templates={sweetbookTemplateGroups.cover}
                   selectedUid={form.sweetbookCoverTemplateUid ?? ""}
                   onSelect={(uid) => selectSweetbookTemplate("cover", uid)}
@@ -761,7 +735,7 @@ export default function StudioPage() {
                 />
                 <SweetbookTemplateSection
                   title="발행면 템플릿"
-                  description="오프닝 톤에 맞는 발행면 3종만 추려서 보여줍니다."
+                  description="발행면 3종."
                   templates={sweetbookTemplateGroups.publish}
                   selectedUid={form.sweetbookPublishTemplateUid ?? ""}
                   onSelect={(uid) => selectSweetbookTemplate("publish", uid)}
@@ -769,7 +743,7 @@ export default function StudioPage() {
                 />
                 <SweetbookTemplateSection
                   title="본문 템플릿"
-                  description="사진 중심 포토북에 잘 맞는 본문 6종만 남겨서 보여줍니다."
+                  description="본문 6종."
                   templates={sweetbookTemplateGroups.content}
                   selectedUid={form.sweetbookContentTemplateUid ?? ""}
                   onSelect={(uid) => selectSweetbookTemplate("content", uid)}
@@ -804,12 +778,10 @@ export default function StudioPage() {
               <h2 className="text-lg font-semibold text-stone-900">큐레이션 자산</h2>
               <button type="button" onClick={addAsset} className="editorial-button-secondary px-4 py-2.5">자산 추가</button>
             </div>
-            <p className="mt-5 rounded-2xl border border-dashed border-stone-300 bg-stone-50/70 px-4 py-4 text-sm leading-relaxed text-stone-600">
-              공식 이미지, 영상 링크, 메시지를 직접 구성해 팬에게 보여줄 핵심 장면을 설계하세요.
-            </p>
+            <p className="mt-4 text-sm text-stone-600">이미지와 메시지를 넣어 장면을 구성합니다.</p>
             <div className="mt-5 space-y-4">
               {assets.length === 0 ? (
-                <p className="rounded-2xl border border-dashed border-stone-300 bg-stone-50/70 px-4 py-8 text-center text-sm text-stone-500">이미지, 영상 링크, 메시지를 추가해 팬용 템플릿을 구성하세요.</p>
+                <p className="rounded-2xl border border-dashed border-stone-300 bg-stone-50/70 px-4 py-8 text-center text-sm text-stone-500">자산을 추가해 주세요.</p>
               ) : (
                 assets.map((asset, index) => (
                   <div key={`${asset.sortOrder}-${index}`} className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4 space-y-3">
@@ -846,14 +818,10 @@ export default function StudioPage() {
                             </div>
                             <input value={asset.content} onChange={(e) => updateAsset(index, "content", e.target.value)} className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="이미지 URL" />
                           </div>
-                        ) : (
-                          <input value={asset.content} onChange={(e) => updateAsset(index, "content", e.target.value)} className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="영상 링크" />
-                        )}
+                        ) : null}
                       </div>
                       <div className="min-w-0 rounded-2xl border border-stone-200 bg-white/80 p-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-stone-500">
-                          미리보기
-                        </p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-stone-500">확인</p>
                         <div className="mt-3">
                           <AssetPreview asset={asset} />
                         </div>
@@ -897,16 +865,9 @@ export default function StudioPage() {
 
           {activeStep === "review" && (
             <section className="rounded-3xl border border-stone-200 bg-white/88 p-6 shadow-sm shadow-brand-100/30">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-stone-900">검토 및 공개</h2>
-                  <p className="mt-1 text-sm text-stone-600">
-                    설정한 템플릿과 입력 내용을 최종 확인한 뒤, 초안을 저장하거나 팬에게 공개하세요.
-                  </p>
-                </div>
-                <p className="text-xs font-medium text-stone-500">
-                  저장 후에는 팬 시점 링크를 바로 확인하고 다시 편집할 수 있습니다.
-                </p>
+              <div>
+                <h2 className="text-lg font-semibold text-stone-900">검토 및 공개</h2>
+                <p className="mt-1 text-sm text-stone-600">확인 후 저장하거나 공개하세요. 저장 뒤에도 다시 편집할 수 있어요.</p>
               </div>
 
               <div className="mt-5 grid gap-3 md:grid-cols-5">
@@ -963,9 +924,7 @@ export default function StudioPage() {
                   <p className="mt-3 text-base font-semibold text-stone-900">
                     {form.title || "아직 제목이 없습니다"}
                   </p>
-                  <p className="mt-1 text-sm text-stone-600">
-                    {form.subtitle || "부제목을 입력하면 여기에서 함께 확인됩니다."}
-                  </p>
+                  <p className="mt-1 text-sm text-stone-600">{form.subtitle || "—"}</p>
                 </div>
                 <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">레이아웃 선택 요약</p>
@@ -992,21 +951,19 @@ export default function StudioPage() {
                           {item.status}
                         </span>
                       </div>
-                      <p className="mt-2 text-sm text-warm-500">{item.description}</p>
+                      <p className="mt-2 text-xs text-warm-500">{item.description}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
               <div className="mt-4 rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-500">
-                  출력 파라미터 맵
-                </p>
-                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-500">출력 파라미터</p>
+                <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                   {SWEETBOOK_EDITOR_TOOLS.map((tool) => (
-                    <div key={tool.key} className="rounded-2xl border border-stone-200 bg-white/80 px-4 py-3">
-                      <p className="text-sm font-semibold text-stone-900">{tool.label}</p>
-                      <p className="mt-1 text-sm text-warm-500">{tool.description}</p>
+                    <div key={tool.key} className="rounded-xl border border-stone-200 bg-white/80 px-3 py-2">
+                      <p className="text-xs font-semibold text-stone-900">{tool.label}</p>
+                      <p className="mt-0.5 text-[11px] text-warm-500">{tool.description}</p>
                     </div>
                   ))}
                 </div>
@@ -1035,7 +992,7 @@ export default function StudioPage() {
                 </ul>
               ) : (
                 <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-emerald-700">
-                  필수 입력이 모두 채워졌습니다. 초안 저장 또는 퍼블리시를 진행해도 됩니다.
+                  저장 또는 공개를 진행할 수 있어요.
                 </div>
               )}
             </section>
@@ -1577,7 +1534,7 @@ function SweetbookTemplateSection({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-sm font-semibold text-stone-900">{title}</h3>
-          <p className="mt-1 text-sm text-stone-600">{description}</p>
+          <p className="mt-1 text-xs text-stone-500">{description}</p>
           <p className="mt-2 text-xs text-stone-500">
             현재 선택: <span className="font-medium text-stone-700">{selectedTemplateName}</span>
           </p>
@@ -1614,9 +1571,7 @@ function SweetbookTemplateSection({
       {!isExpanded ? (
         <div className="mt-4 rounded-xl border border-dashed border-stone-300 bg-white/80 p-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-stone-500">
-              템플릿 {templates.length}개가 준비되어 있습니다. 필요할 때 펼쳐서 살펴보세요.
-            </div>
+            <div className="text-xs text-stone-500">템플릿 {templates.length}개 · 펼쳐서 선택</div>
             {selectedTemplate && (
               <div className="flex w-full items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50/80 p-3 sm:w-auto sm:min-w-[260px]">
                 <div className="w-24 shrink-0 overflow-hidden rounded-xl border border-stone-200 bg-white">
@@ -1690,18 +1645,13 @@ function SweetbookTemplatePreview({
 
   if (template.thumbnailUrl) {
     return (
-      <div className={`relative ${aspectClass} overflow-hidden bg-stone-100 ${selectedClass}`}>
+      <div className={`${aspectClass} overflow-hidden bg-stone-100 ${selectedClass}`}>
         <img
           src={resolveMediaUrl(template.thumbnailUrl)}
-          alt={`${template.name} 레이아웃 미리보기`}
+          alt={`${template.name} 레이아웃`}
           className="h-full w-full object-cover"
           loading="lazy"
         />
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-stone-950/55 via-stone-900/10 to-transparent px-3 py-2">
-          <div className="inline-flex rounded-full bg-white/88 px-2.5 py-1 text-[10px] font-semibold tracking-[0.18em] text-stone-700">
-            템플릿 미리보기
-          </div>
-        </div>
       </div>
     );
   }
@@ -1766,7 +1716,7 @@ function SweetbookTemplatePreview({
         <div className="flex h-full items-center justify-center rounded-xl border-2 border-dashed border-stone-200 bg-stone-50">
           <div className="text-center text-xs text-stone-400">
             <div className="mx-auto h-10 w-10 rounded-full border border-stone-200 bg-white" />
-            <p className="mt-2">여백 중심 레이아웃</p>
+            <p className="mt-2">여백</p>
           </div>
         </div>
       </div>
@@ -1829,48 +1779,11 @@ function AssetPreview({ asset }: { asset: StudioCuratedAssetInput }) {
             className="aspect-[4/3] w-full object-cover"
           />
         ) : (
-          <div className="flex aspect-[4/3] items-center justify-center px-4 text-center text-sm text-stone-500">
-            이미지 URL을 입력하면 여기에서 바로 미리 볼 수 있습니다.
-          </div>
+          <div className="flex aspect-[4/3] items-center justify-center px-4 text-center text-xs text-stone-500">URL 입력 시 표시</div>
         )}
         <div className="border-t border-stone-200 bg-white/90 px-3 py-2">
           <p className="text-sm font-medium text-stone-900">
             {asset.title || "이미지 자산 제목"}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (asset.assetType === "VIDEO") {
-    const videoMeta = parseVideoPreview(asset.content);
-
-    return (
-      <div className="overflow-hidden rounded-xl border border-stone-200 bg-stone-100">
-        {videoMeta.thumbnailUrl ? (
-          <div className="relative">
-            <img
-              src={resolveMediaUrl(videoMeta.thumbnailUrl)}
-              alt={asset.title || "영상 미리보기"}
-              className="aspect-video w-full object-cover"
-            />
-            <div className="absolute inset-0 flex items-center justify-center bg-stone-900/20">
-              <div className="rounded-full bg-white/92 px-3 py-1 text-xs font-semibold text-stone-900 shadow-sm">
-                VIDEO
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex aspect-video items-center justify-center px-4 text-center text-sm text-stone-500">
-            영상 링크를 입력하면 썸네일 또는 링크 프리뷰가 표시됩니다.
-          </div>
-        )}
-        <div className="space-y-1 border-t border-stone-200 bg-white/90 px-3 py-3">
-          <p className="text-sm font-medium text-stone-900">
-            {asset.title || "영상 자산 제목"}
-          </p>
-          <p className="line-clamp-2 text-xs text-stone-500 break-all">
-            {asset.content || "영상 링크가 여기에 표시됩니다."}
           </p>
         </div>
       </div>
@@ -1882,45 +1795,11 @@ function AssetPreview({ asset }: { asset: StudioCuratedAssetInput }) {
       <p className="text-sm font-medium text-stone-900">
         {asset.title || "메시지 자산 제목"}
       </p>
-      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-stone-600">
-        {asset.content || "메시지를 입력하면 이 영역에서 실제 카드처럼 읽어볼 수 있습니다."}
+      <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-sm text-stone-600">
+        {asset.content || "내용을 입력하세요."}
       </p>
     </div>
   );
-}
-
-function parseVideoPreview(url: string) {
-  const trimmed = url.trim();
-  if (!trimmed) {
-    return { thumbnailUrl: "" };
-  }
-
-  const youtubeId = extractYouTubeVideoId(trimmed);
-  if (youtubeId) {
-    return {
-      thumbnailUrl: `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`,
-    };
-  }
-
-  return { thumbnailUrl: "" };
-}
-
-function extractYouTubeVideoId(url: string) {
-  const patterns = [
-    /[?&]v=([a-zA-Z0-9_-]{6,})/,
-    /youtu\.be\/([a-zA-Z0-9_-]{6,})/,
-    /embed\/([a-zA-Z0-9_-]{6,})/,
-    /shorts\/([a-zA-Z0-9_-]{6,})/,
-  ];
-
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match?.[1]) {
-      return match[1];
-    }
-  }
-
-  return "";
 }
 
 function buildSweetbookPagePlan({
@@ -1946,46 +1825,40 @@ function buildSweetbookPagePlan({
       title: "1p 표지",
       status: coverReady ? "준비됨" : "보완 필요",
       tone: coverReady ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
-      description: coverReady
-        ? "커버 이미지와 제목이 준비되어 표지 템플릿에 바로 적용할 수 있어요."
-        : "커버 이미지와 제목을 먼저 채우면 표지 생성 단계로 자연스럽게 이어집니다.",
+      description: coverReady ? "커버·제목 반영 가능." : "커버·제목을 입력하세요.",
     },
     {
       title: "오프닝 페이지",
       status: introReady ? "준비됨" : "보완 필요",
       tone: introReady ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
-      description: introReady
-        ? "인트로 메시지가 있어 발행면과 첫 페이지에서 세계관을 설명할 수 있습니다."
-        : "인트로 제목과 메시지를 채우면 발행면과 첫 페이지의 맥락이 더 선명해집니다.",
+      description: introReady ? "인트로 반영 가능." : "인트로 제목·본문을 입력하세요.",
     },
     {
       title: "본문 사진 배치",
       status: assetCount > 0 ? `${assetCount}개 준비` : "자산 필요",
       tone: assetCount > 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
-      description: `본문 템플릿(${contentTemplateName})과 대표 자산 ${assetCount}개를 바탕으로 인쇄용 초안을 만들고, 이후 보정 포인트를 점검하는 흐름입니다.`,
+      description:
+        assetCount > 0
+          ? `본문(${contentTemplateName})·자산 ${assetCount}개.`
+          : `본문(${contentTemplateName})용 자산을 추가하세요.`,
     },
     {
       title: "팬 참여 페이지",
       status: fieldCount > 0 ? `${fieldCount}개 항목` : "항목 필요",
       tone: fieldCount > 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
-      description:
-        fieldCount > 0
-          ? "팬 입력 항목이 준비되어 있어 후반부 참여형 페이지나 주문 개인화 영역으로 연결할 수 있습니다."
-          : "팬 입력 항목을 추가하면 텍스트/메시지 중심 페이지를 설계하기 쉬워집니다.",
+      description: fieldCount > 0 ? `팬 입력 ${fieldCount}개.` : "팬 입력 항목 추가.",
     },
     {
       title: "페이지 수 규칙",
       status: bookPlan.isValid ? `${bookPlan.plannedTotalPages}p 통과` : "규칙 점검 필요",
       tone: bookPlan.isValid ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
-      description: `현재 페이지 계획은 ${bookPlan.plannedTotalPages}p이며, 최소 ${bookPlan.minimumPages}p에서 ${bookPlan.pageIncrement}p 단위로 증감하는 규칙을 기준으로 검토합니다.`,
+      description: `${bookPlan.plannedTotalPages}p · 최소 ${bookPlan.minimumPages}p · ${bookPlan.pageIncrement}p 단위.`,
     },
     {
       title: "엔딩 페이지",
       status: closingReady ? "준비됨" : "보완 필요",
       tone: closingReady ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
-      description: closingReady
-        ? "클로징 메시지가 있어 마지막 장과 최종화 직전 검수 포인트가 분명합니다."
-        : "클로징 제목과 메시지를 채우면 마지막 페이지 감정선을 더 잘 닫을 수 있습니다.",
+      description: closingReady ? "클로징 반영 가능." : "클로징 제목·본문을 입력하세요.",
     },
   ];
 }

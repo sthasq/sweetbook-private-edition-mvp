@@ -87,49 +87,49 @@ public class ProjectService {
 		data.put("topVideos", List.of(
 			Map.of(
 				"videoId", "collab-demo-1",
-				"title", "세 사람이 한 프레임에 들어온 골든아워 오프닝",
+				"title", "[Vlog] 드디어 셋이 모였다! LA 사막 한가운데서 맞이한 골든아워 ✨",
 				"thumbnailUrl", "/demo-assets/collab-trio-sunset.png",
 				"viewCount", 1450000,
 				"publishedAt", "2025-09-01T00:00:00Z"
 			),
 			Map.of(
 				"videoId", "collab-demo-2",
-				"title", "Astra Vale의 사막 협곡 포토 다이어리",
+				"title", "끝없는 모래바람 🏜️ 붉은 협곡에서 건진 인생샷 대방출 (feat. Astra Vale)",
 				"thumbnailUrl", "/demo-assets/astra-vale-story-1.png",
 				"viewCount", 980000,
 				"publishedAt", "2025-09-04T00:00:00Z"
 			),
 			Map.of(
 				"videoId", "collab-demo-3",
-				"title", "Mina Loop의 시티 드라이브 컷",
+				"title", "도심을 가르는 시티 드라이브 🌃 밤공기 맞으며 찍은 미친 야경 (by Mina Loop)",
 				"thumbnailUrl", "/demo-assets/mina-loop-story-2.png",
 				"viewCount", 910000,
 				"publishedAt", "2025-09-09T00:00:00Z"
 			),
 			Map.of(
 				"videoId", "collab-demo-4",
-				"title", "Noah Reed의 스튜디오 나이트 노트",
+				"title", "[Playlist] 감성 찢었다.. 🎧 조용한 스튜디오의 밤하늘을 닮은 나이트 노트 (with Noah Reed)",
 				"thumbnailUrl", "/demo-assets/noah-reed-story-2.png",
 				"viewCount", 870000,
 				"publishedAt", "2025-09-14T00:00:00Z"
 			),
 			Map.of(
 				"videoId", "collab-demo-5",
-				"title", "플랫폼에서 다시 맞춘 세 사람의 시선",
+				"title", "아무 장비 없이 무작정 떠나본 플랫폼 🚉 셋이서 번갈아 담아본 서로의 시선",
 				"thumbnailUrl", "/demo-assets/astra-vale-story-4.png",
 				"viewCount", 790000,
 				"publishedAt", "2025-09-20T00:00:00Z"
 			),
 			Map.of(
 				"videoId", "collab-demo-6",
-				"title", "해질녘 도시 위에 겹친 로드트립 무드",
+				"title", "노을 지는 해안도로 로드트립 🚙 바람 소리까지 완벽했던 힐링 모먼트",
 				"thumbnailUrl", "/demo-assets/mina-loop-banner.png",
 				"viewCount", 730000,
 				"publishedAt", "2025-09-24T00:00:00Z"
 			),
 			Map.of(
 				"videoId", "collab-demo-7",
-				"title", "창가에 남겨둔 밤의 끝 인사",
+				"title", "이제는 우리가 헤어져야 할 시간 🌙 창가 너머로 남겨둔 아쉬운 밤의 끝인사",
 				"thumbnailUrl", "/demo-assets/noah-reed-banner.png",
 				"viewCount", 710000,
 				"publishedAt", "2025-09-28T00:00:00Z"
@@ -159,7 +159,20 @@ public class ProjectService {
 	public ProjectViews.Preview getPreview(Long projectId) {
 		FanProject project = requireOwnedProject(projectId);
 		EditionViews.Detail edition = editionService.getEdition(project.getEditionVersion().getEdition().getId());
-		return projectPreviewAssembler.assemble(toSnapshot(project), edition);
+		ProjectViews.Preview preview = projectPreviewAssembler.assemble(toSnapshot(project), edition);
+		return new ProjectViews.Preview(
+			preview.projectId(),
+			preview.status(),
+			preview.mode(),
+			preview.edition(),
+			sweetbookService.getContentTemplateDetail(preview),
+			preview.personalizationData(),
+			preview.sweetbookBookUid(),
+			preview.sweetbookExternalRef(),
+			preview.sweetbookDraftCreatedAt(),
+			preview.sweetbookFinalizedAt(),
+			preview.pages()
+		);
 	}
 
 	public ProjectViews.ChatPersonalization chatPersonalization(

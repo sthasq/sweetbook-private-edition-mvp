@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -29,6 +30,12 @@ public class SweetbookController {
 	@GetMapping("/templates")
 	public List<SweetbookViews.Template> getTemplates(@RequestParam(defaultValue = "SQUAREBOOK_HC") String bookSpecUid) {
 		return sweetbookService.getTemplates(bookSpecUid);
+	}
+
+	@Operation(summary = "Get Sweetbook template detail")
+	@GetMapping("/templates/{templateUid}")
+	public SweetbookViews.TemplateDetail getTemplateDetail(@PathVariable String templateUid) {
+		return sweetbookService.getTemplateDetail(templateUid);
 	}
 
 	@Operation(summary = "Get Sweetbook integration mode")

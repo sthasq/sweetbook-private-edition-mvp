@@ -30,6 +30,7 @@ public final class ProjectViews {
 		String status,
 		String mode,
 		EditionViews.Detail edition,
+		SweetbookViews.TemplateDetail contentTemplateDetail,
 		Map<String, Object> personalizationData,
 		String sweetbookBookUid,
 		String sweetbookExternalRef,
@@ -37,6 +38,32 @@ public final class ProjectViews {
 		Instant sweetbookFinalizedAt,
 		List<Page> pages
 	) {
+		public Preview(
+			Long projectId,
+			String status,
+			String mode,
+			EditionViews.Detail edition,
+			Map<String, Object> personalizationData,
+			String sweetbookBookUid,
+			String sweetbookExternalRef,
+			Instant sweetbookDraftCreatedAt,
+			Instant sweetbookFinalizedAt,
+			List<Page> pages
+		) {
+			this(
+				projectId,
+				status,
+				mode,
+				edition,
+				null,
+				personalizationData,
+				sweetbookBookUid,
+				sweetbookExternalRef,
+				sweetbookDraftCreatedAt,
+				sweetbookFinalizedAt,
+				pages
+			);
+		}
 	}
 
 	public record Page(

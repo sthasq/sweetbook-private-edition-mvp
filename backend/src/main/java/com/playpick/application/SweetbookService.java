@@ -10,8 +10,10 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -30,6 +32,8 @@ public class SweetbookService {
 	private static final Logger log = LoggerFactory.getLogger(SweetbookService.class);
 	private static final int DEFAULT_TOTAL_PAGE_COUNT = 24;
 	private static final int DEFAULT_PAGE_INCREMENT = 2;
+	private static final int MAX_GALLERY_IMAGES_PER_LAYOUT = 4;
+	private static final int MAX_SELECTED_CURATED_IMAGES = 40;
 	private static final DateTimeFormatter SWEETBOOK_DATE_RANGE_FORMAT = DateTimeFormatter.ofPattern("yyyy.MM.dd");
 	private static final DateTimeFormatter SWEETBOOK_PUBLISH_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy.MM.dd");
 
@@ -66,6 +70,31 @@ public class SweetbookService {
 			return defaultTemplates();
 		}
 		return sweetbookClient.getTemplates(bookSpecUid);
+	}
+
+	@Cacheable(cacheNames = "sweetbook-template-detail", key = "#templateUid")
+	public SweetbookViews.TemplateDetail getTemplateDetail(String templateUid) {
+		if (templateUid == null || templateUid.isBlank()) {
+			return defaultTemplateDetail("");
+		}
+		if (!isLiveEnabled()) {
+			return defaultTemplateDetail(templateUid);
+		}
+		try {
+			SweetbookViews.TemplateDetail detail = sweetbookClient.getTemplateDetail(templateUid);
+			if (detail.uid() == null || detail.uid().isBlank()) {
+				return defaultTemplateDetail(templateUid);
+			}
+			return detail;
+		} catch (RuntimeException exception) {
+			log.warn("Sweetbook live template detail lookup failed.", exception);
+			return defaultTemplateDetail(templateUid);
+		}
+	}
+
+	public SweetbookViews.TemplateDetail getContentTemplateDetail(ProjectViews.Preview preview) {
+		ResolvedTemplates resolvedTemplates = resolveTemplatesForPreview(preview);
+		return getTemplateDetail(resolvedTemplates.contentTemplate().uid());
 	}
 
 	public ProjectViews.BookGeneration prepareBookDraft(
@@ -261,29 +290,22 @@ public class SweetbookService {
 		LocalDate today = LocalDate.now();
 		String fanNickname = String.valueOf(preview.personalizationData().getOrDefault("fanNickname", "팬"));
 
-		Map<String, Object> coverParams = new LinkedHashMap<>();
-		coverParams.put("frontPhoto", liveDraftAssets.coverImageUrl());
-		coverParams.put("backPhoto", liveDraftAssets.backCoverImageUrl());
-		coverParams.put(
-			"dateRange",
-			SWEETBOOK_DATE_RANGE_FORMAT.format(today) + " - " + SWEETBOOK_DATE_RANGE_FORMAT.format(today)
+		Map<String, Object> coverParams = buildMixedCoverParams(
+			preview,
+			liveDraftAssets.coverImageUrl(),
+			liveDraftAssets.backCoverImageUrl(),
+			today
 		);
-		coverParams.put("spineTitle", preview.edition().title());
 		sweetbookClient.addCover(bookUid, resolvedTemplates.coverTemplate().uid(), coverParams);
 
-		Map<String, Object> publishParams = new LinkedHashMap<>();
-		publishParams.put("photo", liveDraftAssets.coverImageUrl());
-		publishParams.put("title", preview.edition().title());
-		publishParams.put("publishDate", SWEETBOOK_PUBLISH_DATE_FORMAT.format(today));
-		publishParams.put("author", preview.edition().creator().displayName());
-		publishParams.put("publisher", "PlayPick");
-		publishParams.put("hashtags", "#PlayPick #CollabArchive");
+		Map<String, Object> publishParams = buildMixedPublishParams(preview, today);
 		sweetbookClient.addContents(bookUid, resolvedTemplates.publishTemplate().uid(), publishParams, "page");
 
 		List<LiveContentInstruction> instructions = buildLiveContentInstructions(
 			contentPages,
 			resolvedTemplates,
 			fanNickname,
+			preview.edition().title(),
 			today,
 			pagePlan.contentPages()
 		);
@@ -314,9 +336,9 @@ public class SweetbookService {
 	private ResolvedTemplates resolveTemplatesForPreview(ProjectViews.Preview preview) {
 		List<SweetbookViews.Template> templates = resolveTemplates(preview.edition().snapshot().bookSpecUid());
 		return new ResolvedTemplates(
-			chooseCoverTemplate(templates, preview.edition().snapshot().sweetbookCoverTemplateUid()),
-			choosePublishTemplate(templates, preview.edition().snapshot().sweetbookPublishTemplateUid()),
-			chooseContentTemplate(templates, preview.edition().snapshot().sweetbookContentTemplateUid()),
+			chooseCoverTemplate(templates, sweetbookProperties.getDefaultCoverTemplateUid()),
+			choosePublishTemplate(templates, sweetbookProperties.getDefaultPublishTemplateUid()),
+			chooseContentTemplate(templates, sweetbookProperties.getDefaultContentTemplateUid()),
 			chooseOptionalTemplate(templates, sweetbookProperties.getDefaultContentTextTemplateUid()),
 			chooseOptionalTemplate(templates, sweetbookProperties.getDefaultContentGalleryTemplateUid()),
 			chooseTemplate(
@@ -324,7 +346,8 @@ public class SweetbookService {
 				sweetbookProperties.getDefaultDividerTemplateUid(),
 				"divider",
 				""
-			)
+			),
+			chooseOptionalTemplate(templates, sweetbookProperties.getDefaultBlankTemplateUid())
 		);
 	}
 
@@ -363,46 +386,117 @@ public class SweetbookService {
 		return List.of(
 			new SweetbookViews.Template(
 				sweetbookProperties.getDefaultCoverTemplateUid(),
-				"표지",
-				"album",
+				"일기장B 표지",
+				"일기장B",
 				"cover",
 				"https://picsum.photos/seed/demo-cover-template/960/720"
 			),
 			new SweetbookViews.Template(
 				sweetbookProperties.getDefaultPublishTemplateUid(),
-				"발행면",
-				"album",
+				"일기장B 발행면",
+				"일기장B",
 				"publish",
 				"https://picsum.photos/seed/demo-publish-template/960/720"
 			),
 			new SweetbookViews.Template(
 				sweetbookProperties.getDefaultContentTemplateUid(),
-				"내지a_contain",
+				"일기장B 내지a contain",
 				"album",
 				"content",
 				"https://picsum.photos/seed/demo-content-template/960/720"
 			),
 			new SweetbookViews.Template(
 				sweetbookProperties.getDefaultContentTextTemplateUid(),
-				"내지b",
+				"일기장B 내지b",
 				"album",
 				"content",
 				"https://picsum.photos/seed/demo-content-text-template/960/720"
 			),
 			new SweetbookViews.Template(
 				sweetbookProperties.getDefaultContentGalleryTemplateUid(),
-				"내지_gallery",
+				"일기장B 내지_gallery",
 				"album",
 				"content",
 				"https://picsum.photos/seed/demo-content-gallery-template/960/720"
 			),
 			new SweetbookViews.Template(
-				sweetbookProperties.getDefaultDividerTemplateUid(),
-				"간지",
-				"album",
-				"divider",
-				"https://picsum.photos/seed/demo-divider-template/960/720"
+				sweetbookProperties.getDefaultBlankTemplateUid(),
+				"빈내지",
+				"공용",
+				"content",
+				"https://picsum.photos/seed/demo-blank-template/960/720"
 			)
+		);
+	}
+
+	private SweetbookViews.TemplateDetail defaultTemplateDetail(String templateUid) {
+		if ("3FhSEhJ94c0T".equals(templateUid) || sweetbookProperties.getDefaultContentTemplateUid().equals(templateUid)) {
+			return defaultDiaryBTemplateDetail();
+		}
+		return new SweetbookViews.TemplateDetail(
+			templateUid,
+			"",
+			"",
+			"content",
+			"",
+			"",
+			Map.of(),
+			Map.of(),
+			Map.of(),
+			Map.of()
+		);
+	}
+
+	private SweetbookViews.TemplateDetail defaultDiaryBTemplateDetail() {
+		Map<String, Object> parameters = Map.of(
+			"definitions", Map.ofEntries(
+				Map.entry("monthNum", Map.of("binding", "text", "type", "string", "required", true)),
+				Map.entry("dayNum", Map.of("binding", "text", "type", "string", "required", true)),
+				Map.entry("dateB", Map.of("binding", "text", "type", "string", "required", true)),
+				Map.entry("title", Map.of("binding", "text", "type", "string", "required", false)),
+				Map.entry("diaryText", Map.of("binding", "text", "type", "string", "required", true)),
+				Map.entry("photo1", Map.of("binding", "file", "type", "image", "required", false)),
+				Map.entry("photo2", Map.of("binding", "file", "type", "image", "required", false))
+			)
+		);
+		Map<String, Object> layout = Map.of(
+			"width", 1956.0,
+			"height", 1000.8,
+			"backgroundColor", "#00FFFFFF",
+			"elements", List.of(
+				Map.of("element_id", "date", "type", "text", "position", Map.of("x", 84.0, "y", 76.0), "width", 220.0, "height", 30.0),
+				Map.of("element_id", "title", "type", "text", "position", Map.of("x", 84.0, "y", 126.0), "width", 420.0, "height", 48.0),
+				Map.of("element_id", "photo1", "type", "image", "position", Map.of("x", 620.0, "y", 84.0), "width", 580.0, "height", 700.0),
+				Map.of("element_id", "photo2", "type", "image", "position", Map.of("x", 1240.0, "y", 420.0), "width", 460.0, "height", 364.0)
+			)
+		);
+		Map<String, Object> layoutRules = Map.of(
+			"flow", Map.of("columns", 1, "itemSpacing", Map.of("size", 18)),
+			"margin", Map.of("pageMargin", Map.of("spine", 64, "fore", 64, "head", 72, "tail", 72))
+		);
+		Map<String, Object> baseLayer = Map.of(
+			"odd", Map.of(
+				"elements", List.of(
+					Map.of("element_id", "bl-odd-bg", "type", "rectangle", "color", "#FFF7F1EA")
+				)
+			),
+			"even", Map.of(
+				"elements", List.of(
+					Map.of("element_id", "bl-even-bg", "type", "rectangle", "color", "#FFFCF8F2")
+				)
+			)
+		);
+		return new SweetbookViews.TemplateDetail(
+			sweetbookProperties.getDefaultContentTemplateUid(),
+			"사진+글 내지",
+			"",
+			"content",
+			"일기장B",
+			"https://api-sandbox.sweetbook.com/templates_thumb/3FhSEhJ94c0T/layout.jpg",
+			parameters,
+			layout,
+			layoutRules,
+			baseLayer
 		);
 	}
 
@@ -438,30 +532,18 @@ public class SweetbookService {
 	}
 
 	private int desiredTotalPagesForPreview(ProjectViews.Preview preview) {
-		int requiredContentPages = estimateRequiredContentPages(preview);
-		return requiredContentPages + 1;
+		return DEFAULT_TOTAL_PAGE_COUNT;
 	}
 
 	private int estimateRequiredContentPages(ProjectViews.Preview preview) {
 		int narrativePageCount = selectNarrativePages(preview).size();
 		int imageCount = countCuratedImages(preview);
-		int groupedImagePages = imageCount == 0 ? 0 : (int) Math.ceil(imageCount / 4.0);
+		int groupedImagePages = requiredGalleryPageCount(imageCount);
 		return Math.max(1, narrativePageCount + groupedImagePages);
 	}
 
 	private int countCuratedImages(ProjectViews.Preview preview) {
-		List<EditionViews.CuratedAsset> assets = preview.edition().snapshot().curatedAssets();
-		if (assets == null || assets.isEmpty()) {
-			return 0;
-		}
-
-		int imageCount = 0;
-		for (EditionViews.CuratedAsset asset : assets) {
-			if ("IMAGE".equals(asset.assetType())) {
-				imageCount++;
-			}
-		}
-		return imageCount;
+		return collectCuratedImageUrls(preview, null).size();
 	}
 
 	private List<BookContentPage> buildSweetbookContentPages(
@@ -469,11 +551,12 @@ public class SweetbookService {
 		int contentPageCount,
 		Map<String, String> liveAssetUrlCache
 	) {
+		List<String> curatedImageUrls = collectCuratedImageUrls(preview, liveAssetUrlCache);
 		List<ProjectViews.Page> narrativePages = selectNarrativePages(preview);
+
 		List<List<String>> imageGroups = groupCuratedImages(
-			preview,
-			Math.max(contentPageCount - narrativePages.size(), 1),
-			liveAssetUrlCache
+			curatedImageUrls,
+			Math.max(contentPageCount - narrativePages.size(), 1)
 		);
 		if (narrativePages.isEmpty() && imageGroups.isEmpty()) {
 			return List.of();
@@ -503,8 +586,9 @@ public class SweetbookService {
 			imageGroupIndex++;
 		}
 
-		if (result.size() > contentPageCount) {
-			return result.subList(0, contentPageCount);
+		int maxNotebookEntries = Math.max(contentPageCount * 2, contentPageCount);
+		if (result.size() > maxNotebookEntries) {
+			return result.subList(0, maxNotebookEntries);
 		}
 		return result;
 	}
@@ -513,102 +597,165 @@ public class SweetbookService {
 		List<BookContentPage> sourcePages,
 		ResolvedTemplates resolvedTemplates,
 		String fanNickname,
+		String bookTitle,
 		LocalDate today,
 		int contentPageCount
 	) {
 		List<LiveContentInstruction> instructions = new ArrayList<>();
-		int chapterNumber = 1;
-		boolean canInsertDivider = resolvedTemplates.dividerTemplate() != null
-			&& sourcePages.size() + 1 <= contentPageCount
-			&& sourcePages.stream().anyMatch(BookContentPage::gallery);
-		boolean dividerInserted = false;
+		int consumedPhysicalPages = 0;
 
-		for (int index = 0; index < sourcePages.size() && instructions.size() < contentPageCount; index++) {
+		for (int index = 0; index < sourcePages.size(); index++) {
 			BookContentPage page = sourcePages.get(index);
-			if (canInsertDivider && !dividerInserted && page.gallery()) {
-				instructions.add(new LiveContentInstruction(
-					resolvedTemplates.dividerTemplate(),
-					buildDividerParams(page.title(), chapterNumber++, today),
-					"page"
-				));
-				dividerInserted = true;
-			}
-
-			if (page.gallery() && resolvedTemplates.galleryTemplate() != null && instructions.size() < contentPageCount) {
-				instructions.add(new LiveContentInstruction(
-					resolvedTemplates.galleryTemplate(),
-					buildGalleryParams(page.imageUrls(), today),
-					"page"
-				));
-				continue;
-			}
-
-			boolean useTextTemplate = resolvedTemplates.textContentTemplate() != null;
-			SweetbookViews.Template template = useTextTemplate
-				? resolvedTemplates.textContentTemplate()
-				: resolvedTemplates.contentTemplate();
-			Map<String, Object> params = useTextTemplate
-				? buildTextPageParams(page, fanNickname, today, index)
-				: buildPhotoPageParams(page, page.primaryImageUrl(), fanNickname, today, index);
+			SweetbookViews.Template template = selectContentTemplate(page, resolvedTemplates);
 			instructions.add(new LiveContentInstruction(
 				template,
-				params,
+				buildMixedContentParams(page, fanNickname, bookTitle, today, index),
 				"page"
 			));
+			consumedPhysicalPages++;
+		}
+
+		while (consumedPhysicalPages < contentPageCount && resolvedTemplates.blankTemplate() != null
+			&& resolvedTemplates.blankTemplate().uid() != null
+			&& !resolvedTemplates.blankTemplate().uid().isBlank()) {
+			LocalDate blankDate = today.plusDays(consumedPhysicalPages);
+			instructions.add(new LiveContentInstruction(
+				resolvedTemplates.blankTemplate(),
+				buildBlankPageParams(bookTitle, blankDate),
+				"page"
+			));
+			consumedPhysicalPages++;
 		}
 		return instructions;
 	}
 
-	private Map<String, Object> buildDividerParams(String title, int chapterNumber, LocalDate today) {
+	private SweetbookViews.Template selectContentTemplate(
+		BookContentPage page,
+		ResolvedTemplates resolvedTemplates
+	) {
+		if (page.gallery() && resolvedTemplates.galleryTemplate() != null) {
+			return resolvedTemplates.galleryTemplate();
+		}
+		if ((page.primaryImageUrl() == null || page.primaryImageUrl().isBlank())
+			&& resolvedTemplates.textContentTemplate() != null) {
+			return resolvedTemplates.textContentTemplate();
+		}
+		return resolvedTemplates.contentTemplate();
+	}
+
+	private int requiredGalleryPageCount(int imageCount) {
+		if (imageCount <= 0) {
+			return 0;
+		}
+		return (int) Math.ceil(imageCount / (double) MAX_GALLERY_IMAGES_PER_LAYOUT);
+	}
+
+	private Map<String, Object> buildMixedContentParams(
+		BookContentPage page,
+		String fanNickname,
+		String bookTitle,
+		LocalDate today,
+		int index
+	) {
+		if (page.gallery()) {
+			return buildMixedGalleryParams(page, today.plusDays(index));
+		}
+		if (page.primaryImageUrl() == null || page.primaryImageUrl().isBlank()) {
+			return buildMixedTextStoryParams(page, today.plusDays(index));
+		}
+		return buildMixedPhotoStoryParams(page, fanNickname, today.plusDays(index));
+	}
+
+	private Map<String, Object> buildMixedPhotoStoryParams(
+		BookContentPage page,
+		String fanNickname,
+		LocalDate pageDate
+	) {
 		Map<String, Object> params = new LinkedHashMap<>();
-		params.put("chapterNum", "%02d".formatted(chapterNumber));
-		params.put("seasonTitle", truncate(title, 28));
-		params.put("year", String.valueOf(today.getYear()));
+		params.put("year", String.valueOf(pageDate.getYear()));
+		params.put("month", String.valueOf(pageDate.getMonthValue()));
+		params.put("day", String.valueOf(pageDate.getDayOfMonth()));
+		params.put("monthNum", String.format("%02d", pageDate.getMonthValue()));
+		params.put("dayNum", String.format("%02d", pageDate.getDayOfMonth()));
+		params.put("dateB", formatMixedDiaryDate(pageDate));
+		params.put("title", truncate(page.title(), 48));
+		params.put("diaryText", buildDiaryStoryText(page, fanNickname));
+		params.put("photo1", page.primaryImageUrl());
+		params.put("photo2", page.imageUrls().size() > 1 ? page.imageUrls().get(1) : "");
 		return params;
 	}
 
-	private Map<String, Object> buildGalleryParams(
-		List<String> imageUrls,
+	private Map<String, Object> buildMixedTextStoryParams(BookContentPage page, LocalDate pageDate) {
+		Map<String, Object> params = new LinkedHashMap<>();
+		params.put("year", String.valueOf(pageDate.getYear()));
+		params.put("month", String.valueOf(pageDate.getMonthValue()));
+		params.put("day", String.valueOf(pageDate.getDayOfMonth()));
+		params.put("monthNum", String.format("%02d", pageDate.getMonthValue()));
+		params.put("dayNum", String.format("%02d", pageDate.getDayOfMonth()));
+		params.put("dateB", formatMixedDiaryDate(pageDate));
+		params.put("title", truncate(page.title(), 48));
+		params.put("diaryText", truncate(fallback(page.description(), page.title()), 700));
+		return params;
+	}
+
+	private Map<String, Object> buildMixedGalleryParams(BookContentPage page, LocalDate pageDate) {
+		Map<String, Object> params = new LinkedHashMap<>();
+		params.put("monthNum", String.format("%02d", pageDate.getMonthValue()));
+		params.put("dayNum", String.format("%02d", pageDate.getDayOfMonth()));
+		params.put("dateB", formatMixedDiaryDate(pageDate));
+		params.put("photos", page.imageUrls().stream().limit(MAX_GALLERY_IMAGES_PER_LAYOUT).toList());
+		return params;
+	}
+
+	private String buildDiaryStoryText(BookContentPage page, String fanNickname) {
+		String description = fallback(page.description(), "PlayPick 굿즈 페이지");
+		String text = page.title() + "\n\n" + description + "\n\n" + fanNickname + "님을 위해 고른 장면을 한 페이지로 정리했어요.";
+		return truncate(text, 700);
+	}
+
+	private String formatMixedDiaryDate(LocalDate date) {
+		return date.getMonthValue() + "." + String.format("%02d", date.getDayOfMonth());
+	}
+
+	private Map<String, Object> buildMixedCoverParams(
+		ProjectViews.Preview preview,
+		String coverImageUrl,
+		String backCoverImageUrl,
 		LocalDate today
 	) {
+		String fanNickname = asString(preview.personalizationData().get("fanNickname"), "팬");
+		String subscribedSince = asString(preview.personalizationData().get("subscribedSince"), "");
 		Map<String, Object> params = new LinkedHashMap<>();
-		params.put("date", SWEETBOOK_DATE_RANGE_FORMAT.format(today));
-		params.put("collagePhotos", imageUrls.stream().limit(4).toList());
+		params.put("frontPhoto", coverImageUrl);
+		params.put("backPhoto", backCoverImageUrl);
+		params.put("spineTitle", truncate(fanNickname + " Diary Book", 40));
+		params.put("dateRange", formatCoverPeriodText(subscribedSince, today));
 		return params;
 	}
 
-	private Map<String, Object> buildPhotoPageParams(
-		BookContentPage page,
-		String imageUrl,
-		String fanNickname,
-		LocalDate today,
-		int index
-	) {
+	private String formatCoverPeriodText(String subscribedSince, LocalDate today) {
+		if (subscribedSince != null && !subscribedSince.isBlank() && subscribedSince.length() >= 10) {
+			LocalDate start = LocalDate.parse(subscribedSince.substring(0, 10));
+			return SWEETBOOK_DATE_RANGE_FORMAT.format(start) + " -\n" + SWEETBOOK_DATE_RANGE_FORMAT.format(today);
+		}
+		return SWEETBOOK_DATE_RANGE_FORMAT.format(today);
+	}
+
+	private Map<String, Object> buildMixedPublishParams(ProjectViews.Preview preview, LocalDate today) {
 		Map<String, Object> params = new LinkedHashMap<>();
-		params.put("photo1", imageUrl);
-		params.put("date", SWEETBOOK_DATE_RANGE_FORMAT.format(today.plusDays(index)));
-		params.put("title", truncate(page.title(), 40));
-		params.put("diaryText", buildDiaryText(page, fanNickname));
+		params.put("title", preview.edition().title());
+		params.put("publishDate", SWEETBOOK_PUBLISH_DATE_FORMAT.format(today));
+		params.put("author", preview.edition().creator().displayName());
+		params.put("hashtags", "#PlayPick #Sweetbook #CreatorArchive");
 		return params;
 	}
 
-	private Map<String, Object> buildTextPageParams(
-		BookContentPage page,
-		String fanNickname,
-		LocalDate today,
-		int index
-	) {
+	private Map<String, Object> buildBlankPageParams(String bookTitle, LocalDate pageDate) {
 		Map<String, Object> params = new LinkedHashMap<>();
-		params.put("date", SWEETBOOK_DATE_RANGE_FORMAT.format(today.plusDays(index)));
-		params.put("title", truncate(page.title(), 40));
-		params.put("diaryText", buildDiaryText(page, fanNickname));
+		params.put("bookTitle", truncate(bookTitle, 40));
+		params.put("year", String.valueOf(pageDate.getYear()));
+		params.put("month", String.valueOf(pageDate.getMonthValue()));
 		return params;
-	}
-
-	private String buildDiaryText(BookContentPage page, String fanNickname) {
-		String description = fallback(page.description(), "PlayPick 굿즈 페이지");
-		String text = page.title() + "\n" + description + "\n" + fanNickname + "님을 위해";
-		return text.length() > 450 ? text.substring(0, 450) : text;
 	}
 
 	private List<ProjectViews.Page> selectNarrativePages(ProjectViews.Preview preview) {
@@ -646,20 +793,54 @@ public class SweetbookService {
 			}
 			imageUrls.add(toLiveAssetUrl(asset.content(), "큐레이션 이미지 " + asset.title(), liveAssetUrlCache));
 		}
-		return imageUrls;
+		return selectRepresentativeImages(imageUrls, MAX_SELECTED_CURATED_IMAGES);
+	}
+
+	private List<String> selectRepresentativeImages(List<String> imageUrls, int limit) {
+		if (imageUrls.size() <= limit) {
+			return imageUrls;
+		}
+
+		List<String> selected = new ArrayList<>(limit);
+		double maxIndex = imageUrls.size() - 1;
+		for (int index = 0; index < limit; index++) {
+			int sampledIndex = (int) Math.round(index * maxIndex / (limit - 1));
+			String candidate = imageUrls.get(sampledIndex);
+			if (!selected.contains(candidate)) {
+				selected.add(candidate);
+			}
+		}
+
+		if (selected.size() < limit) {
+			for (String imageUrl : imageUrls) {
+				if (selected.contains(imageUrl)) {
+					continue;
+				}
+				selected.add(imageUrl);
+				if (selected.size() == limit) {
+					break;
+				}
+			}
+		}
+		return List.copyOf(selected);
 	}
 
 	private List<List<String>> groupCuratedImages(
-		ProjectViews.Preview preview,
-		int targetGroupCount,
-		Map<String, String> liveAssetUrlCache
+		List<String> imageUrls,
+		int targetGroupCount
 	) {
-		List<String> imageUrls = collectCuratedImageUrls(preview, liveAssetUrlCache);
 		if (imageUrls.isEmpty()) {
 			return List.of();
 		}
 
-		int safeGroupCount = Math.max(1, Math.min(targetGroupCount, imageUrls.size()));
+		int minimumRequiredGroupCount = requiredGalleryPageCount(imageUrls.size());
+		int safeGroupCount = Math.max(
+			1,
+			Math.min(
+				imageUrls.size(),
+				Math.max(minimumRequiredGroupCount, targetGroupCount <= 0 ? minimumRequiredGroupCount : Math.min(targetGroupCount, imageUrls.size()))
+			)
+		);
 		int baseGroupSize = imageUrls.size() / safeGroupCount;
 		int remainder = imageUrls.size() % safeGroupCount;
 		List<List<String>> groups = new ArrayList<>();
@@ -675,11 +856,11 @@ public class SweetbookService {
 
 	private BookContentPage buildGalleryPage(List<String> imageUrls, int index) {
 		String chapterTitle = switch (index % 3) {
-			case 0 -> "Collab Archive Grid";
-			case 1 -> "Daylight Sequence";
-			default -> "Night Memo Spread";
+			case 0 -> "공식 컷 아카이브";
+			case 1 -> "무드 컷 셀렉션";
+			default -> "포토북 갤러리";
 		};
-		String description = imageUrls.size() + "개의 컷을 한 spread 안에 묶어, 실제 포토북처럼 장면 밀도를 높여주는 갤러리 페이지입니다.";
+		String description = imageUrls.size() + "개의 컷을 한 번에 묶어 리듬을 바꿔주는 갤러리 페이지입니다.";
 		return BookContentPage.gallery(
 			"gallery-" + (index + 1),
 			chapterTitle,
@@ -1200,7 +1381,8 @@ public class SweetbookService {
 		SweetbookViews.Template contentTemplate,
 		SweetbookViews.Template textContentTemplate,
 		SweetbookViews.Template galleryTemplate,
-		SweetbookViews.Template dividerTemplate
+		SweetbookViews.Template dividerTemplate,
+		SweetbookViews.Template blankTemplate
 	) {
 	}
 

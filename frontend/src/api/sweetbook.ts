@@ -3,6 +3,7 @@ import type {
   SweetbookBookSpec,
   SweetbookIntegrationStatus,
   SweetbookTemplate,
+  SweetbookTemplateDetail,
 } from "../types/api";
 
 export function listSweetbookBookSpecs() {
@@ -12,6 +13,12 @@ export function listSweetbookBookSpecs() {
 export function listSweetbookTemplates(bookSpecUid: string) {
   const params = new URLSearchParams({ bookSpecUid });
   return get<SweetbookTemplate[]>(`/sweetbook/templates?${params.toString()}`, {
+    ttlMs: 300_000,
+  });
+}
+
+export function getSweetbookTemplateDetail(templateUid: string) {
+  return get<SweetbookTemplateDetail>(`/sweetbook/templates/${templateUid}`, {
     ttlMs: 300_000,
   });
 }

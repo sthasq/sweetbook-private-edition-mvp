@@ -20,7 +20,7 @@ export interface Creator {
 
 export interface CuratedAsset {
   id: number;
-  assetType: "IMAGE" | "VIDEO" | "MESSAGE";
+  assetType: "IMAGE" | "MESSAGE";
   title: string;
   content: string;
   sortOrder: number;
@@ -102,6 +102,7 @@ export interface ProjectPreview {
   status: string;
   mode: string;
   edition: EditionDetail;
+  contentTemplateDetail: SweetbookTemplateDetail | null;
   personalizationData: Record<string, unknown>;
   sweetbookBookUid: string | null;
   sweetbookExternalRef: string | null;
@@ -294,7 +295,7 @@ export interface ExternalChannelYearlySummary {
 }
 
 export interface StudioCuratedAssetSuggestion {
-  assetType: "IMAGE" | "VIDEO" | "MESSAGE";
+  assetType: "IMAGE" | "MESSAGE";
   title: string;
   content: string;
   sortOrder: number;
@@ -334,6 +335,14 @@ export interface SweetbookTemplate {
   category: string;
   role: string;
   thumbnailUrl: string;
+}
+
+export interface SweetbookTemplateDetail extends SweetbookTemplate {
+  theme: string;
+  parameters: Record<string, unknown>;
+  layout: Record<string, unknown>;
+  layoutRules: Record<string, unknown>;
+  baseLayer: Record<string, unknown>;
 }
 
 export interface SweetbookIntegrationStatus {
