@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -459,6 +460,47 @@ class SweetbookServiceTest {
 			.anyMatch(url -> url.equals("https://playpick.example.com/demo-assets/collab-trio-evening-conversation.png"))
 			.anyMatch(url -> url.equals("https://playpick.example.com/demo-assets/astra-vale-cover.png"))
 			.anyMatch(url -> url.equals("https://playpick.example.com/demo-assets/mina-loop-story-1.png"));
+	}
+
+	@Test
+	void retriesFinalizationAfterPaddingMissingBlankPages() {
+		SweetbookClient sweetbookClient = mock(SweetbookClient.class);
+		PublicAssetPublishingService publicAssetPublishingService = mock(PublicAssetPublishingService.class);
+		SweetbookProperties sweetbookProperties = liveSweetbookProperties();
+		AppProperties appProperties = new AppProperties();
+		appProperties.setFrontendBaseUrl("https://playpick.example.com");
+
+		when(sweetbookClient.getBookSpecs()).thenReturn(List.of(new SweetbookViews.BookSpec("SQUAREBOOK_HC", "Square", 24, 130, 2)));
+		when(sweetbookClient.getTemplates("SQUAREBOOK_HC")).thenReturn(defaultTemplates());
+		when(publicAssetPublishingService.isConfigured()).thenReturn(false);
+		doThrow(new AppException(org.springframework.http.HttpStatus.BAD_GATEWAY, "Sweetbook API error: {\"errors\":[\"최소 페이지 미달: 현재 22p, 최소 24p\"]}"))
+			.doNothing()
+			.when(sweetbookClient)
+			.finalizeBook("bk_test");
+
+		List<ContentInvocation> contentInvocations = new ArrayList<>();
+		doAnswer(invocation -> {
+			contentInvocations.add(new ContentInvocation(
+				invocation.getArgument(1),
+				invocation.getArgument(2)
+			));
+			return null;
+		}).when(sweetbookClient).addContents(anyString(), anyString(), anyMap(), anyString());
+
+		SweetbookService service = new SweetbookService(
+			sweetbookClient,
+			sweetbookProperties,
+			appProperties,
+			publicAssetPublishingService
+		);
+
+		ProjectViews.BookGeneration generation = service.finalizeBook(previewWithCuratedImages(12), "bk_test", false);
+
+		assertThat(generation.status()).isEqualTo("FINALIZED");
+		verify(sweetbookClient, times(2)).finalizeBook("bk_test");
+		assertThat(contentInvocations)
+			.filteredOn(invocation -> "2mi1ao0Z4Vxl".equals(invocation.templateUid()))
+			.hasSize(2);
 	}
 
 	private SweetbookProperties liveSweetbookProperties() {
