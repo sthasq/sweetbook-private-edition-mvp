@@ -694,7 +694,7 @@ public class ProjectService {
 		orderRecord.setLastEventType(result.simulated() ? "simulation.ready" : "order.created");
 		orderRecord.setLastEventAt(Instant.now());
 		orderRecord = orderRecordRepository.save(orderRecord);
-		sweetbookWebhookService.reconcilePendingEvents(orderRecord);
+		reconcilePendingWebhooksAfterCommit(orderRecord.getSweetbookOrderUid());
 		return orderRecord;
 	}
 
@@ -799,6 +799,24 @@ public class ProjectService {
 			@Override
 			public void afterCommit() {
 				asyncBookGenerationService.generateDraft(projectId);
+			}
+		});
+	}
+
+	void reconcilePendingWebhooksAfterCommit(String sweetbookOrderUid) {
+		if (sweetbookOrderUid == null || sweetbookOrderUid.isBlank()) {
+			return;
+		}
+
+		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+			sweetbookWebhookService.reconcilePendingEventsByOrderUid(sweetbookOrderUid);
+			return;
+		}
+
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				sweetbookWebhookService.reconcilePendingEventsByOrderUid(sweetbookOrderUid);
 			}
 		});
 	}

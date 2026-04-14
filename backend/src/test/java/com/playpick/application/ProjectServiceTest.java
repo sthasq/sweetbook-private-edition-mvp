@@ -33,6 +33,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
 class ProjectServiceTest {
@@ -176,5 +178,31 @@ class ProjectServiceTest {
 
 		verify(asyncBookGenerationService).generateDraft(55L);
 		verify(sweetbookService, never()).prepareBookDraft(any(), anyString(), anyString(), anyBoolean());
+	}
+
+	@Test
+	void reconcilePendingWebhooksAfterCommitCallsWebhookServiceImmediatelyWithoutTransaction() {
+		projectService.reconcilePendingWebhooksAfterCommit("or_now");
+
+		verify(sweetbookWebhookService).reconcilePendingEventsByOrderUid("or_now");
+	}
+
+	@Test
+	void reconcilePendingWebhooksAfterCommitDefersWebhookServiceUntilTransactionCommit() {
+		TransactionSynchronizationManager.initSynchronization();
+		try {
+			projectService.reconcilePendingWebhooksAfterCommit("or_later");
+
+			verify(sweetbookWebhookService, never()).reconcilePendingEventsByOrderUid("or_later");
+			assertThat(TransactionSynchronizationManager.getSynchronizations()).hasSize(1);
+
+			for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
+				synchronization.afterCommit();
+			}
+
+			verify(sweetbookWebhookService).reconcilePendingEventsByOrderUid("or_later");
+		} finally {
+			TransactionSynchronizationManager.clearSynchronization();
+		}
 	}
 }

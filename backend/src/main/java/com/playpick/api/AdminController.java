@@ -4,6 +4,7 @@ import com.playpick.application.AdminService;
 import com.playpick.application.AdminViews;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -48,7 +49,9 @@ public class AdminController {
 
 	@Operation(summary = "Live Sweetbook webhook stream for admins")
 	@GetMapping(path = "/webhooks/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-	public SseEmitter streamWebhooks() {
+	public SseEmitter streamWebhooks(HttpServletResponse response) {
+		response.setHeader("Cache-Control", "no-store, no-transform");
+		response.setHeader("X-Accel-Buffering", "no");
 		return adminService.subscribeWebhookStream();
 	}
 

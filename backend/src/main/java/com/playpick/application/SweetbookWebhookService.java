@@ -155,6 +155,14 @@ public class SweetbookWebhookService {
 		orderRecordRepository.save(orderRecord);
 	}
 
+	public void reconcilePendingEventsByOrderUid(String sweetbookOrderUid) {
+		if (sweetbookOrderUid == null || sweetbookOrderUid.isBlank()) {
+			return;
+		}
+		orderRecordRepository.findBySweetbookOrderUid(sweetbookOrderUid)
+			.ifPresent(this::reconcilePendingEvents);
+	}
+
 	private void verifyWebhookRequest(WebhookRequest request) {
 		if (!sweetbookProperties.isWebhookSecretConfigured()) {
 			throw new AppException(HttpStatus.SERVICE_UNAVAILABLE, "Sweetbook webhook secret is not configured");

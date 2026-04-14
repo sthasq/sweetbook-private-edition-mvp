@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -503,6 +504,7 @@ class AuthAndAccessIntegrationTest {
 
 		mockMvc.perform(get("/api/admin/webhooks/stream").session(adminSession))
 			.andExpect(status().isOk())
+			.andExpect(header().string("X-Accel-Buffering", "no"))
 			.andExpect(result -> org.assertj.core.api.Assertions.assertThat(result.getResponse().getContentType())
 				.startsWith(MediaType.TEXT_EVENT_STREAM_VALUE));
 	}
