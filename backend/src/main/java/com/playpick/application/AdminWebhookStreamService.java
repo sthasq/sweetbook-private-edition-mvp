@@ -1,6 +1,5 @@
 package com.playpick.application;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +30,7 @@ public class AdminWebhookStreamService {
 				.name("connected")
 				.data("admin-webhook-stream-ready"));
 		} catch (Exception exception) {
+			log.debug("Failed to send initial admin webhook connected event", exception);
 			emitters.remove(emitter);
 			emitter.completeWithError(exception);
 		}

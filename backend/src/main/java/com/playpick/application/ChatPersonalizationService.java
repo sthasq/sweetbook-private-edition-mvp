@@ -208,6 +208,7 @@ public class ChatPersonalizationService {
 			.distinct()
 			.reduce((left, right) -> left + ", " + right)
 			.orElse("fanNickname, favoriteMemory, fanMessage");
+		String bookCopyLengthGuide = describeBookCopyLengthGuide();
 
 		return """
 			                        You are a highly empathetic, warm, and highly skilled Korean editor acting as a bridge between a creator and their most devoted fan.
@@ -239,6 +240,7 @@ public class ChatPersonalizationService {
                         - relationshipTitle/relationshipBody: Greeting the fan and acknowledging the time shared. (e.g., "우리가 처음 만난 그 계절")
                         - momentTitle/momentBody: Responding to their chosen scene. (e.g., "네가 그 장면에서 울었다고 했을 때, 나도 참 많이 뭉클했어.")
                         - fanNoteTitle/fanNoteBody: Turning the fan's message into a printed encouragement.
+                        %s
 
                         Output policy (MANDATORY – never violate):
                         - Your ENTIRE response must be a single valid JSON object with NO extra text before or after.
@@ -268,7 +270,21 @@ public class ChatPersonalizationService {
 			serializeForPrompt(existingValues),
 			fieldGuide,
 			describeTopVideos(personalizationData),
+			bookCopyLengthGuide,
 			allowedKeys
+		).trim();
+	}
+
+	private String describeBookCopyLengthGuide() {
+		return """
+                        - proposal.bookCopy must fit the tightest photo+text print layout, not a roomy editor.
+                        - Keep every title field (relationshipTitle, momentTitle, fanNoteTitle) under %d Korean characters.
+                        - Keep every body field (relationshipBody, momentBody, fanNoteBody) to one short sentence under %d Korean characters.
+                        - Prefer one vivid feeling or image per field.
+                        - Do not use line breaks, slash-separated phrases, parenthetical asides, or long comma-chained clauses.
+			""".formatted(
+			SweetbookTemplateCopyPolicy.PHOTO_STORY_TITLE_MAX,
+			SweetbookTemplateCopyPolicy.PHOTO_STORY_BODY_MAX
 		).trim();
 	}
 

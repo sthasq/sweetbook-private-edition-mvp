@@ -25,6 +25,7 @@ yarn-error.log*
 # generated artifacts
 /docs/sweetbookandroidappmp4.mp4
 /output/
+/스위트북_개발과제_안내문.pdf
 
 # editors / os
 .DS_Store

@@ -539,7 +539,8 @@ function isTossUnavailableMessage(message: string) {
   const normalized = message.toLowerCase();
   return normalized.includes("toss payments is not configured")
     || normalized.includes("toss payments are not configured")
-    || normalized.includes("toss payments isn't configured");
+    || normalized.includes("toss payments isn't configured")
+    || (normalized.includes("toss payments") && normalized.includes("not configured"));
 }
 
 function Field({
