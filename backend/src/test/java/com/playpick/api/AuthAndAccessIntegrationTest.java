@@ -190,7 +190,7 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(jsonPath("$.edition.id").value(editionId))
 			.andExpect(jsonPath("$.contentTemplateDetail.uid").value("3FhSEhJ94c0T"))
 			.andExpect(jsonPath("$.pages[0].key").value("cover"))
-			.andExpect(jsonPath("$.pages[23].key").value("publish"))
+			.andExpect(jsonPath("$.pages[24].key").value("publish"))
 			.andExpect(jsonPath("$.pages[?(@.key=='official-intro')].title").value(hasItem("어서 와요")))
 			.andExpect(jsonPath("$.pages[?(@.key=='official-intro')].description").value(hasItem("크리에이터 인사")))
 			.andExpect(jsonPath("$.pages[?(@.key=='official-closing')].title").value(hasItem("다음에도 만나요")))

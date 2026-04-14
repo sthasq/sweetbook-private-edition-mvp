@@ -786,12 +786,56 @@ public class SweetbookService {
 
 		List<String> imageUrls = new ArrayList<>();
 		for (EditionViews.CuratedAsset asset : assets) {
-			if (!"IMAGE".equals(asset.assetType())) {
+			if (!"IMAGE".equals(asset.assetType()) || !isRenderableImageReference(asset.content())) {
 				continue;
 			}
 			imageUrls.add(toLiveAssetUrl(asset.content(), "큐레이션 이미지 " + asset.title(), liveAssetUrlCache));
 		}
 		return selectRepresentativeImages(imageUrls, MAX_SELECTED_CURATED_IMAGES);
+	}
+
+	private boolean isRenderableImageReference(String rawValue) {
+		if (rawValue == null) {
+			return false;
+		}
+		String trimmed = rawValue.trim();
+		if (trimmed.isEmpty() || trimmed.chars().anyMatch(Character::isWhitespace)) {
+			return false;
+		}
+		String normalized = trimmed.toLowerCase(Locale.ROOT);
+		if (normalized.startsWith("data:image/") || normalized.startsWith("blob:")) {
+			return true;
+		}
+		if (normalized.startsWith("http://") || normalized.startsWith("https://") || normalized.startsWith("//")) {
+			return true;
+		}
+		if (normalized.contains("/api/assets/")) {
+			return true;
+		}
+		return hasImageFileExtension(normalized);
+	}
+
+	private boolean hasImageFileExtension(String rawValue) {
+		int fragmentIndex = rawValue.indexOf('#');
+		int queryIndex = rawValue.indexOf('?');
+		int cutIndex = rawValue.length();
+		if (fragmentIndex >= 0) {
+			cutIndex = Math.min(cutIndex, fragmentIndex);
+		}
+		if (queryIndex >= 0) {
+			cutIndex = Math.min(cutIndex, queryIndex);
+		}
+		String path = rawValue.substring(0, cutIndex);
+		return path.endsWith(".png")
+			|| path.endsWith(".jpg")
+			|| path.endsWith(".jpeg")
+			|| path.endsWith(".webp")
+			|| path.endsWith(".gif")
+			|| path.endsWith(".avif")
+			|| path.endsWith(".svg")
+			|| path.endsWith(".bmp")
+			|| path.endsWith(".jfif")
+			|| path.endsWith(".heic");
 	}
 
 	private List<String> selectRepresentativeImages(List<String> imageUrls, int limit) {

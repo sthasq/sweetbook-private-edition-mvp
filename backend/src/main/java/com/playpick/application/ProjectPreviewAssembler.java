@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ProjectPreviewAssembler {
 
-	private static final int MAX_PREVIEW_PAGES = 24;
+	private static final int INTERIOR_PREVIEW_PAGES = 24;
 	private static final int MAX_GALLERY_IMAGES_PER_LAYOUT = 4;
 	private static final int MAX_SELECTED_CURATED_IMAGES = 40;
 	private static final Set<String> NOTEBOOK_ACCENT_MONTHS_SPRING = Set.of("3", "4", "5");
@@ -142,7 +142,7 @@ public class ProjectPreviewAssembler {
 		List<String> curatedImageUrls = collectCuratedImageUrls(curatedAssets);
 		int reservedStoryImages = Math.min(3, curatedImageUrls.size());
 		List<String> galleryPool = curatedImageUrls.subList(reservedStoryImages, curatedImageUrls.size());
-		int contentPageCount = Math.max(1, MAX_PREVIEW_PAGES - 2);
+		int contentPageCount = Math.max(1, INTERIOR_PREVIEW_PAGES - 1);
 		List<ProjectViews.Page> selectedNarrativePages = new ArrayList<>(narrativePages);
 
 		List<List<String>> imageGroups = groupCuratedImages(
@@ -187,11 +187,12 @@ public class ProjectPreviewAssembler {
 		LocalDate today = LocalDate.now(ZoneOffset.UTC);
 		result.add(buildMixedCoverPreviewPage(edition, fanNickname, personalization, today));
 		result.addAll(storyPages);
-		while (result.size() < MAX_PREVIEW_PAGES - 1) {
+		while (result.size() < INTERIOR_PREVIEW_PAGES) {
 			result.add(buildMixedBlankPreviewPage(edition.title(), today.plusDays(result.size())));
 		}
 		result.add(buildMixedPublishPreviewPage(edition, today));
-		return result.size() > MAX_PREVIEW_PAGES ? result.subList(0, MAX_PREVIEW_PAGES) : result;
+		int maxPreviewItems = INTERIOR_PREVIEW_PAGES + 1;
+		return result.size() > maxPreviewItems ? result.subList(0, maxPreviewItems) : result;
 	}
 
 	private ProjectViews.Page buildStoryPreviewPage(
@@ -242,10 +243,11 @@ public class ProjectPreviewAssembler {
 			"publish",
 			"발행면",
 			edition.creator().displayName(),
-			"",
+			edition.coverImageUrl(),
 			Map.of(
 				"previewTemplate", "MIXED_PUBLISH",
 				"title", edition.title(),
+				"photo", edition.coverImageUrl(),
 				"publishDate", today.getYear() + "." + String.format("%02d", today.getMonthValue()) + "." + String.format("%02d", today.getDayOfMonth()),
 				"author", edition.creator().displayName(),
 				"publisher", "(주)스위트북 x PlayPick",
@@ -489,15 +491,7 @@ public class ProjectPreviewAssembler {
 	}
 
 	private List<String> collectCuratedImageUrls(List<EditionViews.CuratedAsset> assets) {
-		if (assets == null || assets.isEmpty()) {
-			return List.of();
-		}
-		List<String> imageUrls = assets.stream()
-			.filter(asset -> "IMAGE".equals(asset.assetType()))
-			.map(EditionViews.CuratedAsset::content)
-			.map(publicAssetUrlResolver::resolve)
-			.toList();
-		return selectRepresentativeImages(imageUrls, MAX_SELECTED_CURATED_IMAGES);
+		return selectRepresentativeImages(resolveCuratedImagePool(assets), MAX_SELECTED_CURATED_IMAGES);
 	}
 
 	private List<String> selectRepresentativeImages(List<String> imageUrls, int limit) {
@@ -563,11 +557,7 @@ public class ProjectPreviewAssembler {
 			return List.of();
 		}
 
-		List<String> imagePool = assets.stream()
-			.filter(asset -> "IMAGE".equals(asset.assetType()))
-			.map(EditionViews.CuratedAsset::content)
-			.map(publicAssetUrlResolver::resolve)
-			.toList();
+		List<String> imagePool = resolveCuratedImagePool(assets);
 		List<ProjectViews.Page> pages = new ArrayList<>();
 		for (int index = 0; index < assets.size(); index++) {
 			EditionViews.CuratedAsset asset = assets.get(index);
@@ -593,7 +583,10 @@ public class ProjectPreviewAssembler {
 		int index
 	) {
 		if ("IMAGE".equals(asset.assetType())) {
-			return publicAssetUrlResolver.resolve(asset.content());
+			String resolvedImage = resolveCuratedImageUrl(asset.content());
+			if (resolvedImage != null) {
+				return resolvedImage;
+			}
 		}
 		if (!imagePool.isEmpty()) {
 			return imagePool.get(index % imagePool.size());
@@ -657,30 +650,85 @@ public class ProjectPreviewAssembler {
 	}
 
 	private String firstAssetImage(List<EditionViews.CuratedAsset> assets, String fallback) {
-		return assets.stream()
-			.filter(asset -> "IMAGE".equals(asset.assetType()))
-			.findFirst()
-			.map(EditionViews.CuratedAsset::content)
-			.map(publicAssetUrlResolver::resolve)
-			.orElse(publicAssetUrlResolver.resolve(fallback));
+		List<String> imageUrls = resolveCuratedImagePool(assets);
+		if (!imageUrls.isEmpty()) {
+			return imageUrls.get(0);
+		}
+		return publicAssetUrlResolver.resolve(fallback);
 	}
 
 	private String nthAssetImage(List<EditionViews.CuratedAsset> assets, int index, String fallback) {
 		if (assets == null || assets.isEmpty()) {
 			return publicAssetUrlResolver.resolve(fallback);
 		}
-		List<String> imageUrls = selectRepresentativeImages(
-			assets.stream()
-			.filter(asset -> "IMAGE".equals(asset.assetType()))
-			.map(EditionViews.CuratedAsset::content)
-			.map(publicAssetUrlResolver::resolve)
-			.toList(),
-			MAX_SELECTED_CURATED_IMAGES
-		);
+		List<String> imageUrls = collectCuratedImageUrls(assets);
 		if (index >= 0 && index < imageUrls.size()) {
 			return imageUrls.get(index);
 		}
 		return publicAssetUrlResolver.resolve(fallback);
+	}
+
+	private List<String> resolveCuratedImagePool(List<EditionViews.CuratedAsset> assets) {
+		if (assets == null || assets.isEmpty()) {
+			return List.of();
+		}
+		return assets.stream()
+			.filter(asset -> "IMAGE".equals(asset.assetType()))
+			.map(EditionViews.CuratedAsset::content)
+			.map(this::resolveCuratedImageUrl)
+			.filter(imageUrl -> imageUrl != null && !imageUrl.isBlank())
+			.toList();
+	}
+
+	private String resolveCuratedImageUrl(String rawValue) {
+		if (!isRenderableImageReference(rawValue)) {
+			return null;
+		}
+		return publicAssetUrlResolver.resolve(rawValue);
+	}
+
+	private boolean isRenderableImageReference(String rawValue) {
+		if (rawValue == null) {
+			return false;
+		}
+		String trimmed = rawValue.trim();
+		if (trimmed.isEmpty() || trimmed.chars().anyMatch(Character::isWhitespace)) {
+			return false;
+		}
+		String normalized = trimmed.toLowerCase(Locale.ROOT);
+		if (normalized.startsWith("data:image/") || normalized.startsWith("blob:")) {
+			return true;
+		}
+		if (normalized.startsWith("http://") || normalized.startsWith("https://") || normalized.startsWith("//")) {
+			return true;
+		}
+		if (normalized.contains("/api/assets/")) {
+			return true;
+		}
+		return hasImageFileExtension(normalized);
+	}
+
+	private boolean hasImageFileExtension(String rawValue) {
+		int fragmentIndex = rawValue.indexOf('#');
+		int queryIndex = rawValue.indexOf('?');
+		int cutIndex = rawValue.length();
+		if (fragmentIndex >= 0) {
+			cutIndex = Math.min(cutIndex, fragmentIndex);
+		}
+		if (queryIndex >= 0) {
+			cutIndex = Math.min(cutIndex, queryIndex);
+		}
+		String path = rawValue.substring(0, cutIndex);
+		return path.endsWith(".png")
+			|| path.endsWith(".jpg")
+			|| path.endsWith(".jpeg")
+			|| path.endsWith(".webp")
+			|| path.endsWith(".gif")
+			|| path.endsWith(".avif")
+			|| path.endsWith(".svg")
+			|| path.endsWith(".bmp")
+			|| path.endsWith(".jfif")
+			|| path.endsWith(".heic");
 	}
 
 	private String resolveImageUrl(Object value, String fallback) {

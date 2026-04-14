@@ -192,6 +192,22 @@
     transform: rotate(2deg) translate(10px, -10px);
   }
 
+  .preview-flipbook {
+    width: min(100%, 1040px);
+    margin-inline: auto;
+  }
+
+  .preview-flipbook .stf__wrapper {
+    margin-inline: auto;
+  }
+
+  .preview-flipbook-page {
+    height: 100%;
+    overflow: hidden;
+    border-radius: 0.5rem;
+    background: #ffffff;
+  }
+
   .studio-page input:not([type="checkbox"]):not([type="radio"]),
   .studio-page textarea,
   .studio-page select {
