@@ -7,13 +7,20 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.playpick.application.SweetbookWebhookService;
+import com.playpick.domain.OrderRecord;
+import com.playpick.domain.OrderRecordRepository;
+import com.playpick.domain.SweetbookWebhookEvent;
+import com.playpick.domain.SweetbookWebhookEventRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -46,6 +53,15 @@ class AuthAndAccessIntegrationTest {
 
 	@Autowired
 	private ObjectMapper objectMapper;
+
+	@Autowired
+	private SweetbookWebhookService sweetbookWebhookService;
+
+	@Autowired
+	private SweetbookWebhookEventRepository sweetbookWebhookEventRepository;
+
+	@Autowired
+	private OrderRecordRepository orderRecordRepository;
 
 	@Test
 	void signupLoginMeAndLogoutFlowWorks() throws Exception {
@@ -205,6 +221,28 @@ class AuthAndAccessIntegrationTest {
 	}
 
 	@Test
+	void creatorCannotEnterFanPurchaseFlow() throws Exception {
+		MockHttpSession creatorSession = signUpCreator(uniqueEmail("creator-purchase"), "Creator Purchase", "@creator_purchase");
+
+		mockMvc.perform(post("/api/projects")
+				.with(csrf())
+				.session(creatorSession)
+				.contentType(APPLICATION_JSON)
+				.content("""
+					{
+					  "editionId": 1,
+					  "mode": "demo"
+					}
+					"""))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.detail").value("구매는 FAN 계정으로만 진행할 수 있습니다."));
+
+		mockMvc.perform(get("/api/me/projects").session(creatorSession))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.detail").value("구매는 FAN 계정으로만 진행할 수 있습니다."));
+	}
+
+	@Test
 	void creatorSignupCreatesStudioReadyAccount() throws Exception {
 		String email = uniqueEmail("creator");
 
@@ -358,7 +396,7 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(jsonPath("$.siteOrderUid").isNotEmpty())
 			.andExpect(jsonPath("$.siteOrderStatus").value("PAID"))
 			.andExpect(jsonPath("$.fulfillmentStatus").isNotEmpty())
-			.andExpect(jsonPath("$.edition.title").value("Astra Vale · Mina Loop · Noah Reed Collab Archive"))
+			.andExpect(jsonPath("$.edition.title").value("Trio Archive"))
 			.andExpect(jsonPath("$.shipping.recipientName").value("천경신"));
 	}
 
@@ -438,7 +476,7 @@ class AuthAndAccessIntegrationTest {
 			{
 			  "data": {
 			    "orderUid": "%s",
-			    "occurredAt": "2026-04-11T10:00:00Z"
+			    "occurredAt": "2099-04-11T10:00:00Z"
 			  }
 			}
 			""".formatted(fulfillmentOrderUid);
@@ -466,6 +504,7 @@ class AuthAndAccessIntegrationTest {
 
 		mockMvc.perform(get("/api/admin/webhooks/stream").session(adminSession))
 			.andExpect(status().isOk())
+			.andExpect(header().string("X-Accel-Buffering", "no"))
 			.andExpect(result -> org.assertj.core.api.Assertions.assertThat(result.getResponse().getContentType())
 				.startsWith(MediaType.TEXT_EVENT_STREAM_VALUE));
 	}
@@ -533,7 +572,7 @@ class AuthAndAccessIntegrationTest {
 			  "data": {
 			    "orderUid": "%s",
 			    "status": "shipped",
-			    "occurredAt": "2026-04-11T11:00:00Z"
+			    "occurredAt": "2099-04-11T11:00:00Z"
 			  }
 			}
 			""".formatted(fulfillmentOrderUid);
@@ -552,6 +591,209 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.fulfillmentStatus").value("SHIPPING_DEPARTED"))
 			.andExpect(jsonPath("$.lastFulfillmentEvent").value("shipping.departed"));
+	}
+
+	@Test
+	void sweetbookWebhookParsesSnakeCasePayloadFields() throws Exception {
+		MockHttpSession session = signUp(uniqueEmail("webhook-snake"), "Webhook Snake Fan");
+		long projectId = createProject(session, 1L, "demo");
+		placeOrder(session, projectId, "Webhook Snake Fan", "010-4444-5555");
+
+		MvcResult summaryResult = mockMvc.perform(get("/api/projects/{projectId}/order-summary", projectId).session(session))
+			.andExpect(status().isOk())
+			.andReturn();
+
+		String fulfillmentOrderUid = readString(summaryResult, "fulfillmentOrderUid");
+		long timestamp = Instant.now().getEpochSecond();
+		String payload = """
+			{
+			  "event_type": "order.status_changed",
+			  "created_at": "2099-04-14T11:05:22Z",
+			  "data": {
+			    "order_uid": "%s",
+			    "order_status": "shipped"
+			  }
+			}
+			""".formatted(fulfillmentOrderUid);
+
+		mockMvc.perform(post("/api/sweetbook/webhooks/events")
+				.header("X-Webhook-Delivery", "del-" + UUID.randomUUID())
+				.header("X-Webhook-Timestamp", timestamp)
+				.header("X-Webhook-Signature", signWebhook(TEST_WEBHOOK_SECRET, timestamp, payload))
+				.contentType(APPLICATION_JSON)
+				.content(payload))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.eventType").value("order.status_changed"))
+			.andExpect(jsonPath("$.sweetbookOrderUid").value(fulfillmentOrderUid))
+			.andExpect(jsonPath("$.linked").value(true))
+			.andExpect(jsonPath("$.duplicate").value(false));
+
+		mockMvc.perform(get("/api/projects/{projectId}/order-summary", projectId).session(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.fulfillmentStatus").value("SHIPPING_DEPARTED"))
+			.andExpect(jsonPath("$.lastFulfillmentEvent").value("shipping.departed"));
+	}
+
+	@Test
+	void sweetbookWebhookLinksEarlierUnlinkedEventsWhenLaterWebhookArrives() throws Exception {
+		MockHttpSession session = signUp(uniqueEmail("webhook-backfill"), "Webhook Backfill Fan");
+		long projectId = createProject(session, 1L, "demo");
+		placeOrder(session, projectId, "Webhook Backfill Fan", "010-2323-4545");
+
+		MvcResult summaryResult = mockMvc.perform(get("/api/projects/{projectId}/order-summary", projectId).session(session))
+			.andExpect(status().isOk())
+			.andReturn();
+
+		String fulfillmentOrderUid = readString(summaryResult, "fulfillmentOrderUid");
+		SweetbookWebhookEvent earlierEvent = new SweetbookWebhookEvent();
+		earlierEvent.setEventType("order.created");
+		earlierEvent.setSweetbookOrderUid(fulfillmentOrderUid);
+		earlierEvent.setPayload(objectMapper.readValue(
+			("""
+				{
+				  "event_type": "order.created",
+				  "created_at": "2099-04-14T11:30:00Z",
+				  "data": {
+				    "order_uid": "%s",
+				    "order_status": "PAID"
+				  }
+				}
+				""").formatted(fulfillmentOrderUid),
+			new TypeReference<LinkedHashMap<String, Object>>() {
+			}
+		));
+		earlierEvent.setLinked(false);
+		earlierEvent.setProcessedAt(Instant.parse("2099-04-14T11:30:01Z"));
+		earlierEvent = sweetbookWebhookEventRepository.save(earlierEvent);
+
+		long timestamp = Instant.now().getEpochSecond();
+		String payload = """
+			{
+			  "event_type": "order.status_changed",
+			  "created_at": "2099-04-14T11:35:00Z",
+			  "data": {
+			    "order_uid": "%s",
+			    "order_status": "shipped"
+			  }
+			}
+			""".formatted(fulfillmentOrderUid);
+
+		mockMvc.perform(post("/api/sweetbook/webhooks/events")
+				.header("X-Webhook-Timestamp", timestamp)
+				.header("X-Webhook-Signature", signWebhook(TEST_WEBHOOK_SECRET, timestamp, payload))
+				.header("X-Webhook-Delivery", "del-" + UUID.randomUUID())
+				.contentType(APPLICATION_JSON)
+				.content(payload))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.linked").value(true));
+
+		org.assertj.core.api.Assertions.assertThat(
+			sweetbookWebhookEventRepository.findById(earlierEvent.getId())
+				.orElseThrow()
+				.isLinked()
+		).isTrue();
+	}
+
+	@Test
+	void sweetbookWebhookIgnoresOlderTerminalStatusAfterNewerDeliveryEvent() throws Exception {
+		MockHttpSession session = signUp(uniqueEmail("webhook-stale-terminal"), "Webhook Stale Fan");
+		long projectId = createProject(session, 1L, "demo");
+		placeOrder(session, projectId, "Webhook Stale Fan", "010-5656-7878");
+
+		MvcResult summaryResult = mockMvc.perform(get("/api/projects/{projectId}/order-summary", projectId).session(session))
+			.andExpect(status().isOk())
+			.andReturn();
+
+		String fulfillmentOrderUid = readString(summaryResult, "fulfillmentOrderUid");
+
+		String deliveredPayload = """
+			{
+			  "event_type": "order.status_changed",
+			  "created_at": "2099-04-15T12:00:00Z",
+			  "data": {
+			    "order_uid": "%s",
+			    "order_status": "delivered"
+			  }
+			}
+			""".formatted(fulfillmentOrderUid);
+		long deliveredTimestamp = Instant.now().getEpochSecond();
+
+		mockMvc.perform(post("/api/sweetbook/webhooks/events")
+				.header("X-Webhook-Delivery", "del-" + UUID.randomUUID())
+				.header("X-Webhook-Timestamp", deliveredTimestamp)
+				.header("X-Webhook-Signature", signWebhook(TEST_WEBHOOK_SECRET, deliveredTimestamp, deliveredPayload))
+				.contentType(APPLICATION_JSON)
+				.content(deliveredPayload))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.linked").value(true));
+
+		String cancelledPayload = """
+			{
+			  "event_type": "order.cancelled",
+			  "created_at": "2099-04-15T11:00:00Z",
+			  "data": {
+			    "order_uid": "%s"
+			  }
+			}
+			""".formatted(fulfillmentOrderUid);
+		long cancelledTimestamp = Instant.now().getEpochSecond();
+
+		mockMvc.perform(post("/api/sweetbook/webhooks/events")
+				.header("X-Webhook-Delivery", "del-" + UUID.randomUUID())
+				.header("X-Webhook-Timestamp", cancelledTimestamp)
+				.header("X-Webhook-Signature", signWebhook(TEST_WEBHOOK_SECRET, cancelledTimestamp, cancelledPayload))
+				.contentType(APPLICATION_JSON)
+				.content(cancelledPayload))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.linked").value(true));
+
+		mockMvc.perform(get("/api/projects/{projectId}/order-summary", projectId).session(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.fulfillmentStatus").value("SHIPPING_DELIVERED"))
+			.andExpect(jsonPath("$.lastFulfillmentEvent").value("shipping.delivered"))
+			.andExpect(jsonPath("$.siteOrderStatus").value("PAID"));
+	}
+
+	@Test
+	void reconcilePendingEventsLinksSavedOrderCreatedWebhookAfterOrderRecordSave() throws Exception {
+		MockHttpSession session = signUp(uniqueEmail("webhook-reconcile"), "Webhook Reconcile Fan");
+		long projectId = createProject(session, 1L, "demo");
+		placeOrder(session, projectId, "Webhook Reconcile Fan", "010-8787-1212");
+
+		MvcResult summaryResult = mockMvc.perform(get("/api/projects/{projectId}/order-summary", projectId).session(session))
+			.andExpect(status().isOk())
+			.andReturn();
+
+		String fulfillmentOrderUid = readString(summaryResult, "fulfillmentOrderUid");
+		OrderRecord orderRecord = orderRecordRepository.findBySweetbookOrderUid(fulfillmentOrderUid).orElseThrow();
+
+		SweetbookWebhookEvent pendingEvent = new SweetbookWebhookEvent();
+		pendingEvent.setEventType("order.created");
+		pendingEvent.setSweetbookOrderUid(fulfillmentOrderUid);
+		pendingEvent.setPayload(objectMapper.readValue(
+			("""
+				{
+				  "event_type": "order.created",
+				  "created_at": "2099-04-14T11:40:00Z",
+				  "data": {
+				    "order_uid": "%s",
+				    "order_status": "PAID"
+				  }
+				}
+				""").formatted(fulfillmentOrderUid),
+			new TypeReference<LinkedHashMap<String, Object>>() {
+			}
+		));
+		pendingEvent.setLinked(false);
+		pendingEvent = sweetbookWebhookEventRepository.save(pendingEvent);
+
+		sweetbookWebhookService.reconcilePendingEvents(orderRecord);
+
+		org.assertj.core.api.Assertions.assertThat(
+			sweetbookWebhookEventRepository.findById(pendingEvent.getId())
+				.orElseThrow()
+				.isLinked()
+		).isTrue();
 	}
 
 	@Test

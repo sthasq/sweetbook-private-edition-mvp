@@ -63,7 +63,9 @@ export default function Layout() {
   const navItems = [{ to: "/", label: "홈" }];
 
   if (user) {
-    navItems.push({ to: "/me/projects", label: "내 프로젝트" });
+    if (user.role === "FAN") {
+      navItems.push({ to: "/me/projects", label: "내 프로젝트" });
+    }
     if (user.role === "CREATOR") {
       navItems.push({ to: "/studio/orders", label: "크리에이터 스튜디오" });
     }
@@ -245,7 +247,7 @@ export default function Layout() {
             <Link to="/" className="transition hover:text-brand-700">
               에디션 둘러보기
             </Link>
-            {user && (
+            {user?.role === "FAN" && (
               <Link to="/me/projects" className="transition hover:text-brand-700">
                 내 프로젝트
               </Link>

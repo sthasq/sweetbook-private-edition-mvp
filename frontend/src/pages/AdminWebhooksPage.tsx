@@ -3,8 +3,12 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { getAdminWebhooks } from "../api/admin";
 import AdminShell from "../components/AdminShell";
+import PaginationControls from "../components/PaginationControls";
 import { subscribeToAdminWebhookEvents } from "../lib/adminWebhookStream";
+import { paginateItems } from "../lib/pagination";
 import type { AdminWebhookEvent } from "../types/api";
+
+const WEBHOOKS_PAGE_SIZE = 10;
 
 export default function AdminWebhooksPage() {
   const navigate = useNavigate();
@@ -12,6 +16,7 @@ export default function AdminWebhooksPage() {
   const [events, setEvents] = useState<AdminWebhookEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -41,6 +46,7 @@ export default function AdminWebhooksPage() {
     load();
     const unsubscribe = subscribeToAdminWebhookEvents((event) => {
       setEvents((current) => mergeWebhookEvents(current, [event]));
+      setPage(1);
     });
 
     return () => {
@@ -48,6 +54,8 @@ export default function AdminWebhooksPage() {
       unsubscribe();
     };
   }, [navigate, location.pathname]);
+
+  const pagedEvents = paginateItems(events, page, WEBHOOKS_PAGE_SIZE);
 
   return (
     <AdminShell
@@ -72,43 +80,52 @@ export default function AdminWebhooksPage() {
           아직 수신된 Webhook 이벤트가 없어요.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-stone-200">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-stone-50 text-xs uppercase tracking-wider text-stone-500">
-              <tr>
-                <th className="px-5 py-4">ID</th>
-                <th className="px-5 py-4">이벤트 타입</th>
-                <th className="px-5 py-4">주문 UID</th>
-                <th className="px-5 py-4 text-center">연결됨</th>
-                <th className="px-5 py-4 text-right">처리 시각</th>
-                <th className="px-5 py-4 text-right">수신 시각</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
-              {events.map((event) => (
-                <tr key={event.id} className="bg-white hover:bg-stone-50/60">
-                  <td className="px-5 py-4 font-medium text-stone-900">#{event.id}</td>
-                  <td className="px-5 py-4">
-                    <span className="rounded bg-stone-100 px-2 py-1 font-mono text-xs text-stone-700">{event.eventType}</span>
-                  </td>
-                  <td className="px-5 py-4 font-mono text-xs text-stone-600">
-                    {event.sweetbookOrderUid || "—"}
-                  </td>
-                  <td className="px-5 py-4 text-center">
-                    {event.linked ? (
-                      <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">연결</span>
-                    ) : (
-                      <span className="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-500">미연결</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-4 text-right text-xs text-stone-600">
-                    {event.processedAt ? fmtDate(event.processedAt) : "—"}
-                  </td>
-                  <td className="px-5 py-4 text-right text-xs text-stone-600">{fmtDate(event.createdAt)}</td>
+        <div className="space-y-4">
+          <div className="overflow-x-auto rounded-2xl border border-stone-200">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-stone-50 text-xs uppercase tracking-wider text-stone-500">
+                <tr>
+                  <th className="px-5 py-4">ID</th>
+                  <th className="px-5 py-4">이벤트 타입</th>
+                  <th className="px-5 py-4">주문 UID</th>
+                  <th className="px-5 py-4 text-center">연결됨</th>
+                  <th className="px-5 py-4 text-right">처리 시각</th>
+                  <th className="px-5 py-4 text-right">수신 시각</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {pagedEvents.items.map((event) => (
+                  <tr key={event.id} className="bg-white hover:bg-stone-50/60">
+                    <td className="px-5 py-4 font-medium text-stone-900">#{event.id}</td>
+                    <td className="px-5 py-4">
+                      <span className="rounded bg-stone-100 px-2 py-1 font-mono text-xs text-stone-700">{event.eventType}</span>
+                    </td>
+                    <td className="px-5 py-4 font-mono text-xs text-stone-600">
+                      {event.sweetbookOrderUid || "—"}
+                    </td>
+                    <td className="px-5 py-4 text-center">
+                      {event.linked ? (
+                        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">연결</span>
+                      ) : (
+                        <span className="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-500">미연결</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4 text-right text-xs text-stone-600">
+                      {event.processedAt ? fmtDate(event.processedAt) : "—"}
+                    </td>
+                    <td className="px-5 py-4 text-right text-xs text-stone-600">{fmtDate(event.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <PaginationControls
+            page={pagedEvents.currentPage}
+            pageSize={WEBHOOKS_PAGE_SIZE}
+            totalItems={events.length}
+            itemLabel="웹훅"
+            onPageChange={setPage}
+          />
         </div>
       )}
     </AdminShell>
@@ -131,6 +148,19 @@ function mergeWebhookEvents(current: AdminWebhookEvent[], incoming: AdminWebhook
   }
 
   return Array.from(merged.values())
-    .sort((left, right) => right.id - left.id)
+    .sort((left, right) => compareWebhookEvents(left, right))
     .slice(0, 20);
+}
+
+function compareWebhookEvents(left: AdminWebhookEvent, right: AdminWebhookEvent) {
+  const createdAtDiff = toTimestamp(right.createdAt) - toTimestamp(left.createdAt);
+  if (createdAtDiff !== 0) {
+    return createdAtDiff;
+  }
+  return right.id - left.id;
+}
+
+function toTimestamp(value: string) {
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
 }

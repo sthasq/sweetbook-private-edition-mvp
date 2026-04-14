@@ -57,6 +57,32 @@ public class FanProject {
 	private Instant sweetbookFinalizedAt;
 
 	@Enumerated(EnumType.STRING)
+	@Column(name = "book_operation_type", length = 32)
+	private BookOperationType bookOperationType;
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "book_operation_status", nullable = false, length = 32)
+	private BookOperationStatus bookOperationStatus = BookOperationStatus.IDLE;
+
+	@Column(name = "book_operation_progress")
+	private Integer bookOperationProgress;
+
+	@Column(name = "book_operation_step", length = 64)
+	private String bookOperationStep;
+
+	@Column(name = "book_operation_message", length = 255)
+	private String bookOperationMessage;
+
+	@Column(name = "book_operation_error", length = 1000)
+	private String bookOperationError;
+
+	@Column(name = "book_operation_started_at")
+	private Instant bookOperationStartedAt;
+
+	@Column(name = "book_operation_finished_at")
+	private Instant bookOperationFinishedAt;
+
+	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 32)
 	private FanProjectStatus status = FanProjectStatus.DRAFT;
 

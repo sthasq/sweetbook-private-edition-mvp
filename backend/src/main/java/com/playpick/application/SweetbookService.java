@@ -21,7 +21,6 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -34,13 +33,29 @@ public class SweetbookService {
 	private static final int DEFAULT_PAGE_INCREMENT = 2;
 	private static final int MAX_GALLERY_IMAGES_PER_LAYOUT = 4;
 	private static final int MAX_SELECTED_CURATED_IMAGES = 40;
+	private static final int LIVE_DRAFT_MINIMUM_PAGE_BUFFER = 2;
 	private static final DateTimeFormatter SWEETBOOK_DATE_RANGE_FORMAT = DateTimeFormatter.ofPattern("yyyy.MM.dd");
 	private static final DateTimeFormatter SWEETBOOK_PUBLISH_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy.MM.dd");
+	private static final List<String> GENERATED_DEMO_VARIANT_SUFFIXES = List.of(
+		"-detail",
+		"-warm-film",
+		"-matte-fade",
+		"-mono-grain"
+	);
+	private static final List<String> DEMO_ASSET_EXTENSIONS = List.of(".png", ".jpg", ".jpeg", ".webp");
 
 	private final SweetbookClient sweetbookClient;
 	private final SweetbookProperties sweetbookProperties;
 	private final AppProperties appProperties;
 	private final PublicAssetPublishingService publicAssetPublishingService;
+
+	public record DraftProgress(int progress, String step, String message) {
+	}
+
+	@FunctionalInterface
+	public interface DraftProgressListener {
+		void onProgress(DraftProgress progress);
+	}
 
 	public boolean isLiveEnabled() {
 		return sweetbookProperties.isLiveEnabled();
@@ -56,7 +71,6 @@ public class SweetbookService {
 		return new SweetbookViews.IntegrationStatus(mode, isLiveEnabled(), label);
 	}
 
-	@Cacheable("sweetbook-book-specs")
 	public List<SweetbookViews.BookSpec> getBookSpecs() {
 		if (!isLiveEnabled()) {
 			return defaultBookSpecs();
@@ -64,7 +78,6 @@ public class SweetbookService {
 		return sweetbookClient.getBookSpecs();
 	}
 
-	@Cacheable(cacheNames = "sweetbook-templates", key = "#bookSpecUid")
 	public List<SweetbookViews.Template> getTemplates(String bookSpecUid) {
 		if (!isLiveEnabled()) {
 			return defaultTemplates();
@@ -72,7 +85,6 @@ public class SweetbookService {
 		return sweetbookClient.getTemplates(bookSpecUid);
 	}
 
-	@Cacheable(cacheNames = "sweetbook-template-detail", key = "#templateUid")
 	public SweetbookViews.TemplateDetail getTemplateDetail(String templateUid) {
 		if (templateUid == null || templateUid.isBlank()) {
 			return defaultTemplateDetail("");
@@ -103,6 +115,16 @@ public class SweetbookService {
 		String idempotencyKey,
 		boolean reused
 	) {
+		return prepareBookDraft(preview, externalRef, idempotencyKey, reused, null);
+	}
+
+	public ProjectViews.BookGeneration prepareBookDraft(
+		ProjectViews.Preview preview,
+		String externalRef,
+		String idempotencyKey,
+		boolean reused,
+		DraftProgressListener progressListener
+	) {
 		ResolvedTemplates resolvedTemplates = resolveTemplatesForPreview(preview);
 		PagePlan pagePlan = planPages(
 			resolveBookSpec(preview.edition().snapshot().bookSpecUid()),
@@ -117,11 +139,13 @@ public class SweetbookService {
 		List<BookContentPage> contentPages;
 		LiveDraftAssets liveDraftAssets;
 		try {
+			notifyDraftProgress(progressListener, 24, "PREPARING_ASSETS", "포토북에 들어갈 장면과 이미지를 정리하고 있어요.");
 			contentPages = buildSweetbookContentPages(
 				preview,
 				pagePlan.contentPages(),
 				liveAssetUrlCache
 			);
+			notifyDraftProgress(progressListener, 36, "UPLOADING_ASSETS", "표지와 내지에 쓸 이미지를 Sweetbook용 공개 URL로 맞추고 있어요.");
 			liveDraftAssets = prepareLiveDraftAssets(preview, contentPages, liveAssetUrlCache);
 		} catch (AppException exception) {
 			if (shouldFallbackToDemoDraft(exception)) {
@@ -132,6 +156,7 @@ public class SweetbookService {
 		}
 
 		try {
+			notifyDraftProgress(progressListener, 48, "CREATING_BOOK", "포토북 드래프트를 만들고 있어요.");
 			Map<String, Object> createPayload = new LinkedHashMap<>();
 			createPayload.put("bookSpecUid", preview.edition().snapshot().bookSpecUid());
 			createPayload.put("title", preview.edition().title());
@@ -145,7 +170,8 @@ public class SweetbookService {
 			));
 
 			String bookUid = sweetbookClient.createBook(createPayload, idempotencyKey);
-			addDraftContents(preview, resolvedTemplates, pagePlan, bookUid, liveDraftAssets, contentPages);
+			addDraftContents(preview, resolvedTemplates, pagePlan, bookUid, liveDraftAssets, contentPages, progressListener);
+			notifyDraftProgress(progressListener, 96, "READY", "포토북 드래프트가 거의 준비됐어요.");
 
 			return new ProjectViews.BookGeneration(
 				preview.projectId(),
@@ -285,7 +311,8 @@ public class SweetbookService {
 		PagePlan pagePlan,
 		String bookUid,
 		LiveDraftAssets liveDraftAssets,
-		List<BookContentPage> contentPages
+		List<BookContentPage> contentPages,
+		DraftProgressListener progressListener
 	) {
 		LocalDate today = LocalDate.now();
 		String fanNickname = String.valueOf(preview.personalizationData().getOrDefault("fanNickname", "팬"));
@@ -296,6 +323,7 @@ public class SweetbookService {
 			liveDraftAssets.backCoverImageUrl(),
 			today
 		);
+		notifyDraftProgress(progressListener, 58, "APPLYING_COVER", "하드커버와 책등을 입히고 있어요.");
 		sweetbookClient.addCover(bookUid, resolvedTemplates.coverTemplate().uid(), coverParams);
 
 		List<LiveContentInstruction> instructions = buildLiveContentInstructions(
@@ -306,7 +334,14 @@ public class SweetbookService {
 			today,
 			pagePlan.contentPages()
 		);
-		for (LiveContentInstruction instruction : instructions) {
+		for (int index = 0; index < instructions.size(); index++) {
+			LiveContentInstruction instruction = instructions.get(index);
+			notifyDraftProgress(
+				progressListener,
+				mapInstructionProgress(index, instructions.size()),
+				"COMPOSING_PAGES",
+				describeDraftInstruction(instruction, index, instructions.size())
+			);
 			sweetbookClient.addContents(
 				bookUid,
 				instruction.template().uid(),
@@ -316,7 +351,40 @@ public class SweetbookService {
 		}
 
 		Map<String, Object> publishParams = buildMixedPublishParams(preview, today);
+		notifyDraftProgress(progressListener, 92, "ADDING_CREDITS", "발행면과 마감 페이지를 정리하고 있어요.");
 		sweetbookClient.addContents(bookUid, resolvedTemplates.publishTemplate().uid(), publishParams, "page");
+	}
+
+	private void notifyDraftProgress(
+		DraftProgressListener progressListener,
+		int progress,
+		String step,
+		String message
+	) {
+		if (progressListener == null) {
+			return;
+		}
+		progressListener.onProgress(new DraftProgress(progress, step, message));
+	}
+
+	private int mapInstructionProgress(int index, int totalInstructions) {
+		if (totalInstructions <= 0) {
+			return 86;
+		}
+		double completion = (index + 1) / (double) totalInstructions;
+		return 62 + (int) Math.round(completion * 24);
+	}
+
+	private String describeDraftInstruction(
+		LiveContentInstruction instruction,
+		int index,
+		int totalInstructions
+	) {
+		String templateName = instruction.template().name();
+		String normalizedTemplateName = templateName == null || templateName.isBlank()
+			? "내지"
+			: templateName;
+		return normalizedTemplateName + " 페이지를 정리하는 중이에요. (" + (index + 1) + "/" + totalInstructions + ")";
 	}
 
 	private LiveDraftAssets prepareLiveDraftAssets(
@@ -600,6 +668,7 @@ public class SweetbookService {
 	) {
 		List<LiveContentInstruction> instructions = new ArrayList<>();
 		int consumedPhysicalPages = 0;
+		int targetContentPageCount = contentPageCount + LIVE_DRAFT_MINIMUM_PAGE_BUFFER;
 
 		for (int index = 0; index < sourcePages.size(); index++) {
 			BookContentPage page = sourcePages.get(index);
@@ -612,7 +681,7 @@ public class SweetbookService {
 			consumedPhysicalPages++;
 		}
 
-		while (consumedPhysicalPages < contentPageCount && resolvedTemplates.blankTemplate() != null
+		while (consumedPhysicalPages < targetContentPageCount && resolvedTemplates.blankTemplate() != null
 			&& resolvedTemplates.blankTemplate().uid() != null
 			&& !resolvedTemplates.blankTemplate().uid().isBlank()) {
 			LocalDate blankDate = today.plusDays(consumedPhysicalPages);
@@ -1197,6 +1266,12 @@ public class SweetbookService {
 			);
 		}
 
+		String remappedDemoAssetUrl = remapGeneratedDemoAssetUrl(trimmedValue, uri);
+		if (remappedDemoAssetUrl != null) {
+			cacheLiveAssetUrl(liveAssetUrlCache, trimmedValue, remappedDemoAssetUrl);
+			return remappedDemoAssetUrl;
+		}
+
 		String publishedLocalAssetUrl = publishLocalAssetIfPossible(trimmedValue, uri);
 		if (publishedLocalAssetUrl != null) {
 			cacheLiveAssetUrl(liveAssetUrlCache, trimmedValue, publishedLocalAssetUrl);
@@ -1227,6 +1302,67 @@ public class SweetbookService {
 		resolvedUrl = uri.toString();
 		cacheLiveAssetUrl(liveAssetUrlCache, trimmedValue, resolvedUrl);
 		return resolvedUrl;
+	}
+
+	private String remapGeneratedDemoAssetUrl(String rawValue, URI uri) {
+		if (publicAssetPublishingService.isConfigured()) {
+			return null;
+		}
+
+		String assetPath = extractAppRelativeDemoAssetPath(rawValue, uri);
+		if (assetPath == null || !assetPath.startsWith("/demo-assets/generated/")) {
+			return null;
+		}
+
+		String canonicalAssetPath = findCanonicalDemoAssetPath(assetPath);
+		if (canonicalAssetPath == null) {
+			return null;
+		}
+
+		log.info("Remapping generated demo asset {} to canonical asset {} for Sweetbook live draft", assetPath, canonicalAssetPath);
+		return appProperties.resolvePublicUrl(canonicalAssetPath);
+	}
+
+	private String extractAppRelativeDemoAssetPath(String rawValue, URI uri) {
+		String candidatePath;
+		if (uri.isAbsolute()) {
+			candidatePath = uri.getPath();
+		} else if (rawValue.startsWith("/")) {
+			candidatePath = rawValue;
+		} else {
+			candidatePath = "/" + rawValue;
+		}
+
+		if (candidatePath == null || candidatePath.isBlank()) {
+			return null;
+		}
+
+		String normalized = candidatePath.replace('\\', '/');
+		int demoAssetIndex = normalized.indexOf("/demo-assets/");
+		if (demoAssetIndex < 0) {
+			return null;
+		}
+		return normalized.substring(demoAssetIndex);
+	}
+
+	private String findCanonicalDemoAssetPath(String assetPath) {
+		String normalized = assetPath.replace('\\', '/');
+		String fileName = Path.of(normalized).getFileName().toString();
+		int extensionIndex = fileName.lastIndexOf('.');
+		String stem = extensionIndex >= 0 ? fileName.substring(0, extensionIndex) : fileName;
+		String baseName = GENERATED_DEMO_VARIANT_SUFFIXES.stream()
+			.filter(stem::endsWith)
+			.findFirst()
+			.map(suffix -> stem.substring(0, stem.length() - suffix.length()))
+			.orElse(stem);
+
+		for (String extension : DEMO_ASSET_EXTENSIONS) {
+			String candidatePath = "/demo-assets/" + baseName + extension;
+			if (resolvePublishableAssetPath(candidatePath) != null) {
+				return candidatePath;
+			}
+		}
+		return null;
 	}
 
 	private String publishLocalAssetIfPossible(String rawValue, URI uri) {

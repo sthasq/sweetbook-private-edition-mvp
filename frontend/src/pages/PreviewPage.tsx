@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useLayoutEffect, useRef, useState } from "react";
 import HTMLFlipBook from "react-pageflip";
 import { useParams, useNavigate } from "react-router-dom";
-import { finalizeBook, generateBook, getPreview } from "../api/projects";
+import { finalizeBook, generateBook, getPreview, refreshPreview } from "../api/projects";
 import type { ProjectPreview } from "../types/api";
 import Spinner from "../components/Spinner";
 import ErrorBox from "../components/ErrorBox";
@@ -90,6 +90,8 @@ export default function PreviewPage() {
   const [generating, setGenerating] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [activeSpread, setActiveSpread] = useState(0);
+  const [generationPollTick, setGenerationPollTick] = useState(0);
+  const draftGenerationOperation = preview?.bookOperation ?? null;
 
   useEffect(() => {
     if (!projectId) return;
@@ -98,6 +100,40 @@ export default function PreviewPage() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [projectId]);
+
+  useEffect(() => {
+    if (!projectId || !draftGenerationOperation || !isDraftGenerationActive(draftGenerationOperation)) {
+      return;
+    }
+
+    let cancelled = false;
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const nextPreview = await refreshPreview(Number(projectId));
+        if (!cancelled) {
+          setPreview(nextPreview);
+          setError("");
+        }
+      } catch (e: unknown) {
+        if (!cancelled) {
+          setError(
+            e instanceof Error
+              ? e.message
+              : "포토북 생성 상태를 확인하지 못했어요. 잠시 후 다시 시도해주세요.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setGenerationPollTick((current) => current + 1);
+        }
+      }
+    }, draftGenerationOperation.status === "QUEUED" ? 1200 : 2400);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [draftGenerationOperation, generationPollTick, projectId]);
 
   useEffect(() => {
     if (!preview) {
@@ -111,6 +147,7 @@ export default function PreviewPage() {
 
   async function handlePrimaryAction() {
     if (!projectId) return;
+    setError("");
     if (preview && preview.status === "FINALIZED") {
       navigate(`/projects/${projectId}/shipping`);
       return;
@@ -119,7 +156,7 @@ export default function PreviewPage() {
       setFinalizing(true);
       try {
         await finalizeBook(Number(projectId));
-        const nextPreview = await getPreview(Number(projectId));
+        const nextPreview = await refreshPreview(Number(projectId));
         setPreview(nextPreview);
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "인쇄 확정에 실패했어요. 다시 시도해주세요.");
@@ -132,7 +169,7 @@ export default function PreviewPage() {
     setGenerating(true);
     try {
       await generateBook(Number(projectId));
-      const nextPreview = await getPreview(Number(projectId));
+      const nextPreview = await refreshPreview(Number(projectId));
       setPreview(nextPreview);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "포토북 생성에 실패했어요. 다시 시도해주세요.");
@@ -157,6 +194,11 @@ export default function PreviewPage() {
   const previewSummary = buildPreviewSummary(pages);
   const quickJumps = buildPreviewQuickJumps(bookModel);
   const pricingHint = estimateEditionPricing(preview.edition.snapshot?.bookSpecUid);
+  const bookOperation = preview.bookOperation;
+  const isBookGenerationActive = isDraftGenerationActive(bookOperation);
+  const bookGenerationFailed = isDraftGenerationFailed(bookOperation);
+  const bookOperationProgress = resolveDraftGenerationProgress(bookOperation);
+  const bookOperationMessage = resolveDraftGenerationMessage(bookOperation);
   const previousSpread = previousPreviewSpreadStart(normalizedActiveSpread);
   const nextSpread = nextPreviewSpreadStart(normalizedActiveSpread, bookModel.leaves.length);
   const currentPageLabel = currentSpreadView?.label ?? "표지";
@@ -166,10 +208,14 @@ export default function PreviewPage() {
         ? "인쇄 확정 중…"
         : "인쇄용으로 확정하기"
       : preview.status === "FINALIZED"
-        ? "배송 · 결제로 이동"
-        : generating
-          ? "포토북 만드는 중…"
-          : "포토북 만들기";
+      ? "배송 · 결제로 이동"
+      : isBookGenerationActive
+        ? "포토북 만드는 중…"
+        : bookGenerationFailed
+          ? "다시 포토북 만들기"
+          : generating
+            ? "포토북 만드는 중…"
+            : "포토북 만들기";
 
   function syncActiveSpread(flipEvent: FlipBookEvent) {
     setActiveSpread(
@@ -248,44 +294,48 @@ export default function PreviewPage() {
             <div className="editorial-panel p-6 md:p-10">
               {bookModel.leaves.length > 0 ? (
                 <div className="relative">
-                  <HTMLFlipBook
-                    ref={flipBookRef}
-                    width={420}
-                    height={525}
-                    minWidth={280}
-                    maxWidth={520}
-                    minHeight={360}
-                    maxHeight={650}
-                    startPage={0}
-                    size="stretch"
-                    drawShadow
-                    flippingTime={900}
-                    usePortrait={false}
-                    startZIndex={12}
-                    autoSize
-                    maxShadowOpacity={0.22}
-                    showCover={false}
-                    mobileScrollSupport
-                    swipeDistance={24}
-                    clickEventForward
-                    useMouseEvents
-                    showPageCorners
-                    disableFlipByClick={false}
-                    className="preview-flipbook"
-                    style={{ margin: "0 auto" }}
-                    onInit={syncActiveSpread}
-                    onUpdate={syncActiveSpread}
-                    onFlip={syncActiveSpread}
-                  >
-                    {bookModel.leaves.map((leaf, leafIndex) => (
-                      <FlipBookLeaf
-                        key={leaf.key}
-                        leaf={leaf}
-                        templateDetail={preview.contentTemplateDetail}
-                        right={isRightHandBookPage(leafIndex)}
-                      />
-                    ))}
-                  </HTMLFlipBook>
+                  <div className="preview-book-shell">
+                    <div className="preview-book-surface">
+                      <HTMLFlipBook
+                        ref={flipBookRef}
+                        width={420}
+                        height={525}
+                        minWidth={280}
+                        maxWidth={520}
+                        minHeight={360}
+                        maxHeight={650}
+                        startPage={0}
+                        size="stretch"
+                        drawShadow
+                        flippingTime={900}
+                        usePortrait={false}
+                        startZIndex={12}
+                        autoSize
+                        maxShadowOpacity={0.22}
+                        showCover={false}
+                        mobileScrollSupport
+                        swipeDistance={24}
+                        clickEventForward
+                        useMouseEvents
+                        showPageCorners
+                        disableFlipByClick={false}
+                        className="preview-flipbook"
+                        style={{ margin: "0 auto" }}
+                        onInit={syncActiveSpread}
+                        onUpdate={syncActiveSpread}
+                        onFlip={syncActiveSpread}
+                      >
+                        {bookModel.leaves.map((leaf, leafIndex) => (
+                          <FlipBookLeaf
+                            key={leaf.key}
+                            leaf={leaf}
+                            templateDetail={preview.contentTemplateDetail}
+                            right={isRightHandBookPage(leafIndex)}
+                          />
+                        ))}
+                      </HTMLFlipBook>
+                    </div>
+                  </div>
 
                   <div className="mt-6 flex items-center justify-center gap-4">
                     <button
@@ -398,6 +448,48 @@ export default function PreviewPage() {
                 </div>
               )}
 
+              {bookOperation?.type === "DRAFT_GENERATION" && bookOperation.status !== "IDLE" && (
+                <div
+                  className={`mt-8 rounded-[28px] border px-5 py-5 shadow-sm ${
+                    bookGenerationFailed
+                      ? "border-red-200 bg-red-50/80"
+                      : "border-brand-200/70 bg-white/90"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-warm-500">
+                        Book Build Status
+                      </p>
+                      <h3 className="mt-2 text-lg font-semibold text-brand-700">
+                        {bookGenerationFailed ? "포토북 생성이 잠시 멈췄어요" : "실물 책 형태로 조립하는 중이에요"}
+                      </h3>
+                    </div>
+                    <div className="rounded-full bg-surface-low px-4 py-2 text-sm font-semibold text-brand-700">
+                      {bookOperationProgress}%
+                    </div>
+                  </div>
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-stone-200/80">
+                    <div
+                      className={`h-full rounded-full transition-[width] duration-500 ${
+                        bookGenerationFailed
+                          ? "bg-red-400"
+                          : "bg-gradient-to-r from-brand-500 via-brand-400 to-gold-400"
+                      }`}
+                      style={{ width: `${bookOperationProgress}%` }}
+                    />
+                  </div>
+                  <p className="mt-4 text-sm leading-relaxed text-warm-500">
+                    {bookOperationMessage}
+                  </p>
+                  {bookOperation.error && (
+                    <p className="mt-3 text-sm leading-relaxed text-red-600">
+                      {bookOperation.error}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="mt-8 space-y-4">
                 {readOnly ? (
                   <button
@@ -408,8 +500,8 @@ export default function PreviewPage() {
                     주문 요약 보기
                   </button>
                 ) : (
-                    <button
-                    disabled={generating || finalizing}
+                  <button
+                    disabled={generating || finalizing || isBookGenerationActive}
                     onClick={handlePrimaryAction}
                     className="editorial-button-primary w-full disabled:opacity-50"
                   >
@@ -434,7 +526,11 @@ export default function PreviewPage() {
 
               {preview.status !== "ORDERED" && (
                 <div className="mt-8 rounded bg-gold-400/15 px-4 py-4 text-sm leading-relaxed text-gold-500">
-                  {preview.status === "BOOK_CREATED"
+                  {isBookGenerationActive
+                    ? "Sweetbook 드래프트를 백그라운드에서 만들고 있어요. 이 화면을 닫지 않아도 계속 진행됩니다."
+                    : bookGenerationFailed
+                      ? "생성이 중단되면 같은 버튼으로 다시 시도할 수 있어요. 잠시 후 재시도해도 계속 안 되면 이미지 공개 URL을 함께 점검해볼게요."
+                    : preview.status === "BOOK_CREATED"
                     ? "포토북이 준비됐어요! '인쇄용으로 확정하기'를 누르면 배송 · 결제 단계로 넘어갈 수 있어요."
                     : preview.status === "FINALIZED"
                       ? "모든 준비가 끝났어요. '배송 · 결제로 이동'을 눌러 주문을 완료해주세요."
@@ -466,13 +562,18 @@ const FlipBookLeaf = forwardRef<
   },
   ref,
 ) {
+  const isCoverLeaf = leaf.kind.startsWith("cover");
   return (
     <div
       ref={ref}
+      className="preview-flipbook-sheet"
       data-density={leaf.kind.startsWith("cover") ? "hard" : "soft"}
+      data-leaf-kind={leaf.kind}
     >
-      <div className="preview-flipbook-page">
-        <PreviewLeafPage leaf={leaf} templateDetail={templateDetail} right={right} />
+      <div className={`preview-flipbook-page ${isCoverLeaf ? "preview-flipbook-page--cover" : ""}`}>
+        <div className="preview-flipbook-page__inner">
+          <PreviewLeafPage leaf={leaf} templateDetail={templateDetail} right={right} />
+        </div>
       </div>
     </div>
   );
@@ -1256,6 +1357,40 @@ function readPreviewCoverPayload(page: ProjectPreview["pages"][number] | null) {
 
 function isCoverPreviewPage(page: ProjectPreview["pages"][number] | undefined) {
   return Boolean(readPreviewCoverPayload(page ?? null));
+}
+
+function isDraftGenerationActive(bookOperation: ProjectPreview["bookOperation"]) {
+  return (
+    bookOperation?.type === "DRAFT_GENERATION" &&
+    (bookOperation.status === "QUEUED" || bookOperation.status === "RUNNING")
+  );
+}
+
+function isDraftGenerationFailed(bookOperation: ProjectPreview["bookOperation"]) {
+  return bookOperation?.type === "DRAFT_GENERATION" && bookOperation.status === "FAILED";
+}
+
+function resolveDraftGenerationProgress(bookOperation: ProjectPreview["bookOperation"]) {
+  if (!bookOperation || bookOperation.type !== "DRAFT_GENERATION") {
+    return 0;
+  }
+  const nextProgress = bookOperation.progress ?? (bookOperation.status === "FAILED" ? 100 : 8);
+  return Math.max(0, Math.min(nextProgress, 100));
+}
+
+function resolveDraftGenerationMessage(bookOperation: ProjectPreview["bookOperation"]) {
+  if (!bookOperation || bookOperation.type !== "DRAFT_GENERATION") {
+    return "";
+  }
+  if (bookOperation.error) {
+    return bookOperation.error;
+  }
+  if (bookOperation.message) {
+    return bookOperation.message;
+  }
+  return bookOperation.status === "QUEUED"
+    ? "포토북 생성 요청을 접수했어요."
+    : "Sweetbook 드래프트를 만들고 있어요.";
 }
 
 function buildPreviewBookModel(pages: ProjectPreview["pages"]): PreviewBookModel {

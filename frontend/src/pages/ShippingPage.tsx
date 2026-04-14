@@ -157,9 +157,11 @@ export default function ShippingPage() {
     } catch (e: unknown) {
       const message =
         e instanceof Error ? e.message : "결제 세션을 준비하지 못했습니다.";
-      setError(message);
-      if (message.includes("not configured")) {
+      if (isTossUnavailableMessage(message)) {
         setPaymentUnavailable(true);
+        setError("");
+      } else {
+        setError(message);
       }
     } finally {
       setPreparingPayment(false);
@@ -531,6 +533,13 @@ function clearPaymentContainers() {
   if (agreement) {
     agreement.innerHTML = "";
   }
+}
+
+function isTossUnavailableMessage(message: string) {
+  const normalized = message.toLowerCase();
+  return normalized.includes("toss payments is not configured")
+    || normalized.includes("toss payments are not configured")
+    || normalized.includes("toss payments isn't configured");
 }
 
 function Field({

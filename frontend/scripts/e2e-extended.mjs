@@ -21,13 +21,19 @@ function assert(cond, msg) {
 
 const log = (...a) => console.log("[e2e]", ...a);
 
+function appUrl(pathname = "") {
+  const normalizedBase = BASE.endsWith("/") ? BASE : `${BASE}/`;
+  const normalizedPath = pathname.replace(/^\/+/, "");
+  return new URL(normalizedPath, normalizedBase).toString();
+}
+
 async function login(page, email, password) {
-  await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
+  await page.goto(appUrl("/login"), { waitUntil: "domcontentloaded" });
   await page.locator("#email").waitFor({ state: "visible", timeout: 15_000 });
   await page.locator("#email").fill(email);
   await page.locator("#password").fill(password);
   await Promise.all([
-    page.waitForURL((url) => !url.pathname.startsWith("/login"), {
+    page.waitForURL((url) => !url.pathname.endsWith("/login"), {
       timeout: 30_000,
     }),
     page.locator('form button[type="submit"]').click(),
@@ -35,7 +41,7 @@ async function login(page, email, password) {
 }
 
 async function signupFan(page, { email, password, displayName }) {
-  await page.goto(`${BASE}/signup`, { waitUntil: "domcontentloaded" });
+  await page.goto(appUrl("/signup"), { waitUntil: "domcontentloaded" });
   await page.getByPlaceholder("이름을 적어 주세요").fill(displayName);
   await page.getByPlaceholder("you@example.com").fill(email);
   await page.getByPlaceholder("8자 이상").fill(password);
@@ -45,21 +51,24 @@ async function signupFan(page, { email, password, displayName }) {
   ]);
 }
 
-async function tryClickFirstVideoSuggestion(page) {
-  const card = page.locator(".editorial-card").filter({ hasText: "참고할 장면 후보" });
-  const btn = card.locator("button").filter({ has: page.locator("img") }).first();
-  try {
-    await btn.waitFor({ state: "visible", timeout: 5000 });
-    await btn.click();
-    return true;
-  } catch {
-    return false;
-  }
+async function createProjectViaApi(request, mode = "demo") {
+  const csrfRes = await request.get(`${BASE}/api/auth/csrf`);
+  assert(csrfRes.ok(), `csrf ${csrfRes.status()}`);
+  const csrf = await csrfRes.json();
+
+  const createRes = await request.post(`${BASE}/api/projects`, {
+    headers: {
+      "Content-Type": "application/json",
+      "X-XSRF-TOKEN": csrf.token,
+    },
+    data: { mode },
+  });
+  assert(createRes.ok(), `create project ${createRes.status()}`);
+  return createRes.json();
 }
 
-async function drivePersonalizationToPreview(page, { maxMs }) {
+async function drivePersonalizationToPreview(page, projectId, { maxMs }) {
   const deadline = Date.now() + maxMs;
-  let clickedVideo = false;
 
   while (Date.now() < deadline) {
     if (page.url().includes("/preview")) {
@@ -67,12 +76,16 @@ async function drivePersonalizationToPreview(page, { maxMs }) {
     }
 
     if (page.url().includes("/personalize")) {
-      if (!clickedVideo) {
-        clickedVideo = await tryClickFirstVideoSuggestion(page);
-        if (clickedVideo) {
-          await page.waitForTimeout(1500);
-          continue;
-        }
+      const fatalError = page
+        .locator("div.rounded.border.border-red-200, div.rounded.border.border-rose-200, div.rounded.border.border-red-200.bg-red-50")
+        .filter({ hasText: /OpenRouter|개인화 대화를 불러오지 못했어요/ })
+        .first();
+      if (await fatalError.isVisible().catch(() => false)) {
+        log("WARN", "개인화 인터뷰를 건너뛰고 preview로 이동합니다.");
+        await page.goto(appUrl(`/projects/${projectId}/preview`), {
+          waitUntil: "domcontentloaded",
+        });
+        return;
       }
 
       const chipSection = page.locator("text=바로 답하기").locator("..");
@@ -267,7 +280,7 @@ async function shippingEstimateAndPaymentUi(page) {
   if (await orderBtn.isVisible().catch(() => false)) {
     await orderBtn.click();
     await page.waitForURL(/\/complete/, { timeout: 90_000 });
-    await page.getByText("주문 완료").waitFor({ timeout: 20_000 });
+    await page.getByText("주문 완료").first().waitFor({ timeout: 20_000 });
     return "order-without-toss";
   }
 
@@ -315,18 +328,15 @@ async function main() {
       const editionId = editions[0]?.id;
       assert(editionId, "edition id");
 
-      await page.goto(`/editions/${editionId}`, { waitUntil: "domcontentloaded" });
-      await page
-        .getByRole("button", { name: "질문으로 포토북 만들기" })
-        .click({ timeout: 30_000 });
-
-      await page.waitForURL(/\/projects\/\d+\/personalize/, { timeout: 60_000 });
-      const m = page.url().match(/\/projects\/(\d+)\/personalize/);
-      assert(m, "project id in url");
-      const projectId = m[1];
+      const created = await createProjectViaApi(page.request, "demo");
+      const projectId = created.projectId;
+      assert(projectId, "project id in response");
+      await page.goto(appUrl(`/projects/${projectId}/personalize`), {
+        waitUntil: "domcontentloaded",
+      });
 
       await page.getByText("LLM 개인화 인터뷰").first().waitFor({ timeout: 30_000 });
-      await drivePersonalizationToPreview(page, { maxMs: 280_000 });
+      await drivePersonalizationToPreview(page, projectId, { maxMs: 280_000 });
       await page.waitForURL(/\/preview/, { timeout: 120_000 });
       await page.getByRole("heading", { name: "포토북 미리보기" }).waitFor({
         timeout: 15_000,
@@ -339,7 +349,7 @@ async function main() {
 
         if (outcome === "order-without-toss") {
           await page.goto(
-            `${BASE}/projects/${projectId}/payment/success?paymentKey=x&orderId=x&amount=1`,
+            appUrl(`/projects/${projectId}/payment/success?paymentKey=x&orderId=x&amount=1`),
             { waitUntil: "domcontentloaded" },
           );
           await page.getByText(/누락|승인|실패|오류/i).first().waitFor({
@@ -373,10 +383,19 @@ async function main() {
     try {
       const page = await ctx.newPage();
       await login(page, "fan@playpick.local", "Fan12345!");
-      await page.goto("/projects/1/payment/fail", {
+      await page.goto(
+        appUrl("/projects/1/payment/fail?code=USER_CANCEL&message=e2e-test"),
+        {
         waitUntil: "domcontentloaded",
-      });
-      await page.getByText("결제 실패").waitFor({ timeout: 15_000 });
+        },
+      );
+      await page.waitForFunction(
+        () => document.body.innerText.includes("결제가 완료되지 않았습니다"),
+        null,
+        {
+        timeout: 15_000,
+        },
+      );
     } finally {
       await ctx.close();
     }

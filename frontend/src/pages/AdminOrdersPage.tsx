@@ -3,8 +3,12 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { getAdminOrders } from "../api/admin";
 import AdminShell from "../components/AdminShell";
+import PaginationControls from "../components/PaginationControls";
 import type { AdminOrderSummary } from "../types/api";
+import { paginateItems } from "../lib/pagination";
 import { fulfillmentStatusLabel, siteOrderLabel } from "../lib/sweetbookWorkflow";
+
+const ORDERS_PAGE_SIZE = 6;
 
 export default function AdminOrdersPage() {
   const navigate = useNavigate();
@@ -12,6 +16,7 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<AdminOrderSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     getAdminOrders()
@@ -25,6 +30,8 @@ export default function AdminOrdersPage() {
       })
       .finally(() => setLoading(false));
   }, [navigate, location.pathname]);
+
+  const pagedOrders = paginateItems(orders, page, ORDERS_PAGE_SIZE);
 
   return (
     <AdminShell
@@ -44,10 +51,19 @@ export default function AdminOrdersPage() {
           아직 접수된 주문이 없어요.
         </div>
       ) : (
-        <div className="space-y-3">
-          {orders.map((order) => (
-            <OrderCard key={order.siteOrderUid} order={order} />
-          ))}
+        <div className="space-y-4">
+          <div className="space-y-3">
+            {pagedOrders.items.map((order) => (
+              <OrderCard key={order.siteOrderUid} order={order} />
+            ))}
+          </div>
+          <PaginationControls
+            page={pagedOrders.currentPage}
+            pageSize={ORDERS_PAGE_SIZE}
+            totalItems={orders.length}
+            itemLabel="주문"
+            onPageChange={setPage}
+          />
         </div>
       )}
     </AdminShell>

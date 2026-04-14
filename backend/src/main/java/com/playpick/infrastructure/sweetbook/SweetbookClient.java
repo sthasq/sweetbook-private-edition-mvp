@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -32,6 +34,9 @@ public class SweetbookClient {
 
 	private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() {
 	};
+	private static final Logger log = LoggerFactory.getLogger(SweetbookClient.class);
+	private static final String SWEETBOOK_CERTIFICATE_PATH =
+		"certs/sectigo-public-server-authentication-root-r46.pem";
 
 	private final WebClient.Builder webClientBuilder;
 	private final ObjectMapper objectMapper;
@@ -196,9 +201,16 @@ public class SweetbookClient {
 	}
 
 	private ReactorClientHttpConnector sweetbookClientConnector() {
-		try (InputStream certificateStream = new ClassPathResource(
-			"certs/sectigo-public-server-authentication-root-r46.pem"
-		).getInputStream()) {
+		ClassPathResource certificateResource = new ClassPathResource(SWEETBOOK_CERTIFICATE_PATH);
+		if (!certificateResource.exists()) {
+			log.warn(
+				"Sweetbook certificate resource {} is missing. Falling back to JVM default trust store.",
+				SWEETBOOK_CERTIFICATE_PATH
+			);
+			return new ReactorClientHttpConnector(HttpClient.create());
+		}
+
+		try (InputStream certificateStream = certificateResource.getInputStream()) {
 			var sslContext = SslContextBuilder.forClient()
 				.trustManager(certificateStream)
 				.build();
@@ -206,11 +218,11 @@ public class SweetbookClient {
 				.secure(sslSpec -> sslSpec.sslContext(sslContext));
 			return new ReactorClientHttpConnector(httpClient);
 		} catch (Exception exception) {
-			throw new AppException(
-				HttpStatus.INTERNAL_SERVER_ERROR,
-				"Failed to initialize Sweetbook SSL trust configuration",
+			log.warn(
+				"Failed to initialize Sweetbook custom SSL trust configuration. Falling back to JVM default trust store.",
 				exception
 			);
+			return new ReactorClientHttpConnector(HttpClient.create());
 		}
 	}
 

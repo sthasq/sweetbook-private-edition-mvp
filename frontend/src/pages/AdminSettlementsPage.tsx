@@ -3,7 +3,11 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { getAdminSettlements } from "../api/admin";
 import AdminShell from "../components/AdminShell";
+import PaginationControls from "../components/PaginationControls";
 import type { AdminCreatorSettlement } from "../types/api";
+import { paginateItems } from "../lib/pagination";
+
+const SETTLEMENTS_PAGE_SIZE = 8;
 
 export default function AdminSettlementsPage() {
   const navigate = useNavigate();
@@ -11,6 +15,7 @@ export default function AdminSettlementsPage() {
   const [settlements, setSettlements] = useState<AdminCreatorSettlement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     getAdminSettlements()
@@ -30,6 +35,7 @@ export default function AdminSettlementsPage() {
   const totalMargin = settlements.reduce((sum, s) => sum + s.grossMargin, 0);
   const totalCommission = settlements.reduce((sum, s) => sum + s.platformCommission, 0);
   const totalPayout = settlements.reduce((sum, s) => sum + s.creatorPayout, 0);
+  const pagedSettlements = paginateItems(settlements, page, SETTLEMENTS_PAGE_SIZE);
 
   return (
     <AdminShell
@@ -59,43 +65,52 @@ export default function AdminSettlementsPage() {
               등록된 크리에이터가 없어요.
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-stone-200">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-stone-50 text-xs uppercase tracking-wider text-stone-500">
-                  <tr>
-                    <th className="px-5 py-4">크리에이터</th>
-                    <th className="px-5 py-4">채널</th>
-                    <th className="px-5 py-4 text-center">인증</th>
-                    <th className="px-5 py-4 text-right">주문 수</th>
-                    <th className="px-5 py-4 text-right">총 매출</th>
-                    <th className="px-5 py-4 text-right">Sweetbook 원가</th>
-                    <th className="px-5 py-4 text-right">분배 마진</th>
-                    <th className="px-5 py-4 text-right">플랫폼 몫</th>
-                    <th className="px-5 py-4 text-right">정산 예정</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-100">
-                  {settlements.map((s) => (
-                    <tr key={s.creatorId} className="bg-white hover:bg-stone-50/60">
-                      <td className="px-5 py-4 font-medium text-stone-900">{s.displayName}</td>
-                      <td className="px-5 py-4 text-stone-600">@{s.channelHandle}</td>
-                      <td className="px-5 py-4 text-center">
-                        {s.verified ? (
-                          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">인증됨</span>
-                        ) : (
-                          <span className="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-500">미인증</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-4 text-right text-stone-900">{s.totalOrders}건</td>
-                      <td className="px-5 py-4 text-right font-medium text-stone-900">{fmt(s.totalRevenue)}</td>
-                      <td className="px-5 py-4 text-right text-stone-600">{fmt(s.vendorCost)}</td>
-                      <td className="px-5 py-4 text-right text-gold-600">{fmt(s.grossMargin)}</td>
-                      <td className="px-5 py-4 text-right text-rose-600">{fmt(s.platformCommission)}</td>
-                      <td className="px-5 py-4 text-right font-semibold text-brand-700">{fmt(s.creatorPayout)}</td>
+            <div className="space-y-4">
+              <div className="overflow-x-auto rounded-2xl border border-stone-200">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-stone-50 text-xs uppercase tracking-wider text-stone-500">
+                    <tr>
+                      <th className="px-5 py-4">크리에이터</th>
+                      <th className="px-5 py-4">채널</th>
+                      <th className="px-5 py-4 text-center">인증</th>
+                      <th className="px-5 py-4 text-right">주문 수</th>
+                      <th className="px-5 py-4 text-right">총 매출</th>
+                      <th className="px-5 py-4 text-right">Sweetbook 원가</th>
+                      <th className="px-5 py-4 text-right">분배 마진</th>
+                      <th className="px-5 py-4 text-right">플랫폼 몫</th>
+                      <th className="px-5 py-4 text-right">정산 예정</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100">
+                    {pagedSettlements.items.map((s) => (
+                      <tr key={s.creatorId} className="bg-white hover:bg-stone-50/60">
+                        <td className="px-5 py-4 font-medium text-stone-900">{s.displayName}</td>
+                        <td className="px-5 py-4 text-stone-600">@{s.channelHandle}</td>
+                        <td className="px-5 py-4 text-center">
+                          {s.verified ? (
+                            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">인증됨</span>
+                          ) : (
+                            <span className="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-500">미인증</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-4 text-right text-stone-900">{s.totalOrders}건</td>
+                        <td className="px-5 py-4 text-right font-medium text-stone-900">{fmt(s.totalRevenue)}</td>
+                        <td className="px-5 py-4 text-right text-stone-600">{fmt(s.vendorCost)}</td>
+                        <td className="px-5 py-4 text-right text-gold-600">{fmt(s.grossMargin)}</td>
+                        <td className="px-5 py-4 text-right text-rose-600">{fmt(s.platformCommission)}</td>
+                        <td className="px-5 py-4 text-right font-semibold text-brand-700">{fmt(s.creatorPayout)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <PaginationControls
+                page={pagedSettlements.currentPage}
+                pageSize={SETTLEMENTS_PAGE_SIZE}
+                totalItems={settlements.length}
+                itemLabel="크리에이터"
+                onPageChange={setPage}
+              />
             </div>
           )}
         </>

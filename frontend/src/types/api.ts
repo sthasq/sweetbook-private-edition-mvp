@@ -80,6 +80,7 @@ export interface ProjectSnapshot {
   editionId: number;
   editionVersionId: number;
   status: string;
+  bookOperation: BookOperation | null;
   personalizationData: Record<string, unknown>;
   sweetbookBookUid: string | null;
   sweetbookExternalRef: string | null;
@@ -103,6 +104,7 @@ export interface ProjectPreview {
   mode: string;
   edition: EditionDetail;
   contentTemplateDetail: SweetbookTemplateDetail | null;
+  bookOperation: BookOperation | null;
   personalizationData: Record<string, unknown>;
   sweetbookBookUid: string | null;
   sweetbookExternalRef: string | null;
@@ -113,7 +115,7 @@ export interface ProjectPreview {
 
 export interface BookGeneration {
   projectId: number;
-  bookUid: string;
+  bookUid: string | null;
   status: string;
   projectStatus: string;
   bookSpecUid: string;
@@ -123,6 +125,17 @@ export interface BookGeneration {
   plannedPageCount: number;
   simulated: boolean;
   reused: boolean;
+}
+
+export interface BookOperation {
+  type: string | null;
+  status: "IDLE" | "QUEUED" | "RUNNING" | "FAILED";
+  progress: number | null;
+  step: string | null;
+  message: string | null;
+  error: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
 }
 
 export interface ChatMessage {

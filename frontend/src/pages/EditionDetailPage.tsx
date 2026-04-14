@@ -72,6 +72,10 @@ export default function EditionDetailPage() {
       );
       return;
     }
+    if (user.role !== "FAN") {
+      setError("구매는 팬 계정으로만 진행할 수 있어요. 로그아웃 후 팬 계정으로 다시 로그인해 주세요.");
+      return;
+    }
     setCreating(true);
     setError("");
     try {
@@ -99,6 +103,9 @@ export default function EditionDetailPage() {
     if (!edition || !user || autoStartTriggered.current) {
       return;
     }
+    if (user.role !== "FAN") {
+      return;
+    }
     if (startMode !== "demo") {
       return;
     }
@@ -122,6 +129,7 @@ export default function EditionDetailPage() {
   const previewCoverImage = quickPreviewImages[0];
   const previewInnerImages = quickPreviewImages.slice(1, 3);
   const hasTwoInnerPreviews = previewInnerImages.length > 1;
+  const canStartProject = !user || user.role === "FAN";
 
   return (
     <div className="page-shell-narrow mx-auto">
@@ -307,13 +315,19 @@ export default function EditionDetailPage() {
               LLM이 개인화 내용을 정리해주고, 곧바로 내 포토북 미리보기까지 이어집니다.
             </p>
 
-            <button
-              disabled={creating}
-              onClick={() => startProject()}
-              className="editorial-button-primary mt-6 w-full"
-            >
-              {creating ? "준비 중..." : "질문으로 포토북 만들기"}
-            </button>
+            {canStartProject ? (
+              <button
+                disabled={creating}
+                onClick={() => startProject()}
+                className="editorial-button-primary mt-6 w-full"
+              >
+                {creating ? "준비 중..." : "질문으로 포토북 만들기"}
+              </button>
+            ) : (
+              <div className="mt-6 rounded bg-amber-50 px-5 py-4 text-sm leading-relaxed text-amber-900">
+                크리에이터와 관리자 계정에서는 구매를 진행할 수 없어요. 구매하려면 로그아웃 후 팬 계정으로 다시 로그인하거나 새 팬 계정을 만들어 주세요.
+              </div>
+            )}
 
             <div className="mt-6 rounded bg-slate-50 border border-slate-100 px-5 py-5">
               <p className="editorial-label text-slate-900">예상 가격</p>

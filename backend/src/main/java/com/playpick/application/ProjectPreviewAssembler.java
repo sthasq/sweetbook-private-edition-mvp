@@ -122,7 +122,7 @@ public class ProjectPreviewAssembler {
 			project.status(),
 			mode,
 			edition,
-			null,
+			project.bookOperation(),
 			personalization,
 			project.sweetbookBookUid(),
 			project.sweetbookExternalRef(),

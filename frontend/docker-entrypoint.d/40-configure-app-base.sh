@@ -27,6 +27,23 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    location = /api/admin/webhooks/stream {
+        proxy_pass http://backend:8080/api/admin/webhooks/stream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_cache off;
+        add_header X-Accel-Buffering no;
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 1800s;
+        proxy_read_timeout 1800s;
+        send_timeout 1800s;
+    }
+
     location /api/ {
         proxy_pass http://backend:8080/api/;
         proxy_http_version 1.1;
@@ -58,6 +75,25 @@ server {
 
     location = ${APP_BASE_PATH} {
         return 301 ${APP_BASE_PATH}/;
+    }
+
+    location = ${APP_BASE_PATH}/api/admin/webhooks/stream {
+        rewrite ^${APP_BASE_PATH}/api/admin/webhooks/stream\$ /api/admin/webhooks/stream break;
+        proxy_pass http://backend:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header X-Forwarded-Prefix ${APP_BASE_PATH};
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_cache off;
+        add_header X-Accel-Buffering no;
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 1800s;
+        proxy_read_timeout 1800s;
+        send_timeout 1800s;
     }
 
     location ^~ ${APP_BASE_PATH}/api/ {

@@ -3,6 +3,9 @@ package com.playpick.application;
 import com.playpick.config.AppProperties;
 import com.playpick.config.TossPaymentsProperties;
 import com.playpick.domain.AppUser;
+import com.playpick.domain.AppUserRole;
+import com.playpick.domain.BookOperationStatus;
+import com.playpick.domain.BookOperationType;
 import com.playpick.domain.CustomerOrder;
 import com.playpick.domain.CustomerOrderRepository;
 import com.playpick.domain.FanProject;
@@ -24,6 +27,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +41,8 @@ public class ProjectService {
 	private final OrderRecordRepository orderRecordRepository;
 	private final ProjectPreviewAssembler projectPreviewAssembler;
 	private final SweetbookService sweetbookService;
+	private final SweetbookWebhookService sweetbookWebhookService;
+	private final AsyncBookGenerationService asyncBookGenerationService;
 	private final TossPaymentsService tossPaymentsService;
 	private final ChatPersonalizationService chatPersonalizationService;
 	private final CurrentUserService currentUserService;
@@ -44,7 +51,7 @@ public class ProjectService {
 
 	@Transactional
 	public ProjectViews.Snapshot createProject(ProjectCommands.CreateProject command) {
-		AppUser currentUser = currentUserService.requireCurrentAppUser();
+		AppUser currentUser = requireFanBuyer();
 		Long editionId = command.editionId() == null ? editionService.getDefaultPublishedEditionId() : command.editionId();
 		var publishedVersion = editionService.requirePublishedVersion(editionId);
 		String mode = normalizeMode(command.mode());
@@ -158,14 +165,23 @@ public class ProjectService {
 
 	public ProjectViews.Preview getPreview(Long projectId) {
 		FanProject project = requireOwnedProject(projectId);
+		ProjectViews.Preview preview = buildPreview(project);
+		return enrichPreview(preview);
+	}
+
+	private ProjectViews.Preview buildPreview(FanProject project) {
 		EditionViews.Detail edition = editionService.getEdition(project.getEditionVersion().getEdition().getId());
-		ProjectViews.Preview preview = projectPreviewAssembler.assemble(toSnapshot(project), edition);
+		return projectPreviewAssembler.assemble(toSnapshot(project), edition);
+	}
+
+	private ProjectViews.Preview enrichPreview(ProjectViews.Preview preview) {
 		return new ProjectViews.Preview(
 			preview.projectId(),
 			preview.status(),
 			preview.mode(),
 			preview.edition(),
 			sweetbookService.getContentTemplateDetail(preview),
+			preview.bookOperation(),
 			preview.personalizationData(),
 			preview.sweetbookBookUid(),
 			preview.sweetbookExternalRef(),
@@ -194,7 +210,7 @@ public class ProjectService {
 		if (project.getStatus() == FanProjectStatus.ORDERED) {
 			throw new AppException(HttpStatus.CONFLICT, "This project has already been ordered");
 		}
-		ProjectViews.Preview preview = getPreview(projectId);
+		ProjectViews.Preview preview = buildPreview(project);
 		if (project.getSweetbookBookUid() != null
 			&& !project.getSweetbookBookUid().isBlank()
 			&& project.getStatus() == FanProjectStatus.BOOK_CREATED) {
@@ -204,6 +220,37 @@ public class ProjectService {
 			&& !project.getSweetbookBookUid().isBlank()
 			&& project.getStatus() == FanProjectStatus.FINALIZED) {
 			return toBookGeneration(project, preview, "FINALIZED", "FINALIZED", true);
+		}
+
+		if (hasActiveBookOperation(project)) {
+			return sweetbookService.describeBook(
+				preview,
+				project.getSweetbookBookUid(),
+				project.getBookOperationStatus().name(),
+				project.getStatus().name(),
+				false,
+				true
+			);
+		}
+
+		if (sweetbookService.isLiveEnabled()) {
+			if (project.getBookOperationStatus() == BookOperationStatus.FAILED) {
+				resetPreparedBook(project);
+			}
+			if (project.getSweetbookExternalRef() == null || project.getSweetbookExternalRef().isBlank()) {
+				project.setSweetbookExternalRef(buildSweetbookExternalRef(project));
+			}
+			markBookOperationQueued(project);
+			FanProject queuedProject = fanProjectRepository.save(project);
+			launchAsyncBookGenerationAfterCommit(queuedProject.getId());
+			return sweetbookService.describeBook(
+				buildPreview(queuedProject),
+				queuedProject.getSweetbookBookUid(),
+				BookOperationStatus.QUEUED.name(),
+				queuedProject.getStatus().name(),
+				false,
+				false
+			);
 		}
 
 		String externalRef = buildSweetbookExternalRef(project);
@@ -451,7 +498,7 @@ public class ProjectService {
 	}
 
 	public List<ProjectViews.MyProjectSummary> listMyProjects() {
-		AppUser currentUser = currentUserService.requireCurrentAppUser();
+		AppUser currentUser = requireFanBuyer();
 		return fanProjectRepository.findByOwnerUserIdOrderByUpdatedAtDesc(currentUser.getId()).stream()
 			.map(this::toMyProjectSummary)
 			.toList();
@@ -463,12 +510,20 @@ public class ProjectService {
 	}
 
 	private FanProject requireOwnedProject(Long projectId) {
-		AppUser currentUser = currentUserService.requireCurrentAppUser();
+		AppUser currentUser = requireFanBuyer();
 		FanProject project = requireProject(projectId);
 		if (!project.getOwnerUser().getId().equals(currentUser.getId())) {
 			throw new AppException(HttpStatus.FORBIDDEN, "You do not have access to this project");
 		}
 		return project;
+	}
+
+	private AppUser requireFanBuyer() {
+		AppUser currentUser = currentUserService.requireCurrentAppUser();
+		if (currentUser.getRole() != AppUserRole.FAN) {
+			throw new AppException(HttpStatus.FORBIDDEN, "구매는 FAN 계정으로만 진행할 수 있습니다.");
+		}
+		return currentUser;
 	}
 
 	private ProjectViews.Snapshot toSnapshot(FanProject project) {
@@ -477,6 +532,7 @@ public class ProjectService {
 			project.getEditionVersion().getEdition().getId(),
 			project.getEditionVersion().getId(),
 			project.getStatus().name(),
+			toBookOperation(project),
 			new LinkedHashMap<>(project.getPersonalizationData()),
 			project.getSweetbookBookUid(),
 			project.getSweetbookExternalRef(),
@@ -637,7 +693,9 @@ public class ProjectService {
 		orderRecord.setOrderedAt(orderedAt);
 		orderRecord.setLastEventType(result.simulated() ? "simulation.ready" : "order.created");
 		orderRecord.setLastEventAt(Instant.now());
-		return orderRecordRepository.save(orderRecord);
+		orderRecord = orderRecordRepository.save(orderRecord);
+		reconcilePendingWebhooksAfterCommit(orderRecord.getSweetbookOrderUid());
+		return orderRecord;
 	}
 
 	private FulfillmentStatus toFulfillmentStatus(ProjectViews.FulfillmentResult result) {
@@ -674,13 +732,93 @@ public class ProjectService {
 	}
 
 	private void resetPreparedBook(FanProject project) {
-		if (project.getSweetbookBookUid() == null || project.getSweetbookBookUid().isBlank()) {
+		if ((project.getSweetbookBookUid() == null || project.getSweetbookBookUid().isBlank())
+			&& !hasTrackedBookOperation(project)) {
 			return;
 		}
 		project.setSweetbookBookUid(null);
 		project.setSweetbookExternalRef(null);
 		project.setSweetbookDraftCreatedAt(null);
 		project.setSweetbookFinalizedAt(null);
+		clearBookOperation(project);
+	}
+
+	private ProjectViews.BookOperation toBookOperation(FanProject project) {
+		if (!hasTrackedBookOperation(project)) {
+			return null;
+		}
+		return new ProjectViews.BookOperation(
+			project.getBookOperationType() == null ? null : project.getBookOperationType().name(),
+			project.getBookOperationStatus().name(),
+			project.getBookOperationProgress(),
+			project.getBookOperationStep(),
+			project.getBookOperationMessage(),
+			project.getBookOperationError(),
+			project.getBookOperationStartedAt(),
+			project.getBookOperationFinishedAt()
+		);
+	}
+
+	private boolean hasActiveBookOperation(FanProject project) {
+		return project.getBookOperationStatus() == BookOperationStatus.QUEUED
+			|| project.getBookOperationStatus() == BookOperationStatus.RUNNING;
+	}
+
+	private boolean hasTrackedBookOperation(FanProject project) {
+		return project.getBookOperationStatus() != null && project.getBookOperationStatus() != BookOperationStatus.IDLE;
+	}
+
+	private void markBookOperationQueued(FanProject project) {
+		project.setBookOperationType(BookOperationType.DRAFT_GENERATION);
+		project.setBookOperationStatus(BookOperationStatus.QUEUED);
+		project.setBookOperationProgress(5);
+		project.setBookOperationStep("QUEUED");
+		project.setBookOperationMessage("포토북 제작 큐에 올렸어요.");
+		project.setBookOperationError(null);
+		project.setBookOperationStartedAt(Instant.now());
+		project.setBookOperationFinishedAt(null);
+	}
+
+	private void clearBookOperation(FanProject project) {
+		project.setBookOperationType(null);
+		project.setBookOperationStatus(BookOperationStatus.IDLE);
+		project.setBookOperationProgress(null);
+		project.setBookOperationStep(null);
+		project.setBookOperationMessage(null);
+		project.setBookOperationError(null);
+		project.setBookOperationStartedAt(null);
+		project.setBookOperationFinishedAt(null);
+	}
+
+	private void launchAsyncBookGenerationAfterCommit(Long projectId) {
+		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+			asyncBookGenerationService.generateDraft(projectId);
+			return;
+		}
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				asyncBookGenerationService.generateDraft(projectId);
+			}
+		});
+	}
+
+	void reconcilePendingWebhooksAfterCommit(String sweetbookOrderUid) {
+		if (sweetbookOrderUid == null || sweetbookOrderUid.isBlank()) {
+			return;
+		}
+
+		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+			sweetbookWebhookService.reconcilePendingEventsByOrderUid(sweetbookOrderUid);
+			return;
+		}
+
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				sweetbookWebhookService.reconcilePendingEventsByOrderUid(sweetbookOrderUid);
+			}
+		});
 	}
 
 	private ProjectViews.BookGeneration toBookGeneration(

@@ -1,6 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
-import RequireAuth from "./components/RequireAuth";
 import RequireRole from "./components/RequireRole";
 import LandingPage from "./pages/LandingPage";
 import EditionDetailPage from "./pages/EditionDetailPage";
@@ -31,7 +30,7 @@ export default function App() {
           <Route path="editions/:editionId" element={<EditionDetailPage />} />
           <Route path="login" element={<LoginPage />} />
           <Route path="signup" element={<SignupPage />} />
-          <Route element={<RequireAuth />}>
+          <Route element={<RequireRole role="FAN" />}>
             <Route path="me/projects" element={<MyProjectsPage />} />
             <Route
               path="projects/:projectId/personalize"

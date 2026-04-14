@@ -9,8 +9,6 @@ import type {
 import Spinner from "../components/Spinner";
 import ErrorBox from "../components/ErrorBox";
 import ProjectStepper from "../components/ProjectStepper";
-import { imageObjectPosition } from "../lib/imageFocus";
-import { resolveMediaUrl } from "../lib/appPaths";
 
 export default function ChatPersonalizationPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -180,7 +178,7 @@ export default function ChatPersonalizationPage() {
   );
   const selectedFavoriteVideo = topVideos.find((video) => video.videoId === selectedFavoriteVideoId) ?? null;
   const personalizationSummary = buildPersonalizationSummary(preview, proposal, topVideos);
-  const quickPromptIdeas = buildQuickPromptIdeas(preview, topVideos);
+  const quickPromptIdeas = buildQuickPromptIdeas(preview);
   const lastAssistantIndex = findLastAssistantIndex(messages);
 
   return (
@@ -193,7 +191,7 @@ export default function ChatPersonalizationPage() {
             <div className="editorial-card overflow-hidden p-6 md:p-8">
               <div className="mb-6 grid gap-3 md:grid-cols-4">
                 <InterviewMetricCard label="에디션" value={preview.edition.title} hint="지금 개인화 중인 책" />
-                <InterviewMetricCard label="장면 후보" value={`${topVideos.length}개`} hint="바로 고를 수 있는 대표 장면" />
+                <InterviewMetricCard label="대화 기록" value={`${messages.length}개`} hint="질문과 답변이 쌓이는 중" />
                 <InterviewMetricCard label="제안 필드" value={`${proposalEntries.length}개`} hint="자동으로 채워진 개인화 문구" />
                 <InterviewMetricCard label="진행도" value={personalizationSummary.progressLabel} hint="답변이 쌓일수록 바로 저장" />
               </div>
@@ -266,67 +264,6 @@ export default function ChatPersonalizationPage() {
               </div>
 
               <div className="mt-6 space-y-4">
-                {topVideos.length > 0 && (
-                  <div className="rounded border border-stone-200/70 bg-surface-low px-5 py-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="editorial-label text-brand-700">참고할 장면 후보</p>
-                        <p className="mt-2 text-sm leading-relaxed text-warm-500">
-                          아래 후보 중 하나를 골라도 되고, 기억나는 장면이나 콘텐츠 제목을 직접 적어도 괜찮아요.
-                        </p>
-                      </div>
-                      <span className="rounded-full bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-warm-500 shadow-sm">
-                        {topVideos.length}개
-                      </span>
-                    </div>
-
-                    <div className="mt-4 grid gap-3 md:grid-cols-3">
-                      {topVideos.map((video) => {
-                        const isSelected = selectedFavoriteVideoId === video.videoId;
-                        return (
-                          <button
-                            key={video.videoId}
-                            type="button"
-                            onClick={() => {
-                                handleSend(`'${video.title}' 장면을 이번 포토북의 중심으로 담고 싶어요.`);
-                            }}
-                            className={`overflow-hidden rounded border bg-white text-left transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-sm ${
-                              isSelected
-                                ? "border-brand-300 shadow-sm ring-1 ring-brand-200"
-                                : "border-stone-200/70"
-                            }`}
-                          >
-                            {video.thumbnailUrl ? (
-                              <img
-                                src={resolveMediaUrl(video.thumbnailUrl)}
-                                alt={video.title}
-                                className="aspect-video w-full object-cover"
-                                style={{
-                                  objectPosition: imageObjectPosition(
-                                    resolveMediaUrl(video.thumbnailUrl),
-                                  ),
-                                }}
-                              />
-                            ) : (
-                              <div className="flex aspect-video w-full items-center justify-center bg-white text-xs text-warm-500">
-                                썸네일 없음
-                              </div>
-                            )}
-                            <div className="p-3">
-                              <p className="line-clamp-2 text-sm font-semibold leading-relaxed text-stone-900">
-                                {video.title}
-                              </p>
-                              <p className="mt-2 text-xs text-warm-500">
-                                눌러서 이 장면으로 바로 시작할 수 있어요
-                              </p>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
                 {messages.map((message, index) => (
                   <div key={`${message.role}-${index}`} className="space-y-3">
                     <MessageBubble message={message} />
@@ -790,12 +727,11 @@ function buildPersonalizationSummary(
   };
 }
 
-function buildQuickPromptIdeas(preview: ProjectPreview, topVideos: TopVideo[]) {
+function buildQuickPromptIdeas(preview: ProjectPreview) {
   const creatorName = preview.edition.creator.displayName;
-  const firstVideo = topVideos[0]?.title;
   const ideas = [
-    firstVideo ? `'${firstVideo}' 장면이 가장 기억에 남아서 책의 중심으로 넣고 싶어요.` : "",
     `${creatorName}의 분위기 중에서 가장 좋아하는 건 조용하고 오래 남는 감성이에요.`,
+    "책에 담고 싶은 장면은 웃음보다 여운이 남는 순간이에요.",
     "책 마지막에는 조금 뭉클하지만 과하지 않은 문장으로 마무리하고 싶어요.",
     "내가 이 크리에이터를 좋아하게 된 계절감과 이유가 드러났으면 좋겠어요.",
   ];

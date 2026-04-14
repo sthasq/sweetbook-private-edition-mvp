@@ -15,6 +15,7 @@ import com.playpick.domain.SweetbookWebhookEventRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 import java.util.Locale;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -45,22 +46,28 @@ public class SweetbookWebhookService {
 			request.eventType(),
 			normalizedPayload.get("event"),
 			normalizedPayload.get("type"),
+			normalizedPayload.get("event_type"),
 			normalizedPayload.get("eventType"),
 			data.get("event"),
+			data.get("event_type"),
 			"unknown"
 		);
 		String normalizedEventType = normalizeEventType(rawEventType, normalizedPayload, data);
 		String sweetbookOrderUid = firstText(
 			normalizedPayload.get("orderUid"),
+			normalizedPayload.get("order_uid"),
 			normalizedPayload.get("uid"),
 			data.get("orderUid"),
+			data.get("order_uid"),
 			data.get("uid"),
 			""
 		);
 		String deliveryUid = firstText(
 			request.deliveryUid(),
 			normalizedPayload.get("deliveryUid"),
+			normalizedPayload.get("delivery_uid"),
 			data.get("deliveryUid"),
+			data.get("delivery_uid"),
 			""
 		);
 		Instant eventAt = parseEventAt(normalizedPayload, data);
@@ -88,13 +95,10 @@ public class SweetbookWebhookService {
 		if (!sweetbookOrderUid.isBlank()) {
 			OrderRecord orderRecord = orderRecordRepository.findBySweetbookOrderUid(sweetbookOrderUid).orElse(null);
 			if (orderRecord != null) {
+				reconcilePendingEvents(orderRecord);
 				linked = true;
-				FulfillmentStatus nextStatus = mapStatus(normalizedEventType, normalizedPayload, data, orderRecord.getStatus());
-				orderRecord.setStatus(nextStatus);
-				orderRecord.setLastEventType(normalizedEventType);
-				orderRecord.setLastEventAt(eventAt);
+				applyEventToOrderRecord(orderRecord, normalizedEventType, normalizedPayload, data, eventAt);
 				orderRecordRepository.save(orderRecord);
-				syncCustomerOrder(normalizedEventType, nextStatus, orderRecord);
 			}
 		}
 
@@ -110,6 +114,53 @@ public class SweetbookWebhookService {
 			event.isLinked()
 		));
 		return new Receipt(event.getId(), event.getEventType(), event.getSweetbookOrderUid(), linked, false);
+	}
+
+	public void reconcilePendingEvents(OrderRecord orderRecord) {
+		if (orderRecord == null
+			|| orderRecord.getSweetbookOrderUid() == null
+			|| orderRecord.getSweetbookOrderUid().isBlank()) {
+			return;
+		}
+
+		List<SweetbookWebhookEvent> pendingEvents = sweetbookWebhookEventRepository
+			.findBySweetbookOrderUidAndLinkedFalseOrderByCreatedAtAsc(orderRecord.getSweetbookOrderUid());
+		if (pendingEvents.isEmpty()) {
+			return;
+		}
+
+		for (SweetbookWebhookEvent pendingEvent : pendingEvents) {
+			Map<String, Object> payload = pendingEvent.getPayload() == null ? new LinkedHashMap<>() : pendingEvent.getPayload();
+			Map<String, Object> data = asMap(payload.get("data"));
+			String rawEventType = firstText(
+				pendingEvent.getEventType(),
+				payload.get("event"),
+				payload.get("type"),
+				payload.get("event_type"),
+				payload.get("eventType"),
+				data.get("event"),
+				data.get("event_type"),
+				"unknown"
+			);
+			String normalizedEventType = normalizeEventType(rawEventType, payload, data);
+			Instant eventAt = parseEventAt(payload, data);
+
+			applyEventToOrderRecord(orderRecord, normalizedEventType, payload, data, eventAt);
+			pendingEvent.setLinked(true);
+			pendingEvent.setSweetbookOrderUid(orderRecord.getSweetbookOrderUid());
+			sweetbookWebhookEventRepository.save(pendingEvent);
+			adminWebhookStreamService.publish(toSummary(pendingEvent));
+		}
+
+		orderRecordRepository.save(orderRecord);
+	}
+
+	public void reconcilePendingEventsByOrderUid(String sweetbookOrderUid) {
+		if (sweetbookOrderUid == null || sweetbookOrderUid.isBlank()) {
+			return;
+		}
+		orderRecordRepository.findBySweetbookOrderUid(sweetbookOrderUid)
+			.ifPresent(this::reconcilePendingEvents);
 	}
 
 	private void verifyWebhookRequest(WebhookRequest request) {
@@ -166,6 +217,24 @@ public class SweetbookWebhookService {
 		}
 	}
 
+	private void applyEventToOrderRecord(
+		OrderRecord orderRecord,
+		String normalizedEventType,
+		Map<String, Object> payload,
+		Map<String, Object> data,
+		Instant eventAt
+	) {
+		FulfillmentStatus nextStatus = mapStatus(normalizedEventType, payload, data, orderRecord.getStatus());
+		if (orderRecord.getLastEventAt() != null
+			&& eventAt.isBefore(orderRecord.getLastEventAt())) {
+			return;
+		}
+		orderRecord.setStatus(nextStatus);
+		orderRecord.setLastEventType(normalizedEventType);
+		orderRecord.setLastEventAt(eventAt);
+		syncCustomerOrder(normalizedEventType, nextStatus, orderRecord);
+	}
+
 	private FulfillmentStatus mapStatus(
 		String normalizedEventType,
 		Map<String, Object> payload,
@@ -197,18 +266,26 @@ public class SweetbookWebhookService {
 		String normalizedStatus = normalizeStatusValue(firstText(
 			payload.get("status"),
 			payload.get("orderStatus"),
+			payload.get("order_status"),
 			payload.get("currentStatus"),
+			payload.get("current_status"),
 			payload.get("toStatus"),
+			payload.get("to_status"),
 			payload.get("state"),
 			payload.get("stage"),
 			data.get("status"),
 			data.get("orderStatus"),
+			data.get("order_status"),
 			data.get("currentStatus"),
+			data.get("current_status"),
 			data.get("toStatus"),
+			data.get("to_status"),
 			data.get("state"),
 			data.get("stage"),
 			data.get("productionStatus"),
+			data.get("production_status"),
 			data.get("shippingStatus"),
+			data.get("shipping_status"),
 			""
 		));
 		return switch (normalizedStatus) {
@@ -240,18 +317,26 @@ public class SweetbookWebhookService {
 		String normalizedStatus = normalizeStatusValue(firstText(
 			payload.get("status"),
 			payload.get("orderStatus"),
+			payload.get("order_status"),
 			payload.get("currentStatus"),
+			payload.get("current_status"),
 			payload.get("toStatus"),
+			payload.get("to_status"),
 			payload.get("state"),
 			payload.get("stage"),
 			data.get("status"),
 			data.get("orderStatus"),
+			data.get("order_status"),
 			data.get("currentStatus"),
+			data.get("current_status"),
 			data.get("toStatus"),
+			data.get("to_status"),
 			data.get("state"),
 			data.get("stage"),
 			data.get("productionStatus"),
+			data.get("production_status"),
 			data.get("shippingStatus"),
+			data.get("shipping_status"),
 			""
 		));
 		return switch (normalizedStatus) {
@@ -270,9 +355,13 @@ public class SweetbookWebhookService {
 	private Instant parseEventAt(Map<String, Object> payload, Map<String, Object> data) {
 		return parseInstant(firstText(
 			payload.get("createdAt"),
+			payload.get("created_at"),
 			payload.get("occurredAt"),
+			payload.get("occurred_at"),
 			data.get("createdAt"),
+			data.get("created_at"),
 			data.get("occurredAt"),
+			data.get("occurred_at"),
 			""
 		));
 	}
@@ -357,6 +446,17 @@ public class SweetbookWebhookService {
 			builder.append(Character.forDigit(value & 0xF, 16));
 		}
 		return builder.toString();
+	}
+
+	private AdminViews.WebhookEventSummary toSummary(SweetbookWebhookEvent event) {
+		return new AdminViews.WebhookEventSummary(
+			event.getId(),
+			event.getEventType(),
+			event.getSweetbookOrderUid(),
+			event.getProcessedAt(),
+			event.getCreatedAt(),
+			event.isLinked()
+		);
 	}
 
 	public record Receipt(
