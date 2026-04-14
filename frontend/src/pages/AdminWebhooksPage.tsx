@@ -148,6 +148,19 @@ function mergeWebhookEvents(current: AdminWebhookEvent[], incoming: AdminWebhook
   }
 
   return Array.from(merged.values())
-    .sort((left, right) => right.id - left.id)
+    .sort((left, right) => compareWebhookEvents(left, right))
     .slice(0, 20);
+}
+
+function compareWebhookEvents(left: AdminWebhookEvent, right: AdminWebhookEvent) {
+  const createdAtDiff = toTimestamp(right.createdAt) - toTimestamp(left.createdAt);
+  if (createdAtDiff !== 0) {
+    return createdAtDiff;
+  }
+  return right.id - left.id;
+}
+
+function toTimestamp(value: string) {
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
 }

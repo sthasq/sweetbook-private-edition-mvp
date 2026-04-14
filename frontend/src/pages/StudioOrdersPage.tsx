@@ -115,22 +115,18 @@ export default function StudioOrdersPage() {
               <StudioMetricCard
                 label="전체 주문"
                 value={`${orderDashboard?.totalOrders ?? 0}건`}
-                hint="내 에디션 기준"
               />
               <StudioMetricCard
                 label="결제 완료"
                 value={`${orderDashboard?.paidOrders ?? 0}건`}
-                hint="실제 승인된 주문"
               />
               <StudioMetricCard
                 label="제작 중"
                 value={`${orderDashboard?.productionOrders ?? 0}건`}
-                hint="웹훅 기준"
               />
               <StudioMetricCard
                 label="배송 완료"
                 value={`${orderDashboard?.deliveredOrders ?? 0}건`}
-                hint="실제 완료 기준"
               />
             </div>
           )}
@@ -275,17 +271,14 @@ export default function StudioOrdersPage() {
 function StudioMetricCard({
   label,
   value,
-  hint,
 }: {
   label: string;
   value: string;
-  hint: string;
 }) {
   return (
     <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gold-500">{label}</p>
       <p className="mt-3 text-3xl font-semibold text-stone-900">{value}</p>
-      <p className="mt-2 text-sm text-warm-500">{hint}</p>
     </div>
   );
 }
