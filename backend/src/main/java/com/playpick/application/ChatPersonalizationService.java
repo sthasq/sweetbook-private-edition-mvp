@@ -29,8 +29,6 @@ public class ChatPersonalizationService {
 
 	private static final int MAX_MESSAGES = 24;
 	private static final int MAX_MESSAGE_LENGTH = 1200;
-	private static final int BOOK_COPY_TITLE_MAX_LENGTH = 48;
-	private static final int BOOK_COPY_BODY_MAX_LENGTH = 180;
 	private static final int MAX_SUGGESTED_REPLIES = 4;
 	private static final int SUGGESTED_REPLY_MAX_LENGTH = 72;
 
@@ -196,7 +194,7 @@ public class ChatPersonalizationService {
 		return result;
 	}
 
-	private String buildSystemPrompt(
+	String buildSystemPrompt(
 		EditionViews.Detail edition,
 		Map<String, Object> personalizationData,
 		List<EditionViews.PersonalizationField> fields
@@ -371,7 +369,7 @@ public class ChatPersonalizationService {
 		return result;
 	}
 
-	private Map<String, Object> normalizeProposal(
+	Map<String, Object> normalizeProposal(
 		JsonNode proposalNode,
 		List<EditionViews.PersonalizationField> fields
 	) {
@@ -616,17 +614,17 @@ public class ChatPersonalizationService {
 		}
 
 		Map<String, Integer> limits = Map.of(
-			"relationshipTitle", BOOK_COPY_TITLE_MAX_LENGTH,
-			"relationshipBody", BOOK_COPY_BODY_MAX_LENGTH,
-			"momentTitle", BOOK_COPY_TITLE_MAX_LENGTH,
-			"momentBody", BOOK_COPY_BODY_MAX_LENGTH,
-			"fanNoteTitle", BOOK_COPY_TITLE_MAX_LENGTH,
-			"fanNoteBody", BOOK_COPY_BODY_MAX_LENGTH
+			"relationshipTitle", SweetbookTemplateCopyPolicy.PHOTO_STORY_TITLE_MAX,
+			"relationshipBody", SweetbookTemplateCopyPolicy.PHOTO_STORY_BODY_MAX,
+			"momentTitle", SweetbookTemplateCopyPolicy.PHOTO_STORY_TITLE_MAX,
+			"momentBody", SweetbookTemplateCopyPolicy.PHOTO_STORY_BODY_MAX,
+			"fanNoteTitle", SweetbookTemplateCopyPolicy.PHOTO_STORY_TITLE_MAX,
+			"fanNoteBody", SweetbookTemplateCopyPolicy.PHOTO_STORY_BODY_MAX
 		);
 
 		Map<String, Object> result = new LinkedHashMap<>();
 		for (Map.Entry<String, Integer> entry : limits.entrySet()) {
-			String value = bookCopyNode.path(entry.getKey()).asText("").trim();
+			String value = normalizeInlineBookCopy(bookCopyNode.path(entry.getKey()).asText(""));
 			if (value.isBlank()) {
 				continue;
 			}
@@ -636,6 +634,14 @@ public class ChatPersonalizationService {
 			result.put(entry.getKey(), value);
 		}
 		return result.isEmpty() ? null : result;
+	}
+
+	private String normalizeInlineBookCopy(String raw) {
+		return nullToEmpty(raw)
+			.replace('\n', ' ')
+			.replace('\r', ' ')
+			.replaceAll("\\s+", " ")
+			.trim();
 	}
 
 	private Object normalizeFieldValue(EditionViews.PersonalizationField field, JsonNode valueNode) {
