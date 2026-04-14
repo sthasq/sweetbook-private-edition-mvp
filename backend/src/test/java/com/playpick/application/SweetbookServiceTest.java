@@ -8,7 +8,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -463,7 +462,7 @@ class SweetbookServiceTest {
 	}
 
 	@Test
-	void retriesFinalizationAfterPaddingMissingBlankPages() {
+	void padsLiveDraftWithTwoExtraBlankPagesForSweetbookMinimumRequirement() {
 		SweetbookClient sweetbookClient = mock(SweetbookClient.class);
 		PublicAssetPublishingService publicAssetPublishingService = mock(PublicAssetPublishingService.class);
 		SweetbookProperties sweetbookProperties = liveSweetbookProperties();
@@ -472,11 +471,8 @@ class SweetbookServiceTest {
 
 		when(sweetbookClient.getBookSpecs()).thenReturn(List.of(new SweetbookViews.BookSpec("SQUAREBOOK_HC", "Square", 24, 130, 2)));
 		when(sweetbookClient.getTemplates("SQUAREBOOK_HC")).thenReturn(defaultTemplates());
+		when(sweetbookClient.createBook(anyMap(), anyString())).thenReturn("bk_test");
 		when(publicAssetPublishingService.isConfigured()).thenReturn(false);
-		doThrow(new AppException(org.springframework.http.HttpStatus.BAD_GATEWAY, "Sweetbook API error: {\"errors\":[\"최소 페이지 미달: 현재 22p, 최소 24p\"]}"))
-			.doNothing()
-			.when(sweetbookClient)
-			.finalizeBook("bk_test");
 
 		List<ContentInvocation> contentInvocations = new ArrayList<>();
 		doAnswer(invocation -> {
@@ -494,13 +490,11 @@ class SweetbookServiceTest {
 			publicAssetPublishingService
 		);
 
-		ProjectViews.BookGeneration generation = service.finalizeBook(previewWithCuratedImages(12), "bk_test", false);
+		service.prepareBookDraft(previewWithCuratedImages(12), "ext", "idem", false);
 
-		assertThat(generation.status()).isEqualTo("FINALIZED");
-		verify(sweetbookClient, times(2)).finalizeBook("bk_test");
 		assertThat(contentInvocations)
 			.filteredOn(invocation -> "2mi1ao0Z4Vxl".equals(invocation.templateUid()))
-			.hasSize(2);
+			.hasSize(8);
 	}
 
 	private SweetbookProperties liveSweetbookProperties() {

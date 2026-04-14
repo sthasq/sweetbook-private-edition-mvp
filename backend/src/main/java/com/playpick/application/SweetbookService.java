@@ -18,8 +18,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,9 +33,9 @@ public class SweetbookService {
 	private static final int DEFAULT_PAGE_INCREMENT = 2;
 	private static final int MAX_GALLERY_IMAGES_PER_LAYOUT = 4;
 	private static final int MAX_SELECTED_CURATED_IMAGES = 40;
+	private static final int LIVE_DRAFT_MINIMUM_PAGE_BUFFER = 2;
 	private static final DateTimeFormatter SWEETBOOK_DATE_RANGE_FORMAT = DateTimeFormatter.ofPattern("yyyy.MM.dd");
 	private static final DateTimeFormatter SWEETBOOK_PUBLISH_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy.MM.dd");
-	private static final Pattern MINIMUM_PAGE_SHORTAGE_PATTERN = Pattern.compile("현재\\s*(\\d+)p,\\s*최소\\s*(\\d+)p");
 	private static final List<String> GENERATED_DEMO_VARIANT_SUFFIXES = List.of(
 		"-detail",
 		"-warm-film",
@@ -203,79 +201,9 @@ public class SweetbookService {
 				reused
 			);
 		} catch (RuntimeException exception) {
-			if (retryFinalizeWithBlankPadding(preview, resolvedTemplates, bookUid, exception)) {
-				return new ProjectViews.BookGeneration(
-					preview.projectId(),
-					bookUid,
-					"FINALIZED",
-					"FINALIZED",
-					preview.edition().snapshot().bookSpecUid(),
-					resolvedTemplates.coverTemplate().uid(),
-					resolvedTemplates.publishTemplate().uid(),
-					resolvedTemplates.contentTemplate().uid(),
-					pagePlan.totalPages(),
-					false,
-					reused
-				);
-			}
 			log.warn("Sweetbook live finalization failed.", exception);
 			throw liveFailure("finalization", exception);
 		}
-	}
-
-	private boolean retryFinalizeWithBlankPadding(
-		ProjectViews.Preview preview,
-		ResolvedTemplates resolvedTemplates,
-		String bookUid,
-		RuntimeException exception
-	) {
-		Integer missingPageCount = extractMissingPageCount(exception);
-		if (missingPageCount == null || missingPageCount <= 0) {
-			return false;
-		}
-		if (resolvedTemplates.blankTemplate() == null
-			|| resolvedTemplates.blankTemplate().uid() == null
-			|| resolvedTemplates.blankTemplate().uid().isBlank()) {
-			return false;
-		}
-
-		log.info(
-			"Sweetbook finalization needs {} more pages for book {}. Appending blank pages and retrying.",
-			missingPageCount,
-			bookUid
-		);
-
-		LocalDate today = LocalDate.now();
-		for (int index = 0; index < missingPageCount; index++) {
-			sweetbookClient.addContents(
-				bookUid,
-				resolvedTemplates.blankTemplate().uid(),
-				buildBlankPageParams(preview.edition().title(), today.plusDays(index)),
-				"page"
-			);
-		}
-
-		sweetbookClient.finalizeBook(bookUid);
-		return true;
-	}
-
-	private Integer extractMissingPageCount(RuntimeException exception) {
-		Throwable current = exception;
-		while (current != null) {
-			String message = current.getMessage();
-			if (message != null) {
-				Matcher matcher = MINIMUM_PAGE_SHORTAGE_PATTERN.matcher(message);
-				if (matcher.find()) {
-					int currentPages = Integer.parseInt(matcher.group(1));
-					int minimumPages = Integer.parseInt(matcher.group(2));
-					if (minimumPages > currentPages) {
-						return minimumPages - currentPages;
-					}
-				}
-			}
-			current = current.getCause();
-		}
-		return null;
 	}
 
 	public ProjectViews.BookGeneration describeBook(
@@ -676,6 +604,7 @@ public class SweetbookService {
 	) {
 		List<LiveContentInstruction> instructions = new ArrayList<>();
 		int consumedPhysicalPages = 0;
+		int targetContentPageCount = contentPageCount + LIVE_DRAFT_MINIMUM_PAGE_BUFFER;
 
 		for (int index = 0; index < sourcePages.size(); index++) {
 			BookContentPage page = sourcePages.get(index);
@@ -688,7 +617,7 @@ public class SweetbookService {
 			consumedPhysicalPages++;
 		}
 
-		while (consumedPhysicalPages < contentPageCount && resolvedTemplates.blankTemplate() != null
+		while (consumedPhysicalPages < targetContentPageCount && resolvedTemplates.blankTemplate() != null
 			&& resolvedTemplates.blankTemplate().uid() != null
 			&& !resolvedTemplates.blankTemplate().uid().isBlank()) {
 			LocalDate blankDate = today.plusDays(consumedPhysicalPages);
