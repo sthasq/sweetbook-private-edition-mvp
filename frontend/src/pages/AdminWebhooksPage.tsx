@@ -5,6 +5,7 @@ import { getAdminWebhooks } from "../api/admin";
 import AdminShell from "../components/AdminShell";
 import PaginationControls from "../components/PaginationControls";
 import { subscribeToAdminWebhookEvents } from "../lib/adminWebhookStream";
+import { formatAdminWebhookDate, mergeAdminWebhookEvents } from "../lib/adminWebhookEvents";
 import { paginateItems } from "../lib/pagination";
 import type { AdminWebhookEvent } from "../types/api";
 
@@ -25,7 +26,7 @@ export default function AdminWebhooksPage() {
       try {
         const nextEvents = await getAdminWebhooks();
         if (!cancelled) {
-          setEvents((current) => mergeWebhookEvents(current, nextEvents));
+          setEvents((current) => mergeAdminWebhookEvents(current, nextEvents, 20));
           setError("");
         }
       } catch (e: unknown) {
@@ -45,7 +46,7 @@ export default function AdminWebhooksPage() {
 
     load();
     const unsubscribe = subscribeToAdminWebhookEvents((event) => {
-      setEvents((current) => mergeWebhookEvents(current, [event]));
+      setEvents((current) => mergeAdminWebhookEvents(current, [event], 20));
       setPage(1);
     });
 
@@ -111,9 +112,11 @@ export default function AdminWebhooksPage() {
                       )}
                     </td>
                     <td className="px-5 py-4 text-right text-xs text-stone-600">
-                      {event.processedAt ? fmtDate(event.processedAt) : "—"}
+                      {event.processedAt ? formatAdminWebhookDate(event.processedAt) : "—"}
                     </td>
-                    <td className="px-5 py-4 text-right text-xs text-stone-600">{fmtDate(event.createdAt)}</td>
+                    <td className="px-5 py-4 text-right text-xs text-stone-600">
+                      {formatAdminWebhookDate(event.createdAt)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -130,37 +133,4 @@ export default function AdminWebhooksPage() {
       )}
     </AdminShell>
   );
-}
-
-function fmtDate(v: string) {
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? v : d.toLocaleString("ko-KR");
-}
-
-function mergeWebhookEvents(current: AdminWebhookEvent[], incoming: AdminWebhookEvent[]) {
-  const merged = new Map<number, AdminWebhookEvent>();
-
-  for (const event of current) {
-    merged.set(event.id, event);
-  }
-  for (const event of incoming) {
-    merged.set(event.id, event);
-  }
-
-  return Array.from(merged.values())
-    .sort((left, right) => compareWebhookEvents(left, right))
-    .slice(0, 20);
-}
-
-function compareWebhookEvents(left: AdminWebhookEvent, right: AdminWebhookEvent) {
-  const createdAtDiff = toTimestamp(right.createdAt) - toTimestamp(left.createdAt);
-  if (createdAtDiff !== 0) {
-    return createdAtDiff;
-  }
-  return right.id - left.id;
-}
-
-function toTimestamp(value: string) {
-  const timestamp = new Date(value).getTime();
-  return Number.isNaN(timestamp) ? 0 : timestamp;
 }

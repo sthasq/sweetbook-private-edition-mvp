@@ -14,11 +14,8 @@ import com.playpick.domain.FulfillmentStatus;
 import com.playpick.domain.OrderRecord;
 import com.playpick.domain.OrderRecordRepository;
 import com.playpick.domain.OrderStatus;
-import com.playpick.domain.SweetbookWebhookEvent;
-import com.playpick.domain.SweetbookWebhookEventRepository;
 import com.playpick.security.CurrentUserService;
 import java.math.BigDecimal;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -39,10 +36,9 @@ public class AdminService {
 	private final EditionRepository editionRepository;
 	private final AppUserRepository appUserRepository;
 	private final CreatorProfileRepository creatorProfileRepository;
-	private final SweetbookWebhookEventRepository sweetbookWebhookEventRepository;
 	private final CurrentUserService currentUserService;
 	private final AppProperties appProperties;
-	private final AdminWebhookStreamService adminWebhookStreamService;
+	private final AdminWebhookOverviewService adminWebhookOverviewService;
 
 	public AdminViews.Dashboard getDashboard() {
 		requireAdmin();
@@ -155,24 +151,12 @@ public class AdminService {
 
 	public List<AdminViews.WebhookEventSummary> listRecentWebhooks() {
 		requireAdmin();
-		List<SweetbookWebhookEvent> events = sweetbookWebhookEventRepository.findTop20ByOrderByCreatedAtDesc();
-		return events.stream().map(this::toWebhookSummary).toList();
+		return adminWebhookOverviewService.listRecentWebhooks();
 	}
 
 	public SseEmitter subscribeWebhookStream() {
 		requireAdmin();
-		return adminWebhookStreamService.subscribe();
-	}
-
-	public AdminViews.WebhookEventSummary toWebhookSummary(SweetbookWebhookEvent event) {
-		return new AdminViews.WebhookEventSummary(
-			event.getId(),
-			event.getEventType(),
-			event.getSweetbookOrderUid(),
-			event.getProcessedAt(),
-			event.getCreatedAt(),
-			event.isLinked()
-		);
+		return adminWebhookOverviewService.subscribe();
 	}
 
 	public List<AdminViews.UserSummary> listUsers() {
