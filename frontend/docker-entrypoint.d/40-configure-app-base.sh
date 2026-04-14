@@ -2,7 +2,7 @@
 set -eu
 
 normalize_base_path() {
-  input="${1:-/}"
+  input="$(printf '%s' "${1:-/}" | tr -d '\r')"
   if [ -z "$input" ] || [ "$input" = "/" ]; then
     printf "/"
     return

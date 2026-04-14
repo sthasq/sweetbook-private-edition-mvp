@@ -35,12 +35,18 @@ public class SweetbookProperties {
 
 	private String webhookSecret = "";
 
+	private long webhookTimestampToleranceSeconds = 300;
+
 	public boolean isLiveEnabled() {
 		return enabled && !apiKey.isBlank();
 	}
 
 	public boolean isWebhookSecretConfigured() {
 		return webhookSecret != null && !webhookSecret.isBlank();
+	}
+
+	public long getWebhookTimestampToleranceSeconds() {
+		return webhookTimestampToleranceSeconds <= 0 ? 300 : webhookTimestampToleranceSeconds;
 	}
 
 	public String integrationMode() {

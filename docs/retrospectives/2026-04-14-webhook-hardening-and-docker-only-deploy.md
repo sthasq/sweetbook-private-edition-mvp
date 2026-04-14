@@ -1,0 +1,44 @@
+# 2026-04-14 작업 회고
+
+## 이번에 정리한 것
+
+- Sweetbook 웹훅 수신부를 문서 스펙 기준으로 다시 맞췄다.
+- `X-Webhook-Timestamp`와 `X-Webhook-Signature` 기반 HMAC 검증을 넣고, 기존 shared secret 직접 비교 방식은 걷어냈다.
+- `X-Webhook-Delivery`를 저장해서 중복 이벤트를 무해하게 처리하도록 보강했다.
+- `order.paid`, `order.confirmed`, `order.status_changed`, `order.shipped` 같은 포털 이벤트명을 내부 주문 상태 체계에 맞춰 정규화했다.
+- 웹훅 이벤트 저장 스키마에 `delivery_uid`, `linked` 컬럼을 추가하고 관리자 조회 로직도 그 기준에 맞췄다.
+- 웹훅 테스트를 실제 서명 생성 방식과 timestamp 검증 흐름으로 바꿨다.
+- 운영 배포 중 `.env.production`의 CRLF가 프론트 컨테이너 nginx 경로 생성에 문제를 일으키는 지점을 찾아 entrypoint에서 방어했다.
+- 운영 배포 시 Sweetbook 웹훅 시크릿을 GitHub Actions 시크릿과 서버 `.env.production`에 함께 반영했다.
+- README와 배포 문서를 `Docker Compose + GitHub Actions` 중심으로 다시 정리하고, 로컬 PowerShell 원라이너 배포는 운영 경로에서 제외했다.
+
+## 잘된 점
+
+- Sweetbook 포털 문서와 실제 현재 코드의 불일치를 바로 인정하고, 수신 엔드포인트는 유지하되 검증 방식만 안전하게 교체한 판단이 좋았다.
+- 웹훅 상태 반영을 설명으로만 끝내지 않고, 서명 검증, timestamp 허용 범위, delivery dedupe, 이벤트 저장까지 한 흐름으로 마무리했다.
+- 배포 중 발생한 문제를 코드 문제, 환경 변수 문제, 인프라 문제로 분리해서 봤기 때문에 `.env.production` 줄바꿈 이슈를 비교적 빨리 좁힐 수 있었다.
+- 운영 서버와 GitHub Actions 시크릿을 같은 값으로 맞춰 실제 포털 테스트 직전 상태까지 끌어올린 점이 의미 있었다.
+- Windows Defender 탐지를 실제 악성코드로 과장하지 않고, 긴 인라인 PowerShell 명령에 대한 휴리스틱 오탐으로 해석한 뒤 운영 정책을 `Docker only`로 정리한 흐름이 안정적이었다.
+- 채용과제 README도 단순 설치 문서가 아니라 심사자가 빠르게 읽을 수 있는 제품 설명서 관점으로 다시 묶을 수 있었다.
+
+## 아쉬웠던 점
+
+- 로컬 원라이너 배포는 빠르긴 했지만, Defender 오탐과 복구 부담까지 같이 가져와 결과적으로 운영 경로로는 부적절했다.
+- `.env.production`을 SSH로 다루는 과정에서 한 번 잘못 읽어 단일 라인 파일을 만들었고, 그 여파로 프론트 컨테이너가 잘못된 base path를 읽는 문제가 생겼다.
+- 웹훅 쪽 변경이 기능 구현, 운영 배포, README 정리까지 한 덩어리로 묶여 PR 주제가 다소 넓어졌다.
+- `order.status_changed`는 현재도 payload 형태가 다양해질 수 있어서, 상태 정규화 규칙이 더 늘어날 가능성을 남겨뒀다.
+- 운영 배포 정책을 문서로는 `Docker only`로 정리했지만, 아직 로컬에서 그 정책을 강제하는 스크립트/가드는 추가하지 못했다.
+
+## 다음에 개선할 점
+
+- Sweetbook 포털 테스트 이벤트를 기준으로 실제 수신 payload 샘플을 더 모아 `order.status_changed` 정규화 로직을 테스트 케이스로 고정한다.
+- 웹훅 중복 처리와 timestamp 거부 결과를 운영자가 더 쉽게 볼 수 있도록 관리자 화면이나 로그 메시지를 조금 더 명시적으로 다듬는다.
+- 배포 경로를 완전히 GitHub Actions 중심으로 고정하려면, 로컬 수동 배포 스크립트 대신 워크플로 실행 방법과 롤백 절차를 문서화한다.
+- `.env.production` 같은 민감한 파일을 다룰 때는 줄바꿈과 인코딩을 먼저 검증하는 체크를 배포 초반에 넣는다.
+- PR 단위는 다음부터 `웹훅/도메인 변경`과 `문서/운영 정책 변경`을 가능하면 나눠서 리뷰 포인트를 더 선명하게 만든다.
+
+## 남은 체크포인트
+
+- Sweetbook 포털에서 실제 테스트 이벤트를 보냈을 때, 운영 서버가 200으로 응답하고 관리자 화면에서 웹훅 이력이 기대한 형태로 남는지 확인이 더 필요하다.
+- `SWEETBOOK_WEBHOOK_SECRET` 갱신 이후 환경별 sandbox/live URL과 이벤트 구독 설정이 정확히 맞는지 포털 기준으로 한 번 더 점검해야 한다.
+- 이번 PR에 포함하지 않은 [frontend/src/components/Layout.tsx](/C:/Users/skdml/Desktop/09_projects/sweetbook/frontend/src/components/Layout.tsx)는 현재 내용 변경이 보이지 않아 줄바꿈 차이인지 추가 확인이 필요하다.
