@@ -3,7 +3,6 @@ package com.playpick.api;
 import com.playpick.application.SweetbookWebhookService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,10 +21,18 @@ public class SweetbookWebhookController {
 	@Operation(summary = "Receive Sweetbook order webhooks")
 	@PostMapping("/events")
 	public SweetbookWebhookService.Receipt receiveEvent(
-		@RequestHeader(value = "X-Sweetbook-Webhook-Secret", required = false) String webhookSecret,
-		@RequestBody(required = false) Map<String, Object> payload
+		@RequestHeader(value = "X-Webhook-Event", required = false) String webhookEvent,
+		@RequestHeader(value = "X-Webhook-Delivery", required = false) String webhookDelivery,
+		@RequestHeader(value = "X-Webhook-Timestamp", required = false) String webhookTimestamp,
+		@RequestHeader(value = "X-Webhook-Signature", required = false) String webhookSignature,
+		@RequestBody(required = false) String rawBody
 	) {
-		sweetbookWebhookService.verifyWebhookSecret(webhookSecret);
-		return sweetbookWebhookService.accept(payload);
+		return sweetbookWebhookService.accept(new SweetbookWebhookService.WebhookRequest(
+			webhookEvent,
+			webhookDelivery,
+			webhookTimestamp,
+			webhookSignature,
+			rawBody == null ? "" : rawBody
+		));
 	}
 }

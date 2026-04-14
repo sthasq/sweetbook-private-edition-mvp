@@ -53,6 +53,7 @@ sweetbook:
   default-divider-template-uid: ${SWEETBOOK_DIVIDER_TEMPLATE_UID:}
   default-blank-template-uid: ${SWEETBOOK_BLANK_TEMPLATE_UID:2mi1ao0Z4Vxl}
   webhook-secret: ${SWEETBOOK_WEBHOOK_SECRET:}
+  webhook-timestamp-tolerance-seconds: ${SWEETBOOK_WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS:300}
 
 openrouter:
   base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}

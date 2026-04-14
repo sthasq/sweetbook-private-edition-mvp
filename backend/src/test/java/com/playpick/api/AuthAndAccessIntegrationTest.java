@@ -12,9 +12,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -33,6 +37,8 @@ import org.springframework.test.web.servlet.MvcResult;
 @AutoConfigureMockMvc
 @ActiveProfiles("local")
 class AuthAndAccessIntegrationTest {
+
+	private static final String TEST_WEBHOOK_SECRET = "test-webhook-secret";
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -426,26 +432,31 @@ class AuthAndAccessIntegrationTest {
 			.andReturn();
 
 		String fulfillmentOrderUid = readString(summaryResult, "fulfillmentOrderUid");
+		long timestamp = Instant.now().getEpochSecond();
+		String payload = """
+			{
+			  "data": {
+			    "orderUid": "%s",
+			    "occurredAt": "2026-04-11T10:00:00Z"
+			  }
+			}
+			""".formatted(fulfillmentOrderUid);
 
 		mockMvc.perform(post("/api/sweetbook/webhooks/events")
-				.header("X-Sweetbook-Webhook-Secret", "test-webhook-secret")
+				.header("X-Webhook-Event", "order.confirmed")
+				.header("X-Webhook-Delivery", "del-" + UUID.randomUUID())
+				.header("X-Webhook-Timestamp", timestamp)
+				.header("X-Webhook-Signature", signWebhook(TEST_WEBHOOK_SECRET, timestamp, payload))
 				.contentType(APPLICATION_JSON)
-				.content("""
-					{
-					  "event": "production.started",
-					  "data": {
-					    "orderUid": "%s",
-					    "occurredAt": "2026-04-11T10:00:00Z"
-					  }
-					}
-					""".formatted(fulfillmentOrderUid)))
+				.content(payload))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.linked").value(true));
+			.andExpect(jsonPath("$.linked").value(true))
+			.andExpect(jsonPath("$.duplicate").value(false));
 
 		mockMvc.perform(get("/api/projects/{projectId}/order-summary", projectId).session(session))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.fulfillmentStatus").value("PRODUCTION_STARTED"))
-			.andExpect(jsonPath("$.lastFulfillmentEvent").value("production.started"));
+			.andExpect(jsonPath("$.fulfillmentStatus").value("PRODUCTION_CONFIRMED"))
+			.andExpect(jsonPath("$.lastFulfillmentEvent").value("production.confirmed"));
 	}
 
 	@Test
@@ -495,19 +506,82 @@ class AuthAndAccessIntegrationTest {
 	}
 
 	@Test
-	void sweetbookWebhookRejectsMissingSharedSecret() throws Exception {
+	void sweetbookWebhookMapsStatusChangedEventsToCanonicalFulfillmentStages() throws Exception {
+		MockHttpSession session = signUp(uniqueEmail("webhook-status"), "Webhook Status Fan");
+		long projectId = createProject(session, 1L, "demo");
+		placeOrder(session, projectId, "Webhook Status Fan", "010-1111-2222");
+
+		MvcResult summaryResult = mockMvc.perform(get("/api/projects/{projectId}/order-summary", projectId).session(session))
+			.andExpect(status().isOk())
+			.andReturn();
+
+		String fulfillmentOrderUid = readString(summaryResult, "fulfillmentOrderUid");
+		long timestamp = Instant.now().getEpochSecond();
+		String payload = """
+			{
+			  "data": {
+			    "orderUid": "%s",
+			    "status": "shipped",
+			    "occurredAt": "2026-04-11T11:00:00Z"
+			  }
+			}
+			""".formatted(fulfillmentOrderUid);
+
 		mockMvc.perform(post("/api/sweetbook/webhooks/events")
+				.header("X-Webhook-Event", "order.status_changed")
+				.header("X-Webhook-Delivery", "del-" + UUID.randomUUID())
+				.header("X-Webhook-Timestamp", timestamp)
+				.header("X-Webhook-Signature", signWebhook(TEST_WEBHOOK_SECRET, timestamp, payload))
+				.contentType(APPLICATION_JSON)
+				.content(payload))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.linked").value(true));
+
+		mockMvc.perform(get("/api/projects/{projectId}/order-summary", projectId).session(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.fulfillmentStatus").value("SHIPPING_DEPARTED"))
+			.andExpect(jsonPath("$.lastFulfillmentEvent").value("shipping.departed"));
+	}
+
+	@Test
+	void sweetbookWebhookRejectsInvalidSignature() throws Exception {
+		mockMvc.perform(post("/api/sweetbook/webhooks/events")
+				.header("X-Webhook-Event", "order.confirmed")
+				.header("X-Webhook-Delivery", "del-" + UUID.randomUUID())
+				.header("X-Webhook-Timestamp", Instant.now().getEpochSecond())
+				.header("X-Webhook-Signature", "sha256=invalid")
 				.contentType(APPLICATION_JSON)
 				.content("""
 					{
-					  "event": "production.started",
 					  "data": {
 					    "orderUid": "demo-order"
 					  }
 					}
 					"""))
-			.andExpect(status().isUnauthorized())
-			.andExpect(jsonPath("$.detail").value("Sweetbook webhook secret is invalid"));
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.detail").value("Sweetbook webhook signature is invalid"));
+	}
+
+	@Test
+	void sweetbookWebhookRejectsStaleTimestamp() throws Exception {
+		String payload = """
+			{
+			  "data": {
+			    "orderUid": "demo-order"
+			  }
+			}
+			""";
+		long staleTimestamp = Instant.now().minusSeconds(3_600).getEpochSecond();
+
+		mockMvc.perform(post("/api/sweetbook/webhooks/events")
+				.header("X-Webhook-Event", "order.confirmed")
+				.header("X-Webhook-Delivery", "del-" + UUID.randomUUID())
+				.header("X-Webhook-Timestamp", staleTimestamp)
+				.header("X-Webhook-Signature", signWebhook(TEST_WEBHOOK_SECRET, staleTimestamp, payload))
+				.contentType(APPLICATION_JSON)
+				.content(payload))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.detail").value("Sweetbook webhook timestamp is invalid or too old"));
 	}
 
 	private MockHttpSession login(String email, String password) throws Exception {
@@ -700,5 +774,21 @@ class AuthAndAccessIntegrationTest {
 
 	private String uniqueEmail(String prefix) {
 		return prefix + "-" + UUID.randomUUID() + "@playpick.local";
+	}
+
+	private String signWebhook(String secret, long timestamp, String payload) throws Exception {
+		Mac mac = Mac.getInstance("HmacSHA256");
+		mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+		byte[] digest = mac.doFinal((timestamp + "." + payload).getBytes(StandardCharsets.UTF_8));
+		return "sha256=" + toHex(digest);
+	}
+
+	private String toHex(byte[] bytes) {
+		StringBuilder builder = new StringBuilder(bytes.length * 2);
+		for (byte value : bytes) {
+			builder.append(Character.forDigit((value >> 4) & 0xF, 16));
+			builder.append(Character.forDigit(value & 0xF, 16));
+		}
+		return builder.toString();
 	}
 }

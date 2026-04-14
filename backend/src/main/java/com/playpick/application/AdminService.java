@@ -160,7 +160,7 @@ public class AdminService {
 			event.getSweetbookOrderUid(),
 			event.getProcessedAt(),
 			event.getCreatedAt(),
-			event.getSweetbookOrderUid() != null && !event.getSweetbookOrderUid().isBlank()
+			event.isLinked()
 		)).toList();
 	}
 
