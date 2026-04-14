@@ -27,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +42,7 @@ public class AdminService {
 	private final SweetbookWebhookEventRepository sweetbookWebhookEventRepository;
 	private final CurrentUserService currentUserService;
 	private final AppProperties appProperties;
+	private final AdminWebhookStreamService adminWebhookStreamService;
 
 	public AdminViews.Dashboard getDashboard() {
 		requireAdmin();
@@ -154,14 +156,23 @@ public class AdminService {
 	public List<AdminViews.WebhookEventSummary> listRecentWebhooks() {
 		requireAdmin();
 		List<SweetbookWebhookEvent> events = sweetbookWebhookEventRepository.findTop20ByOrderByCreatedAtDesc();
-		return events.stream().map(event -> new AdminViews.WebhookEventSummary(
+		return events.stream().map(this::toWebhookSummary).toList();
+	}
+
+	public SseEmitter subscribeWebhookStream() {
+		requireAdmin();
+		return adminWebhookStreamService.subscribe();
+	}
+
+	public AdminViews.WebhookEventSummary toWebhookSummary(SweetbookWebhookEvent event) {
+		return new AdminViews.WebhookEventSummary(
 			event.getId(),
 			event.getEventType(),
 			event.getSweetbookOrderUid(),
 			event.getProcessedAt(),
 			event.getCreatedAt(),
 			event.isLinked()
-		)).toList();
+		);
 	}
 
 	public List<AdminViews.UserSummary> listUsers() {

@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -457,6 +458,16 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.fulfillmentStatus").value("PRODUCTION_CONFIRMED"))
 			.andExpect(jsonPath("$.lastFulfillmentEvent").value("production.confirmed"));
+	}
+
+	@Test
+	void adminCanSubscribeToWebhookStream() throws Exception {
+		MockHttpSession adminSession = signUpAdmin(uniqueEmail("admin-stream"), "Admin Stream");
+
+		mockMvc.perform(get("/api/admin/webhooks/stream").session(adminSession))
+			.andExpect(status().isOk())
+			.andExpect(result -> org.assertj.core.api.Assertions.assertThat(result.getResponse().getContentType())
+				.startsWith(MediaType.TEXT_EVENT_STREAM_VALUE));
 	}
 
 	@Test
