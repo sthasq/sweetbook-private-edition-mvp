@@ -30,7 +30,7 @@ public class AdminWebhookStreamService {
 			emitter.send(SseEmitter.event()
 				.name("connected")
 				.data("admin-webhook-stream-ready"));
-		} catch (IOException exception) {
+		} catch (Exception exception) {
 			emitters.remove(emitter);
 			emitter.completeWithError(exception);
 		}
@@ -45,7 +45,7 @@ public class AdminWebhookStreamService {
 					.name("webhook")
 					.id(String.valueOf(event.id()))
 					.data(event));
-			} catch (IOException exception) {
+			} catch (Exception exception) {
 				log.debug("Removing stale admin webhook emitter", exception);
 				emitters.remove(emitter);
 				emitter.completeWithError(exception);
