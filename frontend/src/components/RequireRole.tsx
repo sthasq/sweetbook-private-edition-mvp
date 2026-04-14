@@ -23,10 +23,14 @@ export default function RequireRole({
   if (user.role !== role) {
     const title = role === "ADMIN"
       ? "이 화면은 관리자 전용입니다"
-      : "이 화면은 크리에이터 전용입니다";
+      : role === "CREATOR"
+        ? "이 화면은 크리에이터 전용입니다"
+        : "구매와 프로젝트 관리는 팬 계정 전용입니다";
     const desc = role === "ADMIN"
       ? "지금 계정으로는 관리자 콘솔에 접근할 수 없어요."
-      : "지금 계정으로는 크리에이터 스튜디오에 들어갈 수 없어요.";
+      : role === "CREATOR"
+        ? "지금 계정으로는 크리에이터 스튜디오에 들어갈 수 없어요."
+        : "크리에이터와 관리자 계정은 구매 페이지에 들어갈 수 없어요. 구매하려면 팬 계정으로 다시 로그인하거나 새로 만들어 주세요.";
     return (
       <div className="mx-auto max-w-lg px-6 py-20 text-center">
         <div className="rounded-3xl border border-stone-200 bg-white/90 px-8 py-12 shadow-sm shadow-brand-100/30">

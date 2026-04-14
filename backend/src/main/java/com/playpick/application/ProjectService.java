@@ -3,6 +3,7 @@ package com.playpick.application;
 import com.playpick.config.AppProperties;
 import com.playpick.config.TossPaymentsProperties;
 import com.playpick.domain.AppUser;
+import com.playpick.domain.AppUserRole;
 import com.playpick.domain.CustomerOrder;
 import com.playpick.domain.CustomerOrderRepository;
 import com.playpick.domain.FanProject;
@@ -44,7 +45,7 @@ public class ProjectService {
 
 	@Transactional
 	public ProjectViews.Snapshot createProject(ProjectCommands.CreateProject command) {
-		AppUser currentUser = currentUserService.requireCurrentAppUser();
+		AppUser currentUser = requireFanBuyer();
 		Long editionId = command.editionId() == null ? editionService.getDefaultPublishedEditionId() : command.editionId();
 		var publishedVersion = editionService.requirePublishedVersion(editionId);
 		String mode = normalizeMode(command.mode());
@@ -451,7 +452,7 @@ public class ProjectService {
 	}
 
 	public List<ProjectViews.MyProjectSummary> listMyProjects() {
-		AppUser currentUser = currentUserService.requireCurrentAppUser();
+		AppUser currentUser = requireFanBuyer();
 		return fanProjectRepository.findByOwnerUserIdOrderByUpdatedAtDesc(currentUser.getId()).stream()
 			.map(this::toMyProjectSummary)
 			.toList();
@@ -463,12 +464,20 @@ public class ProjectService {
 	}
 
 	private FanProject requireOwnedProject(Long projectId) {
-		AppUser currentUser = currentUserService.requireCurrentAppUser();
+		AppUser currentUser = requireFanBuyer();
 		FanProject project = requireProject(projectId);
 		if (!project.getOwnerUser().getId().equals(currentUser.getId())) {
 			throw new AppException(HttpStatus.FORBIDDEN, "You do not have access to this project");
 		}
 		return project;
+	}
+
+	private AppUser requireFanBuyer() {
+		AppUser currentUser = currentUserService.requireCurrentAppUser();
+		if (currentUser.getRole() != AppUserRole.FAN) {
+			throw new AppException(HttpStatus.FORBIDDEN, "구매는 FAN 계정으로만 진행할 수 있습니다.");
+		}
+		return currentUser;
 	}
 
 	private ProjectViews.Snapshot toSnapshot(FanProject project) {

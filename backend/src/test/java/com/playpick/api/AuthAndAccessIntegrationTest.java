@@ -205,6 +205,28 @@ class AuthAndAccessIntegrationTest {
 	}
 
 	@Test
+	void creatorCannotEnterFanPurchaseFlow() throws Exception {
+		MockHttpSession creatorSession = signUpCreator(uniqueEmail("creator-purchase"), "Creator Purchase", "@creator_purchase");
+
+		mockMvc.perform(post("/api/projects")
+				.with(csrf())
+				.session(creatorSession)
+				.contentType(APPLICATION_JSON)
+				.content("""
+					{
+					  "editionId": 1,
+					  "mode": "demo"
+					}
+					"""))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.detail").value("구매는 FAN 계정으로만 진행할 수 있습니다."));
+
+		mockMvc.perform(get("/api/me/projects").session(creatorSession))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.detail").value("구매는 FAN 계정으로만 진행할 수 있습니다."));
+	}
+
+	@Test
 	void creatorSignupCreatesStudioReadyAccount() throws Exception {
 		String email = uniqueEmail("creator");
 
@@ -358,7 +380,7 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(jsonPath("$.siteOrderUid").isNotEmpty())
 			.andExpect(jsonPath("$.siteOrderStatus").value("PAID"))
 			.andExpect(jsonPath("$.fulfillmentStatus").isNotEmpty())
-			.andExpect(jsonPath("$.edition.title").value("Astra Vale · Mina Loop · Noah Reed Collab Archive"))
+			.andExpect(jsonPath("$.edition.title").value("Trio Archive"))
 			.andExpect(jsonPath("$.shipping.recipientName").value("천경신"));
 	}
 
