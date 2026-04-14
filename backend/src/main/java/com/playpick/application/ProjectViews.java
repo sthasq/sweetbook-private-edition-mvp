@@ -15,6 +15,7 @@ public final class ProjectViews {
 		Long editionId,
 		Long editionVersionId,
 		String status,
+		BookOperation bookOperation,
 		Map<String, Object> personalizationData,
 		String sweetbookBookUid,
 		String sweetbookExternalRef,
@@ -23,6 +24,34 @@ public final class ProjectViews {
 		Instant createdAt,
 		Instant updatedAt
 	) {
+		public Snapshot(
+			Long id,
+			Long editionId,
+			Long editionVersionId,
+			String status,
+			Map<String, Object> personalizationData,
+			String sweetbookBookUid,
+			String sweetbookExternalRef,
+			Instant sweetbookDraftCreatedAt,
+			Instant sweetbookFinalizedAt,
+			Instant createdAt,
+			Instant updatedAt
+		) {
+			this(
+				id,
+				editionId,
+				editionVersionId,
+				status,
+				null,
+				personalizationData,
+				sweetbookBookUid,
+				sweetbookExternalRef,
+				sweetbookDraftCreatedAt,
+				sweetbookFinalizedAt,
+				createdAt,
+				updatedAt
+			);
+		}
 	}
 
 	public record Preview(
@@ -31,6 +60,7 @@ public final class ProjectViews {
 		String mode,
 		EditionViews.Detail edition,
 		SweetbookViews.TemplateDetail contentTemplateDetail,
+		BookOperation bookOperation,
 		Map<String, Object> personalizationData,
 		String sweetbookBookUid,
 		String sweetbookExternalRef,
@@ -56,6 +86,7 @@ public final class ProjectViews {
 				mode,
 				edition,
 				null,
+				null,
 				personalizationData,
 				sweetbookBookUid,
 				sweetbookExternalRef,
@@ -64,6 +95,47 @@ public final class ProjectViews {
 				pages
 			);
 		}
+
+		public Preview(
+			Long projectId,
+			String status,
+			String mode,
+			EditionViews.Detail edition,
+			BookOperation bookOperation,
+			Map<String, Object> personalizationData,
+			String sweetbookBookUid,
+			String sweetbookExternalRef,
+			Instant sweetbookDraftCreatedAt,
+			Instant sweetbookFinalizedAt,
+			List<Page> pages
+		) {
+			this(
+				projectId,
+				status,
+				mode,
+				edition,
+				null,
+				bookOperation,
+				personalizationData,
+				sweetbookBookUid,
+				sweetbookExternalRef,
+				sweetbookDraftCreatedAt,
+				sweetbookFinalizedAt,
+				pages
+			);
+		}
+	}
+
+	public record BookOperation(
+		String type,
+		String status,
+		Integer progress,
+		String step,
+		String message,
+		String error,
+		Instant startedAt,
+		Instant finishedAt
+	) {
 	}
 
 	public record Page(

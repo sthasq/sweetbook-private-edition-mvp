@@ -36,6 +36,11 @@ export function getPreview(id: number) {
   return get<ProjectPreview>(`/projects/${id}/preview`, { ttlMs: 20_000 });
 }
 
+export function refreshPreview(id: number) {
+  invalidateApiCache(`/projects/${id}/preview`);
+  return get<ProjectPreview>(`/projects/${id}/preview`);
+}
+
 export function getOrderSummary(id: number) {
   return get<ProjectOrderSummary>(`/projects/${id}/order-summary`, { ttlMs: 20_000 });
 }
