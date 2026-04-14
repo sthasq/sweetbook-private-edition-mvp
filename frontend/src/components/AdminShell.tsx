@@ -104,7 +104,7 @@ export default function AdminShell({
                       return next;
                     });
                   }}
-                  className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-stone-200 bg-white/95 text-stone-600 shadow-sm transition hover:border-brand-300 hover:text-brand-700"
+                  className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-stone-200 bg-white text-stone-600 shadow-sm transition hover:border-brand-300 hover:text-brand-700"
                   aria-label="웹훅 알림 열기"
                   aria-expanded={notificationPanelOpen}
                 >
@@ -124,7 +124,7 @@ export default function AdminShell({
                 </button>
 
                 {notificationPanelOpen ? (
-                  <div className="absolute right-0 top-full z-30 mt-3 w-[min(24rem,calc(100vw-3rem))] max-w-[calc(100vw-3rem)] overflow-hidden rounded-3xl border border-stone-200 bg-white/98 shadow-[0_28px_70px_-32px_rgba(15,23,42,0.35)] backdrop-blur">
+                  <div className="absolute right-0 top-full z-30 mt-3 w-[min(24rem,calc(100vw-3rem))] max-w-[calc(100vw-3rem)] overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-[0_28px_70px_-32px_rgba(15,23,42,0.35)]">
                     <div className="border-b border-stone-100 px-4 py-4">
                       <div className="flex items-center justify-between gap-3">
                         <div>
@@ -149,7 +149,7 @@ export default function AdminShell({
                               <Link
                                 to="/admin/webhooks"
                                 onClick={() => setNotificationPanelOpen(false)}
-                                className="block rounded-2xl border border-stone-200 bg-stone-50/70 px-4 py-3 transition hover:border-brand-300 hover:bg-brand-50/40"
+                                className="block rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 transition hover:border-brand-300 hover:bg-brand-50"
                               >
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0 flex-1">
