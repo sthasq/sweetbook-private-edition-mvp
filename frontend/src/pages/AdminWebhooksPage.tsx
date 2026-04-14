@@ -20,7 +20,7 @@ export default function AdminWebhooksPage() {
       try {
         const nextEvents = await getAdminWebhooks();
         if (!cancelled) {
-          setEvents(nextEvents);
+          setEvents((current) => mergeWebhookEvents(current, nextEvents));
           setError("");
         }
       } catch (e: unknown) {
@@ -40,12 +40,7 @@ export default function AdminWebhooksPage() {
 
     load();
     const unsubscribe = subscribeToAdminWebhookEvents((event) => {
-      setEvents((current) => {
-        if (current.some((item) => item.id === event.id)) {
-          return current;
-        }
-        return [event, ...current].slice(0, 20);
-      });
+      setEvents((current) => mergeWebhookEvents(current, [event]));
     });
 
     return () => {
@@ -123,4 +118,19 @@ export default function AdminWebhooksPage() {
 function fmtDate(v: string) {
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? v : d.toLocaleString("ko-KR");
+}
+
+function mergeWebhookEvents(current: AdminWebhookEvent[], incoming: AdminWebhookEvent[]) {
+  const merged = new Map<number, AdminWebhookEvent>();
+
+  for (const event of current) {
+    merged.set(event.id, event);
+  }
+  for (const event of incoming) {
+    merged.set(event.id, event);
+  }
+
+  return Array.from(merged.values())
+    .sort((left, right) => right.id - left.id)
+    .slice(0, 20);
 }

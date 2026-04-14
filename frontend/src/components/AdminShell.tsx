@@ -70,21 +70,21 @@ export default function AdminShell({
     <div className="studio-page page-shell">
       <div className="mx-auto max-w-screen-2xl">
         {webhookToasts.length > 0 ? (
-          <div className="pointer-events-none fixed right-4 top-4 z-50 flex w-[min(92vw,26rem)] flex-col gap-3">
+          <div className="pointer-events-none fixed inset-x-4 top-24 z-50 flex flex-col gap-3 sm:left-auto sm:right-4 sm:top-4 sm:w-[26rem]">
             {webhookToasts.map((toast) => (
               <article
                 key={toast.toastId}
-                className="pointer-events-auto rounded-3xl border border-emerald-200 bg-white/95 p-4 shadow-[0_24px_60px_-28px_rgba(5,150,105,0.38)] backdrop-blur"
+                className="pointer-events-auto w-full rounded-3xl border border-emerald-200 bg-white/95 p-4 shadow-[0_24px_60px_-28px_rgba(5,150,105,0.38)] backdrop-blur"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-600">
                       새 Webhook 이벤트
                     </p>
-                    <p className="mt-2 text-sm font-semibold text-stone-900">
+                    <p className="mt-2 break-words text-sm font-semibold leading-6 text-stone-900">
                       {describeWebhookEvent(toast.event)}
                     </p>
-                    <p className="mt-2 text-xs text-stone-500">
+                    <p className="mt-2 break-all text-xs leading-5 text-stone-500">
                       {toast.event.sweetbookOrderUid
                         ? `주문 UID ${toast.event.sweetbookOrderUid}`
                         : "주문 UID가 없는 이벤트예요."}
@@ -96,13 +96,13 @@ export default function AdminShell({
                   <button
                     type="button"
                     onClick={() => setWebhookToasts((items) => items.filter((item) => item.toastId !== toast.toastId))}
-                    className="rounded-full bg-stone-100 px-2 py-1 text-xs font-medium text-stone-500 transition hover:bg-stone-200 hover:text-stone-700"
+                    className="shrink-0 rounded-full bg-stone-100 px-2 py-1 text-xs font-medium text-stone-500 transition hover:bg-stone-200 hover:text-stone-700"
                   >
                     닫기
                   </button>
                 </div>
 
-                <div className="mt-3 flex items-center gap-2">
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   <span
                     className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
                       toast.event.linked
