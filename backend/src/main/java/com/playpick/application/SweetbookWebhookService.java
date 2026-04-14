@@ -35,6 +35,7 @@ public class SweetbookWebhookService {
 	private final CustomerOrderRepository customerOrderRepository;
 	private final SweetbookProperties sweetbookProperties;
 	private final ObjectMapper objectMapper;
+	private final AdminWebhookStreamService adminWebhookStreamService;
 
 	public Receipt accept(WebhookRequest request) {
 		verifyWebhookRequest(request);
@@ -100,6 +101,14 @@ public class SweetbookWebhookService {
 		event.setLinked(linked);
 		event.setProcessedAt(Instant.now());
 		event = sweetbookWebhookEventRepository.save(event);
+		adminWebhookStreamService.publish(new AdminViews.WebhookEventSummary(
+			event.getId(),
+			event.getEventType(),
+			event.getSweetbookOrderUid(),
+			event.getProcessedAt(),
+			event.getCreatedAt(),
+			event.isLinked()
+		));
 		return new Receipt(event.getId(), event.getEventType(), event.getSweetbookOrderUid(), linked, false);
 	}
 

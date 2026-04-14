@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { getAdminWebhooks } from "../api/admin";
 import AdminShell from "../components/AdminShell";
+import { subscribeToAdminWebhookEvents } from "../lib/adminWebhookStream";
 import type { AdminWebhookEvent } from "../types/api";
 
 export default function AdminWebhooksPage() {
@@ -13,16 +14,44 @@ export default function AdminWebhooksPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    getAdminWebhooks()
-      .then(setEvents)
-      .catch((e: unknown) => {
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const nextEvents = await getAdminWebhooks();
+        if (!cancelled) {
+          setEvents(nextEvents);
+          setError("");
+        }
+      } catch (e: unknown) {
         if (e instanceof ApiError && e.status === 401) {
           navigate(`/login?next=${encodeURIComponent(location.pathname)}`, { replace: true });
           return;
         }
-        setError(e instanceof Error ? e.message : "Webhook 로그를 불러오지 못했어요.");
-      })
-      .finally(() => setLoading(false));
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Webhook 로그를 불러오지 못했어요.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    load();
+    const unsubscribe = subscribeToAdminWebhookEvents((event) => {
+      setEvents((current) => {
+        if (current.some((item) => item.id === event.id)) {
+          return current;
+        }
+        return [event, ...current].slice(0, 20);
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [navigate, location.pathname]);
 
   return (
@@ -30,6 +59,11 @@ export default function AdminWebhooksPage() {
       title="Webhook 로그"
       description="Sweetbook에서 수신한 최근 Webhook 이벤트를 확인합니다."
     >
+      <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-3 text-xs text-stone-500">
+        <span>관리자 페이지가 열려 있으면 새 Webhook 이벤트를 SSE 스트림으로 바로 받아 알림과 로그에 반영해요.</span>
+        <span className="rounded-full bg-white px-2.5 py-1 font-medium text-stone-600">실시간 스트림</span>
+      </div>
+
       {loading ? (
         <div className="space-y-3">
           {[0, 1, 2].map((i) => (
