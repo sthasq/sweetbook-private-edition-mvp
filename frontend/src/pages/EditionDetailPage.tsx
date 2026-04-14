@@ -113,13 +113,15 @@ export default function EditionDetailPage() {
 
   const snap = edition.snapshot;
   const officialAssets = snap?.curatedAssets ?? [];
-  const fanFields = snap?.personalizationFields ?? [];
   const imageAssets = officialAssets.filter((asset) => asset.assetType === "IMAGE");
   const pricingHint = estimateEditionPricing(snap?.bookSpecUid);
   const quickPreviewImages = buildQuickPreviewImages(
     edition.coverImageUrl,
     imageAssets,
   );
+  const previewCoverImage = quickPreviewImages[0];
+  const previewInnerImages = quickPreviewImages.slice(1, 3);
+  const hasTwoInnerPreviews = previewInnerImages.length > 1;
 
   return (
     <div className="page-shell-narrow mx-auto">
@@ -182,108 +184,72 @@ export default function EditionDetailPage() {
             </div>
           </section>
 
-        <section className="grid gap-10 lg:grid-cols-12">
-          <div className="editorial-card p-8 lg:col-span-7 md:p-12">
-            <div className="max-w-2xl">
-              <div className="flex items-center gap-3">
-                <div className="h-px w-10 bg-brand-700" />
-                <p className="editorial-label text-slate-900">여기서부터 내 버전</p>
-              </div>
-              <h2 className="mt-5 text-4xl font-bold leading-tight text-slate-900">
-                내 이야기로 채우기
-              </h2>
-              <p className="mt-4 text-sm leading-relaxed text-slate-500">
-                몇 가지 질문에 나만의 답을 적으면, 같은 에디션도 완전히 다른 포토북이 됩니다.
-              </p>
-            </div>
-
-            {fanFields.length > 0 ? (
-              <div className="mt-10 grid gap-6 md:grid-cols-2">
-                {fanFields.map((field) => (
-                  <div key={field.id} className="rounded bg-slate-50 border border-slate-100 px-5 py-5">
-                    <p className="text-xl text-slate-900">{field.label}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="mt-10 grid gap-6 md:grid-cols-2">
-                {[
-                  "팬 닉네임",
-                  "가장 좋아하는 순간",
-                  "관계를 설명하는 한 문장",
-                  "크리에이터에게 남길 메시지",
-                ].map((label) => (
-                  <div key={label} className="rounded bg-slate-50 border border-slate-100 px-5 py-5">
-                    <p className="text-xl text-slate-900">{label}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="editorial-card p-8 lg:col-span-5">
+        <section className="space-y-10">
+          <div className="editorial-card p-8">
             <p className="editorial-label text-slate-600">한눈에 보기</p>
             <p className="mt-3 text-sm leading-relaxed text-slate-500">
               크리에이터가 직접 고른 메시지와 이미지가 이 에디션의 분위기를 먼저 만들어줘요.
             </p>
-            {quickPreviewImages.length > 0 && (
+            {previewCoverImage && (
               <div className="mt-5 rounded bg-slate-50 border border-slate-100 p-4">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                   미리보기 구성
                 </p>
-                <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1.15fr)_minmax(148px,0.85fr)]">
-                  <div className="overflow-hidden rounded bg-white p-2 shadow-sm">
-                    <div className="relative overflow-hidden rounded">
+                <div
+                  className={`mt-4 grid gap-3 ${
+                    hasTwoInnerPreviews
+                      ? "sm:h-[400px] sm:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)] sm:grid-rows-2"
+                      : "sm:h-[400px] sm:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]"
+                  }`}
+                >
+                  <div
+                    className={`overflow-hidden rounded bg-white p-2 shadow-sm ${
+                      hasTwoInnerPreviews ? "sm:row-span-2" : ""
+                    }`}
+                  >
+                    <div className="relative aspect-[4/5] overflow-hidden rounded sm:h-full sm:aspect-auto">
                       <img
-                        src={resolveMediaUrl(quickPreviewImages[0].url)}
-                        alt={quickPreviewImages[0].label}
-                        className="aspect-[4/5] w-full object-cover"
+                        src={resolveMediaUrl(previewCoverImage.url)}
+                        alt={previewCoverImage.label}
+                        className="h-full w-full object-cover"
                         style={{
                           objectPosition: imageObjectPosition(
-                            resolveMediaUrl(quickPreviewImages[0].url),
+                            resolveMediaUrl(previewCoverImage.url),
                           ),
                         }}
                       />
                       <span className="absolute left-3 top-3 rounded-full bg-white/92 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-900 shadow-sm">
-                        {quickPreviewImages[0].label}
+                        {previewCoverImage.label}
                       </span>
                     </div>
                   </div>
 
-                  {quickPreviewImages.length > 1 && (
+                  {previewInnerImages.map((image) => (
                     <div
-                      className={`grid gap-3 ${
-                        quickPreviewImages.length > 2 ? "grid-rows-2" : "grid-cols-1"
-                      }`}
+                      key={`${image.label}-${image.url}`}
+                      className="overflow-hidden rounded bg-white p-1.5 shadow-sm"
                     >
-                      {quickPreviewImages.slice(1).map((image) => (
-                        <div
-                          key={`${image.label}-${image.url}`}
-                          className="overflow-hidden rounded bg-white p-1.5 shadow-sm"
-                        >
-                          <div className="relative overflow-hidden rounded">
-                            <img
-                              src={resolveMediaUrl(image.url)}
-                              alt={image.label}
-                              className="aspect-[4/5] w-full object-cover"
-                              style={{
-                                objectPosition: imageObjectPosition(
-                                  resolveMediaUrl(image.url),
-                                ),
-                              }}
-                            />
-                            <span className="absolute left-2 top-2 rounded-full bg-white/92 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 shadow-sm">
-                              {image.label}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                      <div className="relative aspect-[4/5] overflow-hidden rounded sm:h-full sm:aspect-auto">
+                        <img
+                          src={resolveMediaUrl(image.url)}
+                          alt={image.label}
+                          className="h-full w-full object-cover"
+                          style={{
+                            objectPosition: imageObjectPosition(
+                              resolveMediaUrl(image.url),
+                            ),
+                          }}
+                        />
+                        <span className="absolute left-2 top-2 rounded-full bg-white/92 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 shadow-sm">
+                          {image.label}
+                        </span>
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
               </div>
             )}
-            <div className="mt-5 space-y-5">
+            <div className="mt-5 grid gap-5 md:grid-cols-2">
               <SpecRow
                 label="사이즈"
                 value={formatBookSpecLabel(snap?.bookSpecUid, bookSpecs)}
@@ -308,6 +274,21 @@ export default function EditionDetailPage() {
                 label="기본 구성"
                 value={`${officialAssets.length}개`}
               />
+            </div>
+          </div>
+
+          <div className="editorial-card p-8 md:p-12">
+            <div className="max-w-2xl">
+              <div className="flex items-center gap-3">
+                <div className="h-px w-10 bg-brand-700" />
+                <p className="editorial-label text-slate-900">여기서부터 내 버전</p>
+              </div>
+              <h2 className="mt-5 text-4xl font-bold leading-tight text-slate-900">
+                내 이야기로 채우기
+              </h2>
+              <p className="mt-4 text-sm leading-relaxed text-slate-500">
+                몇 가지 질문에 나만의 답을 적으면, 이 에디션이 곧 나만의 포토북이 됩니다.
+              </p>
             </div>
           </div>
         </section>
@@ -388,7 +369,7 @@ function buildQuickPreviewImages(
 ) {
   const previewItems = [
     { label: "표지", url: coverImageUrl },
-    ...imageAssets.slice(0, 5).map((asset, index) => ({
+    ...imageAssets.slice(0, 2).map((asset, index) => ({
       label: `내지 ${index + 1}`,
       url: asset.content,
     })),

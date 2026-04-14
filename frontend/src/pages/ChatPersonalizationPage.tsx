@@ -481,13 +481,9 @@ export default function ChatPersonalizationPage() {
                     </p>
                   </div>
                 )}
-                {saving ? (
+                {saving && (
                   <div className="rounded bg-emerald-50 px-4 py-3 text-sm leading-relaxed text-emerald-700">
                     인터뷰 내용을 바탕으로 문구를 저장했고, 미리보기 페이지로 이동 중이에요.
-                  </div>
-                ) : (
-                  <div className="rounded bg-surface-low px-4 py-3 text-sm leading-relaxed text-warm-500">
-                    별도 확인 없이, 정보가 충분해지는 즉시 문구를 생성해 미리보기로 넘겨드려요.
                   </div>
                 )}
                 <button
