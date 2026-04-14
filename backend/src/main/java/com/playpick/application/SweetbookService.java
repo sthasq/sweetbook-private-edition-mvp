@@ -739,7 +739,7 @@ public class SweetbookService {
 	) {
 		Map<String, Object> params = new LinkedHashMap<>();
 		putMixedDiaryDateParams(params, pageDate);
-		params.put("title", truncate(page.title(), 48));
+		params.put("title", SweetbookTemplateCopyPolicy.photoStoryTitle(page.title()));
 		params.put("diaryText", buildDiaryStoryText(page, fanNickname));
 		params.put("photo1", page.primaryImageUrl());
 		params.put("photo2", page.imageUrls().size() > 1 ? page.imageUrls().get(1) : "");
@@ -749,8 +749,8 @@ public class SweetbookService {
 	private Map<String, Object> buildMixedTextStoryParams(BookContentPage page, LocalDate pageDate) {
 		Map<String, Object> params = new LinkedHashMap<>();
 		putMixedDiaryDateParams(params, pageDate);
-		params.put("title", truncate(page.title(), 48));
-		params.put("diaryText", truncate(fallback(page.description(), page.title()), 700));
+		params.put("title", SweetbookTemplateCopyPolicy.textStoryTitle(page.title()));
+		params.put("diaryText", SweetbookTemplateCopyPolicy.textStoryBody(page.description(), page.title()));
 		return params;
 	}
 
@@ -775,9 +775,7 @@ public class SweetbookService {
 	}
 
 	private String buildDiaryStoryText(BookContentPage page, String fanNickname) {
-		String description = fallback(page.description(), "PlayPick 굿즈 페이지");
-		String text = page.title() + "\n\n" + description + "\n\n" + fanNickname + "님을 위해 고른 장면을 한 페이지로 정리했어요.";
-		return truncate(text, 700);
+		return SweetbookTemplateCopyPolicy.photoStoryBody(page.description(), page.title());
 	}
 
 	private String formatMixedDiaryDate(LocalDate date) {

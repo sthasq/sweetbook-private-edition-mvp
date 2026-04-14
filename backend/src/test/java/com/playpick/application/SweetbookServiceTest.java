@@ -321,6 +321,55 @@ class SweetbookServiceTest {
 	}
 
 	@Test
+	void appliesAggressiveMixedCopyLimitsToLiveContentParams() {
+		SweetbookClient sweetbookClient = mock(SweetbookClient.class);
+		PublicAssetPublishingService publicAssetPublishingService = mock(PublicAssetPublishingService.class);
+		SweetbookProperties sweetbookProperties = liveSweetbookProperties();
+		AppProperties appProperties = new AppProperties();
+		appProperties.setFrontendBaseUrl("https://playpick.example.com");
+
+		when(sweetbookClient.getBookSpecs()).thenReturn(List.of(new SweetbookViews.BookSpec("SQUAREBOOK_HC", "Square", 24, 130, 2)));
+		when(sweetbookClient.getTemplates("SQUAREBOOK_HC")).thenReturn(defaultTemplates());
+		when(sweetbookClient.createBook(anyMap(), anyString())).thenReturn("bk_test");
+		when(publicAssetPublishingService.isConfigured()).thenReturn(false);
+
+		List<ContentInvocation> contentInvocations = new ArrayList<>();
+		doAnswer(invocation -> {
+			contentInvocations.add(new ContentInvocation(
+				invocation.getArgument(1),
+				invocation.getArgument(2)
+			));
+			return null;
+		}).when(sweetbookClient).addContents(anyString(), anyString(), anyMap(), anyString());
+
+		SweetbookService service = new SweetbookService(
+			sweetbookClient,
+			sweetbookProperties,
+			appProperties,
+			publicAssetPublishingService
+		);
+
+		service.prepareBookDraft(previewWithLongNarrativeCopy(), "ext", "idem", false);
+
+		Map<String, Object> photoPayload = contentInvocations.stream()
+			.filter(invocation -> "3FhSEhJ94c0T".equals(invocation.templateUid()))
+			.map(ContentInvocation::params)
+			.findFirst()
+			.orElseThrow();
+		assertThat(String.valueOf(photoPayload.get("title"))).hasSizeLessThanOrEqualTo(18).endsWith("...");
+		assertThat(String.valueOf(photoPayload.get("diaryText"))).hasSizeLessThanOrEqualTo(28).doesNotContain("\n");
+		assertThat(String.valueOf(photoPayload.get("diaryText"))).doesNotContain("님을 위해");
+
+		Map<String, Object> textPayload = contentInvocations.stream()
+			.filter(invocation -> "vHA59XPPKqak".equals(invocation.templateUid()))
+			.map(ContentInvocation::params)
+			.findFirst()
+			.orElseThrow();
+		assertThat(String.valueOf(textPayload.get("title"))).hasSizeLessThanOrEqualTo(20).endsWith("...");
+		assertThat(String.valueOf(textPayload.get("diaryText"))).hasSizeLessThanOrEqualTo(84).doesNotContain("\n");
+	}
+
+	@Test
 	void distributesAllCuratedImagesAcrossGalleryLayoutsWithinMinimumPagePlan() {
 		SweetbookClient sweetbookClient = mock(SweetbookClient.class);
 		PublicAssetPublishingService publicAssetPublishingService = mock(PublicAssetPublishingService.class);
@@ -623,6 +672,64 @@ class SweetbookServiceTest {
 				new ProjectViews.Page("fan-pick", "픽", "설명", "https://playpick.example.com/demo-assets/pick.jpg", Map.of()),
 				new ProjectViews.Page("fan-note", "팬노트", "설명", "https://playpick.example.com/demo-assets/note.jpg", Map.of()),
 				new ProjectViews.Page("official-closing", "클로징", "설명", "", Map.of())
+			)
+		);
+	}
+
+	private ProjectViews.Preview previewWithLongNarrativeCopy() {
+		EditionViews.Detail edition = new EditionViews.Detail(
+			1L,
+			"메모리북",
+			"샘플",
+			"https://playpick.example.com/demo-assets/cover.jpg",
+			"PUBLISHED",
+			new EditionViews.Creator(1L, "온도로그", "@ondolog", "https://picsum.photos/seed/avatar/240/240", true),
+			new EditionViews.Snapshot(
+				10L,
+				1,
+				"SQUAREBOOK_HC",
+				"4MY2fokVjkeY",
+				"75vMl9IeyPMI",
+				"3FhSEhJ94c0T",
+				Map.of("title", "인트로", "message", "안녕하세요"),
+				Map.of("title", "아웃트로", "message", "고마워요"),
+				Instant.parse("2026-04-08T00:00:00Z"),
+				List.of(),
+				List.of()
+			),
+			Instant.parse("2026-04-01T00:00:00Z"),
+			Instant.parse("2026-04-08T00:00:00Z")
+		);
+
+		return new ProjectViews.Preview(
+			1L,
+			"DRAFT",
+			"demo",
+			edition,
+			Map.of("fanNickname", "루나"),
+			null,
+			null,
+			null,
+			null,
+			List.of(
+				new ProjectViews.Page("cover", "표지", "설명", "https://playpick.example.com/demo-assets/cover.jpg", Map.of()),
+				new ProjectViews.Page(
+					"official-intro",
+					"정말 길고 장황해서 사진 페이지 제목 칸에서 바로 잘려야 하는 제목입니다",
+					"사진 페이지 본문도 길어서 한눈에 보이지 않으니 더 짧게 줄여야 하는 테스트용 설명입니다.",
+					"https://playpick.example.com/demo-assets/intro.jpg",
+					Map.of()
+				),
+				new ProjectViews.Page(
+					"relationship",
+					"정말 길고 장황해서 글만 페이지 제목 칸에서 바로 잘려야 하는 제목입니다",
+					"글만 페이지 본문 역시 너무 길면 답답해 보여서 지금보다 훨씬 짧게 제한되어야 하는 테스트용 설명입니다.",
+					"",
+					Map.of()
+				),
+				new ProjectViews.Page("fan-pick", "픽", "설명", "https://playpick.example.com/demo-assets/pick.jpg", Map.of()),
+				new ProjectViews.Page("fan-note", "팬노트", "설명", "https://playpick.example.com/demo-assets/note.jpg", Map.of()),
+				new ProjectViews.Page("official-closing", "클로징", "설명", "https://playpick.example.com/demo-assets/outro.jpg", Map.of())
 			)
 		);
 	}

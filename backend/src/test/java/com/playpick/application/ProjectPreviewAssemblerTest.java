@@ -152,7 +152,89 @@ class ProjectPreviewAssemblerTest {
 			.anySatisfy(page -> assertThat(page.description()).contains("연두님이 Astra Vale의 기록"))
 			.anySatisfy(page -> assertThat(page.title()).isEqualTo("플랫폼에 남은 잔상"))
 			.anySatisfy(page -> assertThat(page.title()).isEqualTo("연두님이 붙잡아 둔 한 문장"))
-			.anySatisfy(page -> assertThat(page.description()).contains("그 밤의 플랫폼"));
+			.anySatisfy(page -> assertThat(page.description()).startsWith("스쳐 지나갈 것").hasSizeLessThanOrEqualTo(28));
+	}
+
+	@Test
+	void appliesAggressivePreviewCopyLimitsAndStandardizesInfluencerCopy() {
+		EditionViews.Detail edition = new EditionViews.Detail(
+			1L,
+			"Collab Archive",
+			"샘플",
+			"https://playpick.example.com/demo-assets/cover.jpg",
+			"PUBLISHED",
+			new EditionViews.Creator(1L, "Astra Vale", "@astravale", "https://playpick.example.com/demo-assets/avatar.jpg", true),
+			new EditionViews.Snapshot(
+				10L,
+				1,
+				"SQUAREBOOK_HC",
+				"demo-cover-template",
+				"demo-publish-template",
+				"demo-content-template",
+				Map.of("title", "아주 길어서 잘려야 하는 인트로 제목입니다", "message", "크리에이터가 적은 긴 인트로 메시지"),
+				Map.of("title", "아주 길어서 잘려야 하는 클로징 제목입니다", "message", "크리에이터가 적은 긴 클로징 메시지"),
+				Instant.parse("2026-04-08T00:00:00Z"),
+				List.of(
+					new EditionViews.CuratedAsset(1L, "IMAGE", "컷 1", "/demo-assets/generated/asset-1.jpg", 1),
+					new EditionViews.CuratedAsset(2L, "IMAGE", "컷 2", "/demo-assets/generated/asset-2.jpg", 2),
+					new EditionViews.CuratedAsset(3L, "IMAGE", "컷 3", "/demo-assets/generated/asset-3.jpg", 3),
+					new EditionViews.CuratedAsset(4L, "IMAGE", "컷 4", "/demo-assets/generated/asset-4.jpg", 4)
+				),
+				List.of()
+			),
+			Instant.parse("2026-04-01T00:00:00Z"),
+			Instant.parse("2026-04-08T00:00:00Z")
+		);
+
+		ProjectViews.Snapshot project = new ProjectViews.Snapshot(
+			99L,
+			1L,
+			10L,
+			"PERSONALIZED",
+			Map.of(
+				"mode", "demo",
+				"fanNickname", "루나",
+				"favoriteVideoId", "video-1",
+				"fanNote", "정말 길고 장황한 팬 노트 문장이라서 프리뷰 안에서는 더 짧게 잘려야 하는 테스트용 문장입니다.",
+				"channel", Map.of(
+					"title", "Collab Archive",
+					"bannerUrl", "/demo-assets/banner.jpg",
+					"thumbnailUrl", "/demo-assets/thumb.jpg"
+				),
+				"topVideos", List.of(
+					Map.of("videoId", "video-1", "title", "첫 콜라보 무드", "thumbnailUrl", "/demo-assets/video.jpg", "viewCount", 100)
+				),
+				"bookCopy", Map.of(
+					"relationshipTitle", "정말 길고 장황해서 사진 페이지에서 잘려야 하는 관계 제목입니다",
+					"relationshipBody", "사진 페이지 본문은 지금보다 훨씬 짧게 잘려야 하므로 이 문장은 강하게 축약되어야 합니다."
+				)
+			),
+			null,
+			null,
+			null,
+			null,
+			Instant.parse("2026-04-07T00:00:00Z"),
+			Instant.parse("2026-04-08T00:00:00Z")
+		);
+
+		ProjectViews.Preview preview = assembler.assemble(project, edition);
+
+		ProjectViews.Page introPage = preview.pages().stream()
+			.filter(page -> "official-intro".equals(page.key()))
+			.findFirst()
+			.orElseThrow();
+		ProjectViews.Page relationshipPage = preview.pages().stream()
+			.filter(page -> "relationship".equals(page.key()))
+			.findFirst()
+			.orElseThrow();
+		ProjectViews.Page galleryPage = galleryPages(preview).stream()
+			.findFirst()
+			.orElseThrow();
+
+		assertThat(introPage.description()).isEqualTo(SweetbookTemplateCopyPolicy.INFLUENCER_PLACEHOLDER);
+		assertThat(relationshipPage.title()).hasSizeLessThanOrEqualTo(18).endsWith("...");
+		assertThat(relationshipPage.description()).hasSizeLessThanOrEqualTo(28).endsWith("...");
+		assertThat(galleryPage.description()).isEqualTo("대표 장면을 모은 갤러리 페이지입니다.");
 	}
 
 	@Test
