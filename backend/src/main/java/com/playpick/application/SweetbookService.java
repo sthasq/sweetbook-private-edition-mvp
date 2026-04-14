@@ -298,9 +298,6 @@ public class SweetbookService {
 		);
 		sweetbookClient.addCover(bookUid, resolvedTemplates.coverTemplate().uid(), coverParams);
 
-		Map<String, Object> publishParams = buildMixedPublishParams(preview, today);
-		sweetbookClient.addContents(bookUid, resolvedTemplates.publishTemplate().uid(), publishParams, "page");
-
 		List<LiveContentInstruction> instructions = buildLiveContentInstructions(
 			contentPages,
 			resolvedTemplates,
@@ -317,6 +314,9 @@ public class SweetbookService {
 				instruction.breakBefore()
 			);
 		}
+
+		Map<String, Object> publishParams = buildMixedPublishParams(preview, today);
+		sweetbookClient.addContents(bookUid, resolvedTemplates.publishTemplate().uid(), publishParams, "page");
 	}
 
 	private LiveDraftAssets prepareLiveDraftAssets(
@@ -450,13 +450,10 @@ public class SweetbookService {
 	private SweetbookViews.TemplateDetail defaultDiaryBTemplateDetail() {
 		Map<String, Object> parameters = Map.of(
 			"definitions", Map.ofEntries(
-				Map.entry("monthNum", Map.of("binding", "text", "type", "string", "required", true)),
-				Map.entry("dayNum", Map.of("binding", "text", "type", "string", "required", true)),
-				Map.entry("dateB", Map.of("binding", "text", "type", "string", "required", true)),
+				Map.entry("date", Map.of("binding", "text", "type", "string", "required", true)),
 				Map.entry("title", Map.of("binding", "text", "type", "string", "required", false)),
 				Map.entry("diaryText", Map.of("binding", "text", "type", "string", "required", true)),
-				Map.entry("photo1", Map.of("binding", "file", "type", "image", "required", false)),
-				Map.entry("photo2", Map.of("binding", "file", "type", "image", "required", false))
+				Map.entry("photo1", Map.of("binding", "file", "type", "image", "required", true))
 			)
 		);
 		Map<String, Object> layout = Map.of(
@@ -672,12 +669,7 @@ public class SweetbookService {
 		LocalDate pageDate
 	) {
 		Map<String, Object> params = new LinkedHashMap<>();
-		params.put("year", String.valueOf(pageDate.getYear()));
-		params.put("month", String.valueOf(pageDate.getMonthValue()));
-		params.put("day", String.valueOf(pageDate.getDayOfMonth()));
-		params.put("monthNum", String.format("%02d", pageDate.getMonthValue()));
-		params.put("dayNum", String.format("%02d", pageDate.getDayOfMonth()));
-		params.put("dateB", formatMixedDiaryDate(pageDate));
+		putMixedDiaryDateParams(params, pageDate);
 		params.put("title", truncate(page.title(), 48));
 		params.put("diaryText", buildDiaryStoryText(page, fanNickname));
 		params.put("photo1", page.primaryImageUrl());
@@ -687,12 +679,7 @@ public class SweetbookService {
 
 	private Map<String, Object> buildMixedTextStoryParams(BookContentPage page, LocalDate pageDate) {
 		Map<String, Object> params = new LinkedHashMap<>();
-		params.put("year", String.valueOf(pageDate.getYear()));
-		params.put("month", String.valueOf(pageDate.getMonthValue()));
-		params.put("day", String.valueOf(pageDate.getDayOfMonth()));
-		params.put("monthNum", String.format("%02d", pageDate.getMonthValue()));
-		params.put("dayNum", String.format("%02d", pageDate.getDayOfMonth()));
-		params.put("dateB", formatMixedDiaryDate(pageDate));
+		putMixedDiaryDateParams(params, pageDate);
 		params.put("title", truncate(page.title(), 48));
 		params.put("diaryText", truncate(fallback(page.description(), page.title()), 700));
 		return params;
@@ -700,11 +687,22 @@ public class SweetbookService {
 
 	private Map<String, Object> buildMixedGalleryParams(BookContentPage page, LocalDate pageDate) {
 		Map<String, Object> params = new LinkedHashMap<>();
+		List<String> galleryPhotos = page.imageUrls().stream().limit(MAX_GALLERY_IMAGES_PER_LAYOUT).toList();
+		putMixedDiaryDateParams(params, pageDate);
+		params.put("photos", galleryPhotos);
+		params.put("collagePhotos", galleryPhotos);
+		return params;
+	}
+
+	private void putMixedDiaryDateParams(Map<String, Object> params, LocalDate pageDate) {
+		params.put("year", String.valueOf(pageDate.getYear()));
+		params.put("month", String.valueOf(pageDate.getMonthValue()));
+		params.put("day", String.valueOf(pageDate.getDayOfMonth()));
 		params.put("monthNum", String.format("%02d", pageDate.getMonthValue()));
 		params.put("dayNum", String.format("%02d", pageDate.getDayOfMonth()));
-		params.put("dateB", formatMixedDiaryDate(pageDate));
-		params.put("photos", page.imageUrls().stream().limit(MAX_GALLERY_IMAGES_PER_LAYOUT).toList());
-		return params;
+		String formattedDate = formatMixedDiaryDate(pageDate);
+		params.put("date", formattedDate);
+		params.put("dateB", formattedDate);
 	}
 
 	private String buildDiaryStoryText(BookContentPage page, String fanNickname) {
