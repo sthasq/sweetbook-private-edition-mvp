@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { ApiError } from "../api/client";
 import { getStudioOrderDashboard, listStudioEditions } from "../api/studio";
 import { getSweetbookIntegrationStatus } from "../api/sweetbook";
+import PaginationControls from "../components/PaginationControls";
 import StudioShell from "../components/StudioShell";
 import type {
   StudioEditionSummary,
@@ -10,6 +11,7 @@ import type {
   StudioOrderSummary,
   SweetbookIntegrationStatus,
 } from "../types/api";
+import { paginateItems } from "../lib/pagination";
 import {
   fulfillmentEventLabel,
   fulfillmentStatusLabel,
@@ -17,6 +19,9 @@ import {
   siteOrderLabel,
 } from "../lib/sweetbookWorkflow";
 import { resolveMediaUrl } from "../lib/appPaths";
+
+const EDITIONS_PAGE_SIZE = 4;
+const RECENT_ORDERS_PAGE_SIZE = 6;
 
 export default function StudioOrdersPage() {
   const navigate = useNavigate();
@@ -27,6 +32,8 @@ export default function StudioOrdersPage() {
   const [error, setError] = useState("");
   const [integrationStatus, setIntegrationStatus] =
     useState<SweetbookIntegrationStatus | null>(null);
+  const [editionPage, setEditionPage] = useState(1);
+  const [recentOrdersPage, setRecentOrdersPage] = useState(1);
 
   useEffect(() => {
     getStudioOrderDashboard()
@@ -56,6 +63,10 @@ export default function StudioOrdersPage() {
       .then(setIntegrationStatus)
       .catch(() => setIntegrationStatus(null));
   }, []);
+
+  const pagedEditions = paginateItems(studioEditions, editionPage, EDITIONS_PAGE_SIZE);
+  const recentOrders = orderDashboard?.recentOrders ?? [];
+  const pagedRecentOrders = paginateItems(recentOrders, recentOrdersPage, RECENT_ORDERS_PAGE_SIZE);
 
   return (
     <StudioShell
@@ -164,43 +175,52 @@ export default function StudioOrdersPage() {
             아직 만든 에디션이 없어요. 첫 에디션을 만들면 여기에서 바로 관리할 수 있습니다.
           </div>
         ) : (
-          <div className="mt-5 grid gap-4 xl:grid-cols-2">
-            {studioEditions.map((edition) => (
-              <article key={edition.id} className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4">
-                <div className="flex gap-4">
-                  <img
-                    src={resolveMediaUrl(edition.coverImageUrl)}
-                    alt={edition.title}
-                    className="h-28 w-24 rounded-xl object-cover"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-lg font-semibold text-stone-900">{edition.title}</p>
-                      <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-warm-500">
-                        {edition.status}
-                      </span>
-                    </div>
-                    {edition.subtitle && (
-                      <p className="mt-2 text-sm leading-relaxed text-warm-500">{edition.subtitle}</p>
-                    )}
-                    <p className="mt-3 text-xs text-stone-500">
-                      마지막 수정 {formatStudioDateTime(edition.updatedAt)}
-                    </p>
-                    <div className="mt-4 flex flex-wrap gap-3">
-                      <Link
-                        to={`/studio/editions/${edition.id}/edit`}
-                        className="editorial-button-secondary px-4 py-2.5"
-                      >
-                        다시 편집
-                      </Link>
-                      <Link to={`/editions/${edition.id}`} className="editorial-button-link">
-                        팬 시점 보기
-                      </Link>
+          <div className="mt-5 space-y-4">
+            <div className="grid gap-4 xl:grid-cols-2">
+              {pagedEditions.items.map((edition) => (
+                <article key={edition.id} className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4">
+                  <div className="flex gap-4">
+                    <img
+                      src={resolveMediaUrl(edition.coverImageUrl)}
+                      alt={edition.title}
+                      className="h-28 w-24 rounded-xl object-cover"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-lg font-semibold text-stone-900">{edition.title}</p>
+                        <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-warm-500">
+                          {edition.status}
+                        </span>
+                      </div>
+                      {edition.subtitle && (
+                        <p className="mt-2 text-sm leading-relaxed text-warm-500">{edition.subtitle}</p>
+                      )}
+                      <p className="mt-3 text-xs text-stone-500">
+                        마지막 수정 {formatStudioDateTime(edition.updatedAt)}
+                      </p>
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        <Link
+                          to={`/studio/editions/${edition.id}/edit`}
+                          className="editorial-button-secondary px-4 py-2.5"
+                        >
+                          다시 편집
+                        </Link>
+                        <Link to={`/editions/${edition.id}`} className="editorial-button-link">
+                          팬 시점 보기
+                        </Link>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              ))}
+            </div>
+            <PaginationControls
+              page={pagedEditions.currentPage}
+              pageSize={EDITIONS_PAGE_SIZE}
+              totalItems={studioEditions.length}
+              itemLabel="에디션"
+              onPageChange={setEditionPage}
+            />
           </div>
         )}
       </section>
@@ -232,10 +252,19 @@ export default function StudioOrdersPage() {
             아직 팬 주문이 없어요. 첫 주문이 들어오면 여기에서 바로 확인할 수 있습니다.
           </div>
         ) : (
-          <div className="mt-5 space-y-3">
-            {orderDashboard?.recentOrders.map((order) => (
-              <StudioRecentOrderCard key={order.siteOrderUid} order={order} />
-            ))}
+          <div className="mt-5 space-y-4">
+            <div className="space-y-3">
+              {pagedRecentOrders.items.map((order) => (
+                <StudioRecentOrderCard key={order.siteOrderUid} order={order} />
+              ))}
+            </div>
+            <PaginationControls
+              page={pagedRecentOrders.currentPage}
+              pageSize={RECENT_ORDERS_PAGE_SIZE}
+              totalItems={recentOrders.length}
+              itemLabel="주문"
+              onPageChange={setRecentOrdersPage}
+            />
           </div>
         )}
       </section>
