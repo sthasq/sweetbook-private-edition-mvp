@@ -21,7 +21,6 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -56,7 +55,6 @@ public class SweetbookService {
 		return new SweetbookViews.IntegrationStatus(mode, isLiveEnabled(), label);
 	}
 
-	@Cacheable("sweetbook-book-specs")
 	public List<SweetbookViews.BookSpec> getBookSpecs() {
 		if (!isLiveEnabled()) {
 			return defaultBookSpecs();
@@ -64,7 +62,6 @@ public class SweetbookService {
 		return sweetbookClient.getBookSpecs();
 	}
 
-	@Cacheable(cacheNames = "sweetbook-templates", key = "#bookSpecUid")
 	public List<SweetbookViews.Template> getTemplates(String bookSpecUid) {
 		if (!isLiveEnabled()) {
 			return defaultTemplates();
@@ -72,7 +69,6 @@ public class SweetbookService {
 		return sweetbookClient.getTemplates(bookSpecUid);
 	}
 
-	@Cacheable(cacheNames = "sweetbook-template-detail", key = "#templateUid")
 	public SweetbookViews.TemplateDetail getTemplateDetail(String templateUid) {
 		if (templateUid == null || templateUid.isBlank()) {
 			return defaultTemplateDetail("");
