@@ -476,7 +476,7 @@ class AuthAndAccessIntegrationTest {
 			{
 			  "data": {
 			    "orderUid": "%s",
-			    "occurredAt": "2026-04-11T10:00:00Z"
+			    "occurredAt": "2099-04-11T10:00:00Z"
 			  }
 			}
 			""".formatted(fulfillmentOrderUid);
@@ -572,7 +572,7 @@ class AuthAndAccessIntegrationTest {
 			  "data": {
 			    "orderUid": "%s",
 			    "status": "shipped",
-			    "occurredAt": "2026-04-11T11:00:00Z"
+			    "occurredAt": "2099-04-11T11:00:00Z"
 			  }
 			}
 			""".formatted(fulfillmentOrderUid);
@@ -608,7 +608,7 @@ class AuthAndAccessIntegrationTest {
 		String payload = """
 			{
 			  "event_type": "order.status_changed",
-			  "created_at": "2026-04-14T11:05:22Z",
+			  "created_at": "2099-04-14T11:05:22Z",
 			  "data": {
 			    "order_uid": "%s",
 			    "order_status": "shipped"
@@ -652,7 +652,7 @@ class AuthAndAccessIntegrationTest {
 			("""
 				{
 				  "event_type": "order.created",
-				  "created_at": "2026-04-14T11:30:00Z",
+				  "created_at": "2099-04-14T11:30:00Z",
 				  "data": {
 				    "order_uid": "%s",
 				    "order_status": "PAID"
@@ -663,14 +663,14 @@ class AuthAndAccessIntegrationTest {
 			}
 		));
 		earlierEvent.setLinked(false);
-		earlierEvent.setProcessedAt(Instant.parse("2026-04-14T11:30:01Z"));
+		earlierEvent.setProcessedAt(Instant.parse("2099-04-14T11:30:01Z"));
 		earlierEvent = sweetbookWebhookEventRepository.save(earlierEvent);
 
 		long timestamp = Instant.now().getEpochSecond();
 		String payload = """
 			{
 			  "event_type": "order.status_changed",
-			  "created_at": "2026-04-14T11:35:00Z",
+			  "created_at": "2099-04-14T11:35:00Z",
 			  "data": {
 			    "order_uid": "%s",
 			    "order_status": "shipped"
@@ -695,6 +695,66 @@ class AuthAndAccessIntegrationTest {
 	}
 
 	@Test
+	void sweetbookWebhookIgnoresOlderTerminalStatusAfterNewerDeliveryEvent() throws Exception {
+		MockHttpSession session = signUp(uniqueEmail("webhook-stale-terminal"), "Webhook Stale Fan");
+		long projectId = createProject(session, 1L, "demo");
+		placeOrder(session, projectId, "Webhook Stale Fan", "010-5656-7878");
+
+		MvcResult summaryResult = mockMvc.perform(get("/api/projects/{projectId}/order-summary", projectId).session(session))
+			.andExpect(status().isOk())
+			.andReturn();
+
+		String fulfillmentOrderUid = readString(summaryResult, "fulfillmentOrderUid");
+
+		String deliveredPayload = """
+			{
+			  "event_type": "order.status_changed",
+			  "created_at": "2099-04-15T12:00:00Z",
+			  "data": {
+			    "order_uid": "%s",
+			    "order_status": "delivered"
+			  }
+			}
+			""".formatted(fulfillmentOrderUid);
+		long deliveredTimestamp = Instant.now().getEpochSecond();
+
+		mockMvc.perform(post("/api/sweetbook/webhooks/events")
+				.header("X-Webhook-Delivery", "del-" + UUID.randomUUID())
+				.header("X-Webhook-Timestamp", deliveredTimestamp)
+				.header("X-Webhook-Signature", signWebhook(TEST_WEBHOOK_SECRET, deliveredTimestamp, deliveredPayload))
+				.contentType(APPLICATION_JSON)
+				.content(deliveredPayload))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.linked").value(true));
+
+		String cancelledPayload = """
+			{
+			  "event_type": "order.cancelled",
+			  "created_at": "2099-04-15T11:00:00Z",
+			  "data": {
+			    "order_uid": "%s"
+			  }
+			}
+			""".formatted(fulfillmentOrderUid);
+		long cancelledTimestamp = Instant.now().getEpochSecond();
+
+		mockMvc.perform(post("/api/sweetbook/webhooks/events")
+				.header("X-Webhook-Delivery", "del-" + UUID.randomUUID())
+				.header("X-Webhook-Timestamp", cancelledTimestamp)
+				.header("X-Webhook-Signature", signWebhook(TEST_WEBHOOK_SECRET, cancelledTimestamp, cancelledPayload))
+				.contentType(APPLICATION_JSON)
+				.content(cancelledPayload))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.linked").value(true));
+
+		mockMvc.perform(get("/api/projects/{projectId}/order-summary", projectId).session(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.fulfillmentStatus").value("SHIPPING_DELIVERED"))
+			.andExpect(jsonPath("$.lastFulfillmentEvent").value("shipping.delivered"))
+			.andExpect(jsonPath("$.siteOrderStatus").value("PAID"));
+	}
+
+	@Test
 	void reconcilePendingEventsLinksSavedOrderCreatedWebhookAfterOrderRecordSave() throws Exception {
 		MockHttpSession session = signUp(uniqueEmail("webhook-reconcile"), "Webhook Reconcile Fan");
 		long projectId = createProject(session, 1L, "demo");
@@ -714,7 +774,7 @@ class AuthAndAccessIntegrationTest {
 			("""
 				{
 				  "event_type": "order.created",
-				  "created_at": "2026-04-14T11:40:00Z",
+				  "created_at": "2099-04-14T11:40:00Z",
 				  "data": {
 				    "order_uid": "%s",
 				    "order_status": "PAID"

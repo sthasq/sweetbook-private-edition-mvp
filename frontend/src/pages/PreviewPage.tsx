@@ -90,6 +90,7 @@ export default function PreviewPage() {
   const [generating, setGenerating] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [activeSpread, setActiveSpread] = useState(0);
+  const [generationPollTick, setGenerationPollTick] = useState(0);
   const draftGenerationOperation = preview?.bookOperation ?? null;
 
   useEffect(() => {
@@ -121,6 +122,10 @@ export default function PreviewPage() {
               : "포토북 생성 상태를 확인하지 못했어요. 잠시 후 다시 시도해주세요.",
           );
         }
+      } finally {
+        if (!cancelled) {
+          setGenerationPollTick((current) => current + 1);
+        }
       }
     }, draftGenerationOperation.status === "QUEUED" ? 1200 : 2400);
 
@@ -128,7 +133,7 @@ export default function PreviewPage() {
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [draftGenerationOperation, projectId]);
+  }, [draftGenerationOperation, generationPollTick, projectId]);
 
   useEffect(() => {
     if (!preview) {

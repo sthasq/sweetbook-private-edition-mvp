@@ -226,8 +226,7 @@ public class SweetbookWebhookService {
 	) {
 		FulfillmentStatus nextStatus = mapStatus(normalizedEventType, payload, data, orderRecord.getStatus());
 		if (orderRecord.getLastEventAt() != null
-			&& eventAt.isBefore(orderRecord.getLastEventAt())
-			&& fulfillmentRank(nextStatus) <= fulfillmentRank(orderRecord.getStatus())) {
+			&& eventAt.isBefore(orderRecord.getLastEventAt())) {
 			return;
 		}
 		orderRecord.setStatus(nextStatus);
@@ -458,24 +457,6 @@ public class SweetbookWebhookService {
 			event.getCreatedAt(),
 			event.isLinked()
 		);
-	}
-
-	private int fulfillmentRank(FulfillmentStatus status) {
-		if (status == null) {
-			return -1;
-		}
-		return switch (status) {
-			case PENDING_SUBMISSION -> 0;
-			case SIMULATED -> 0;
-			case SUBMITTED -> 1;
-			case PRODUCTION_CONFIRMED -> 2;
-			case PRODUCTION_STARTED -> 3;
-			case PRODUCTION_COMPLETED -> 4;
-			case SHIPPING_DEPARTED -> 5;
-			case SHIPPING_DELIVERED -> 6;
-			case CANCELLED -> 7;
-			case FAILED -> 8;
-		};
 	}
 
 	public record Receipt(
