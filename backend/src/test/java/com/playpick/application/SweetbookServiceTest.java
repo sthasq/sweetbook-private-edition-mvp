@@ -374,6 +374,48 @@ class SweetbookServiceTest {
 			.allSatisfy(photos -> assertThat(photos).hasSizeBetween(1, 4));
 	}
 
+	@Test
+	void ignoresMalformedCuratedImageContentWhenBuildingLiveGalleryPayloads() {
+		SweetbookClient sweetbookClient = mock(SweetbookClient.class);
+		PublicAssetPublishingService publicAssetPublishingService = mock(PublicAssetPublishingService.class);
+		SweetbookProperties sweetbookProperties = liveSweetbookProperties();
+		AppProperties appProperties = new AppProperties();
+		appProperties.setFrontendBaseUrl("https://playpick.example.com");
+
+		when(sweetbookClient.getBookSpecs()).thenReturn(List.of(new SweetbookViews.BookSpec("SQUAREBOOK_HC", "Square", 24, 130, 2)));
+		when(sweetbookClient.getTemplates("SQUAREBOOK_HC")).thenReturn(defaultTemplates());
+		when(sweetbookClient.createBook(anyMap(), anyString())).thenReturn("bk_test");
+		when(publicAssetPublishingService.isConfigured()).thenReturn(false);
+
+		List<Map<String, Object>> contentPayloads = new ArrayList<>();
+		doAnswer(invocation -> {
+			contentPayloads.add(invocation.getArgument(2));
+			return null;
+		}).when(sweetbookClient).addContents(anyString(), anyString(), anyMap(), anyString());
+
+		SweetbookService service = new SweetbookService(
+			sweetbookClient,
+			sweetbookProperties,
+			appProperties,
+			publicAssetPublishingService
+		);
+
+		service.prepareBookDraft(previewWithMalformedCuratedImageContent(), "ext", "idem", false);
+
+		List<String> galleryUrls = contentPayloads.stream()
+			.map(params -> params.get("collagePhotos"))
+			.filter(List.class::isInstance)
+			.map(List.class::cast)
+			.flatMap(List::stream)
+			.filter(String.class::isInstance)
+			.map(String.class::cast)
+			.toList();
+
+		assertThat(galleryUrls).isNotEmpty();
+		assertThat(galleryUrls).allMatch(url -> url.startsWith("https://playpick.example.com/"));
+		assertThat(galleryUrls).noneMatch(url -> url.contains("붉은 협곡"));
+	}
+
 	private SweetbookProperties liveSweetbookProperties() {
 		SweetbookProperties properties = new SweetbookProperties();
 		properties.setEnabled(true);
@@ -477,6 +519,59 @@ class SweetbookServiceTest {
 				Map.of("title", "아웃트로", "message", "고마워요"),
 				Instant.parse("2026-04-08T00:00:00Z"),
 				curatedAssets,
+				List.of()
+			),
+			Instant.parse("2026-04-01T00:00:00Z"),
+			Instant.parse("2026-04-08T00:00:00Z")
+		);
+
+		return new ProjectViews.Preview(
+			99L,
+			"PERSONALIZED",
+			"demo",
+			edition,
+			Map.of("fanNickname", "팬"),
+			null,
+			null,
+			null,
+			null,
+			List.of(
+				new ProjectViews.Page("cover", "표지", "설명", "https://playpick.example.com/demo-assets/cover.jpg", Map.of()),
+				new ProjectViews.Page("official-intro", "인트로", "설명", "https://playpick.example.com/demo-assets/intro.jpg", Map.of()),
+				new ProjectViews.Page("relationship", "관계", "설명", "", Map.of()),
+				new ProjectViews.Page("fan-pick", "픽", "설명", "https://playpick.example.com/demo-assets/pick.jpg", Map.of()),
+				new ProjectViews.Page("fan-note", "팬노트", "설명", "https://playpick.example.com/demo-assets/note.jpg", Map.of()),
+				new ProjectViews.Page("official-closing", "클로징", "설명", "", Map.of())
+			)
+		);
+	}
+
+	private ProjectViews.Preview previewWithMalformedCuratedImageContent() {
+		EditionViews.Detail edition = new EditionViews.Detail(
+			1L,
+			"Collab Archive",
+			"샘플",
+			"https://playpick.example.com/demo-assets/cover.jpg",
+			"PUBLISHED",
+			new EditionViews.Creator(1L, "Astra Vale · Mina Loop · Noah Reed", "@playpick", "https://playpick.example.com/demo-assets/avatar.jpg", true),
+			new EditionViews.Snapshot(
+				10L,
+				1,
+				"SQUAREBOOK_HC",
+				"4MY2fokVjkeY",
+				"75vMl9IeyPMI",
+				"3FhSEhJ94c0T",
+				Map.of("title", "인트로", "message", "안녕하세요"),
+				Map.of("title", "아웃트로", "message", "고마워요"),
+				Instant.parse("2026-04-08T00:00:00Z"),
+				List.of(
+					new EditionViews.CuratedAsset(1L, "IMAGE", "Generated Asset 1", "/demo-assets/generated/asset-1.jpg", 1),
+					new EditionViews.CuratedAsset(2L, "IMAGE", "잘못 들어간 문장", "창밖으로 끝없이 밀려오는 붉은 협곡과 먼지 냄새", 2),
+					new EditionViews.CuratedAsset(3L, "IMAGE", "Generated Asset 2", "/demo-assets/generated/asset-2.jpg", 3),
+					new EditionViews.CuratedAsset(4L, "IMAGE", "Generated Asset 3", "/demo-assets/generated/asset-3.jpg", 4),
+					new EditionViews.CuratedAsset(5L, "IMAGE", "Generated Asset 4", "/demo-assets/generated/asset-4.jpg", 5),
+					new EditionViews.CuratedAsset(6L, "IMAGE", "Generated Asset 5", "/demo-assets/generated/asset-5.jpg", 6)
+				),
 				List.of()
 			),
 			Instant.parse("2026-04-01T00:00:00Z"),

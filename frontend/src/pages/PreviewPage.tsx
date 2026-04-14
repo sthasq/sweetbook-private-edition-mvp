@@ -12,6 +12,8 @@ import {
 import { imageObjectPosition } from "../lib/imageFocus";
 import { resolveMediaUrl } from "../lib/appPaths";
 
+type PageTurnDirection = "next" | "prev";
+
 export default function PreviewPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
@@ -21,6 +23,8 @@ export default function PreviewPage() {
   const [generating, setGenerating] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [activeSpread, setActiveSpread] = useState(0);
+  const [pageTurnDirection, setPageTurnDirection] = useState<PageTurnDirection | null>(null);
+  const [pageTurnToken, setPageTurnToken] = useState(0);
 
   useEffect(() => {
     if (!projectId) return;
@@ -92,6 +96,16 @@ export default function PreviewPage() {
           ? "포토북 만드는 중…"
           : "포토북 만들기";
 
+  function navigateToSpread(targetSpread: number) {
+    const normalizedTargetSpread = normalizePreviewSpreadStart(targetSpread, pages.length);
+    if (normalizedTargetSpread === normalizedActiveSpread) {
+      return;
+    }
+    setPageTurnDirection(normalizedTargetSpread > normalizedActiveSpread ? "next" : "prev");
+    setPageTurnToken((current) => current + 1);
+    setActiveSpread(normalizedTargetSpread);
+  }
+
   return (
     <div className="page-shell">
       <div className="mx-auto max-w-7xl">
@@ -125,9 +139,9 @@ export default function PreviewPage() {
                     <button
                       key={`${item.pageIndex}-${item.label}`}
                       type="button"
-                      onClick={() => setActiveSpread(item.spreadIndex)}
+                      onClick={() => navigateToSpread(item.spreadIndex)}
                       className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                        item.spreadIndex === activeSpread
+                        item.spreadIndex === normalizedActiveSpread
                           ? "border-brand-300 bg-white text-brand-700 shadow-sm"
                           : "border-stone-200 bg-white/70 text-warm-500 hover:border-brand-200 hover:text-brand-700"
                       }`}
@@ -142,39 +156,46 @@ export default function PreviewPage() {
             <div className="editorial-panel p-6 md:p-10">
               {pages.length > 0 ? (
                 <div className="relative">
-                  <div className="overflow-hidden rounded bg-white shadow-editorial">
-                    {isCoverOnlyView ? (
-                      <div className="mx-auto min-h-[520px] max-w-2xl px-0 md:min-h-0 md:w-1/2 md:min-w-[320px] md:aspect-[4/5]">
-                        <BookPage
-                          page={leftPage}
-                          fallbackTitle="크리에이터가 구성한 페이지"
-                          pageNumber={1}
-                          templateDetail={preview.contentTemplateDetail}
-                        />
-                      </div>
-                    ) : (
-                      <div className="grid min-h-[520px] md:min-h-0 md:grid-cols-2 md:aspect-[8/5]">
-                        <BookPage
-                          page={leftPage}
-                          fallbackTitle="크리에이터가 구성한 페이지"
-                          pageNumber={normalizedActiveSpread + 1}
-                          templateDetail={preview.contentTemplateDetail}
-                        />
-                        <BookPage
-                          page={rightPage}
-                          fallbackTitle="내가 채운 페이지"
-                          pageNumber={Math.min(normalizedActiveSpread + 2, pages.length)}
-                          templateDetail={preview.contentTemplateDetail}
-                          right
-                        />
-                      </div>
-                    )}
+                  <div className="book-preview-stage">
+                    <div
+                      key={`${normalizedActiveSpread}-${pageTurnToken}`}
+                      data-page-turn={pageTurnDirection ?? "idle"}
+                      onAnimationEnd={() => setPageTurnDirection(null)}
+                      className="book-preview-sheet overflow-hidden rounded bg-white shadow-editorial"
+                    >
+                      {isCoverOnlyView ? (
+                        <div className="mx-auto min-h-[520px] max-w-2xl px-0 md:min-h-0 md:w-1/2 md:min-w-[320px] md:aspect-[4/5]">
+                          <BookPage
+                            page={leftPage}
+                            fallbackTitle="크리에이터가 구성한 페이지"
+                            pageNumber={1}
+                            templateDetail={preview.contentTemplateDetail}
+                          />
+                        </div>
+                      ) : (
+                        <div className="grid min-h-[520px] md:min-h-0 md:grid-cols-2 md:aspect-[8/5]">
+                          <BookPage
+                            page={leftPage}
+                            fallbackTitle="크리에이터가 구성한 페이지"
+                            pageNumber={normalizedActiveSpread + 1}
+                            templateDetail={preview.contentTemplateDetail}
+                          />
+                          <BookPage
+                            page={rightPage}
+                            fallbackTitle="내가 채운 페이지"
+                            pageNumber={Math.min(normalizedActiveSpread + 2, pages.length)}
+                            templateDetail={preview.contentTemplateDetail}
+                            right
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="mt-6 flex items-center justify-center gap-4">
                     <button
                       disabled={previousSpread === normalizedActiveSpread}
-                      onClick={() => setActiveSpread(previousSpread)}
+                      onClick={() => navigateToSpread(previousSpread)}
                       className="editorial-button-secondary px-4 py-2.5 disabled:opacity-40"
                     >
                       이전
@@ -184,7 +205,7 @@ export default function PreviewPage() {
                     </div>
                     <button
                       disabled={nextSpread === normalizedActiveSpread}
-                      onClick={() => setActiveSpread(nextSpread)}
+                      onClick={() => navigateToSpread(nextSpread)}
                       className="editorial-button-secondary px-4 py-2.5 disabled:opacity-40"
                     >
                       다음
@@ -211,7 +232,7 @@ export default function PreviewPage() {
                   return (
                     <button
                       key={page.key}
-                      onClick={() => setActiveSpread(spreadIndex)}
+                      onClick={() => navigateToSpread(spreadIndex)}
                       className={`shrink-0 overflow-hidden rounded border p-1 transition ${
                         selected
                           ? "border-brand-400 bg-white shadow-sm"
@@ -1112,7 +1133,34 @@ function readGalleryImageUrls(page: ProjectPreview["pages"][number] | undefined)
     return [];
   }
 
-  return payload.imageUrls.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  return payload.imageUrls.filter(
+    (item): item is string =>
+      typeof item === "string" && isRenderableImageReference(item),
+  );
+}
+
+function isRenderableImageReference(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed || /\s/.test(trimmed)) {
+    return false;
+  }
+
+  const normalized = trimmed.toLowerCase();
+  if (
+    normalized.startsWith("data:image/") ||
+    normalized.startsWith("blob:") ||
+    normalized.startsWith("http://") ||
+    normalized.startsWith("https://") ||
+    normalized.startsWith("//") ||
+    normalized.includes("/api/assets/")
+  ) {
+    return true;
+  }
+
+  const path = normalized.split(/[?#]/, 1)[0];
+  return [".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif", ".svg", ".bmp", ".jfif", ".heic"].some((extension) =>
+    path.endsWith(extension),
+  );
 }
 
 type PreviewSummary = {
