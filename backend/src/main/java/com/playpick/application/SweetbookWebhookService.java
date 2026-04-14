@@ -45,22 +45,28 @@ public class SweetbookWebhookService {
 			request.eventType(),
 			normalizedPayload.get("event"),
 			normalizedPayload.get("type"),
+			normalizedPayload.get("event_type"),
 			normalizedPayload.get("eventType"),
 			data.get("event"),
+			data.get("event_type"),
 			"unknown"
 		);
 		String normalizedEventType = normalizeEventType(rawEventType, normalizedPayload, data);
 		String sweetbookOrderUid = firstText(
 			normalizedPayload.get("orderUid"),
+			normalizedPayload.get("order_uid"),
 			normalizedPayload.get("uid"),
 			data.get("orderUid"),
+			data.get("order_uid"),
 			data.get("uid"),
 			""
 		);
 		String deliveryUid = firstText(
 			request.deliveryUid(),
 			normalizedPayload.get("deliveryUid"),
+			normalizedPayload.get("delivery_uid"),
 			data.get("deliveryUid"),
+			data.get("delivery_uid"),
 			""
 		);
 		Instant eventAt = parseEventAt(normalizedPayload, data);
@@ -197,18 +203,26 @@ public class SweetbookWebhookService {
 		String normalizedStatus = normalizeStatusValue(firstText(
 			payload.get("status"),
 			payload.get("orderStatus"),
+			payload.get("order_status"),
 			payload.get("currentStatus"),
+			payload.get("current_status"),
 			payload.get("toStatus"),
+			payload.get("to_status"),
 			payload.get("state"),
 			payload.get("stage"),
 			data.get("status"),
 			data.get("orderStatus"),
+			data.get("order_status"),
 			data.get("currentStatus"),
+			data.get("current_status"),
 			data.get("toStatus"),
+			data.get("to_status"),
 			data.get("state"),
 			data.get("stage"),
 			data.get("productionStatus"),
+			data.get("production_status"),
 			data.get("shippingStatus"),
+			data.get("shipping_status"),
 			""
 		));
 		return switch (normalizedStatus) {
@@ -240,18 +254,26 @@ public class SweetbookWebhookService {
 		String normalizedStatus = normalizeStatusValue(firstText(
 			payload.get("status"),
 			payload.get("orderStatus"),
+			payload.get("order_status"),
 			payload.get("currentStatus"),
+			payload.get("current_status"),
 			payload.get("toStatus"),
+			payload.get("to_status"),
 			payload.get("state"),
 			payload.get("stage"),
 			data.get("status"),
 			data.get("orderStatus"),
+			data.get("order_status"),
 			data.get("currentStatus"),
+			data.get("current_status"),
 			data.get("toStatus"),
+			data.get("to_status"),
 			data.get("state"),
 			data.get("stage"),
 			data.get("productionStatus"),
+			data.get("production_status"),
 			data.get("shippingStatus"),
+			data.get("shipping_status"),
 			""
 		));
 		return switch (normalizedStatus) {
@@ -270,9 +292,13 @@ public class SweetbookWebhookService {
 	private Instant parseEventAt(Map<String, Object> payload, Map<String, Object> data) {
 		return parseInstant(firstText(
 			payload.get("createdAt"),
+			payload.get("created_at"),
 			payload.get("occurredAt"),
+			payload.get("occurred_at"),
 			data.get("createdAt"),
+			data.get("created_at"),
 			data.get("occurredAt"),
+			data.get("occurred_at"),
 			""
 		));
 	}

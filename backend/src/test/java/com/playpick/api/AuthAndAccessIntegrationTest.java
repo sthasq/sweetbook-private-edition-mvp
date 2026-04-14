@@ -577,6 +577,47 @@ class AuthAndAccessIntegrationTest {
 	}
 
 	@Test
+	void sweetbookWebhookParsesSnakeCasePayloadFields() throws Exception {
+		MockHttpSession session = signUp(uniqueEmail("webhook-snake"), "Webhook Snake Fan");
+		long projectId = createProject(session, 1L, "demo");
+		placeOrder(session, projectId, "Webhook Snake Fan", "010-4444-5555");
+
+		MvcResult summaryResult = mockMvc.perform(get("/api/projects/{projectId}/order-summary", projectId).session(session))
+			.andExpect(status().isOk())
+			.andReturn();
+
+		String fulfillmentOrderUid = readString(summaryResult, "fulfillmentOrderUid");
+		long timestamp = Instant.now().getEpochSecond();
+		String payload = """
+			{
+			  "event_type": "order.status_changed",
+			  "created_at": "2026-04-14T11:05:22Z",
+			  "data": {
+			    "order_uid": "%s",
+			    "order_status": "shipped"
+			  }
+			}
+			""".formatted(fulfillmentOrderUid);
+
+		mockMvc.perform(post("/api/sweetbook/webhooks/events")
+				.header("X-Webhook-Delivery", "del-" + UUID.randomUUID())
+				.header("X-Webhook-Timestamp", timestamp)
+				.header("X-Webhook-Signature", signWebhook(TEST_WEBHOOK_SECRET, timestamp, payload))
+				.contentType(APPLICATION_JSON)
+				.content(payload))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.eventType").value("order.status_changed"))
+			.andExpect(jsonPath("$.sweetbookOrderUid").value(fulfillmentOrderUid))
+			.andExpect(jsonPath("$.linked").value(true))
+			.andExpect(jsonPath("$.duplicate").value(false));
+
+		mockMvc.perform(get("/api/projects/{projectId}/order-summary", projectId).session(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.fulfillmentStatus").value("SHIPPING_DEPARTED"))
+			.andExpect(jsonPath("$.lastFulfillmentEvent").value("shipping.departed"));
+	}
+
+	@Test
 	void sweetbookWebhookRejectsInvalidSignature() throws Exception {
 		mockMvc.perform(post("/api/sweetbook/webhooks/events")
 				.header("X-Webhook-Event", "order.confirmed")
