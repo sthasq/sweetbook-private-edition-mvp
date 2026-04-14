@@ -11,13 +11,6 @@ const ADMIN_NAV_ITEMS = [
   { to: "/admin/users", label: "사용자 관리", description: "회원 목록과 크리에이터 인증을 관리해요." },
 ] as const;
 
-const WEBHOOK_TOAST_MS = 9_000;
-
-type WebhookToast = {
-  toastId: string;
-  event: AdminWebhookEvent;
-};
-
 export default function AdminShell({
   title,
   description,
@@ -29,101 +22,57 @@ export default function AdminShell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
-  const [webhookToasts, setWebhookToasts] = useState<WebhookToast[]>([]);
-  const toastTimersRef = useRef<number[]>([]);
+  const [webhookNotifications, setWebhookNotifications] = useState<AdminWebhookEvent[]>([]);
+  const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const notificationPanelRef = useRef<HTMLDivElement | null>(null);
+  const notificationPanelOpenRef = useRef(false);
+
+  useEffect(() => {
+    notificationPanelOpenRef.current = notificationPanelOpen;
+  }, [notificationPanelOpen]);
 
   useEffect(() => {
     const closeStream = openAdminWebhookStream((event) => {
-      setWebhookToasts((current) => {
-        const seenEventIds = new Set(current.map((toast) => toast.event.id));
-        if (seenEventIds.has(event.id)) {
-          return current;
-        }
-
-        const next = [
-          ...current,
-          {
-            toastId: `${event.id}-${Date.now()}`,
-            event,
-          },
-        ];
-
-        const timer = window.setTimeout(() => {
-          setWebhookToasts((items) => items.filter((item) => item.event.id !== event.id));
-        }, WEBHOOK_TOAST_MS);
-        toastTimersRef.current.push(timer);
-
-        return next.slice(-4);
-      });
+      setWebhookNotifications((current) => mergeWebhookEvents(current, [event], 12));
+      if (!notificationPanelOpenRef.current) {
+        setUnreadCount((current) => Math.min(current + 1, 99));
+      }
     });
 
     return () => {
       closeStream();
-      for (const timer of toastTimersRef.current) {
-        window.clearTimeout(timer);
-      }
-      toastTimersRef.current = [];
     };
   }, []);
+
+  useEffect(() => {
+    if (!notificationPanelOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!notificationPanelRef.current?.contains(event.target as Node)) {
+        setNotificationPanelOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setNotificationPanelOpen(false);
+      }
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [notificationPanelOpen]);
 
   return (
     <div className="studio-page page-shell">
       <div className="mx-auto max-w-screen-2xl">
-        {webhookToasts.length > 0 ? (
-          <div className="pointer-events-none fixed inset-x-4 top-24 z-50 flex flex-col gap-3 sm:left-auto sm:right-4 sm:top-4 sm:w-[26rem]">
-            {webhookToasts.map((toast) => (
-              <article
-                key={toast.toastId}
-                className="pointer-events-auto w-full rounded-3xl border border-emerald-200 bg-white/95 p-4 shadow-[0_24px_60px_-28px_rgba(5,150,105,0.38)] backdrop-blur"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-600">
-                      새 Webhook 이벤트
-                    </p>
-                    <p className="mt-2 break-words text-sm font-semibold leading-6 text-stone-900">
-                      {describeWebhookEvent(toast.event)}
-                    </p>
-                    <p className="mt-2 break-all text-xs leading-5 text-stone-500">
-                      {toast.event.sweetbookOrderUid
-                        ? `주문 UID ${toast.event.sweetbookOrderUid}`
-                        : "주문 UID가 없는 이벤트예요."}
-                    </p>
-                    <p className="mt-1 text-xs text-stone-500">
-                      {fmtWebhookDate(toast.event.createdAt)}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setWebhookToasts((items) => items.filter((item) => item.toastId !== toast.toastId))}
-                    className="shrink-0 rounded-full bg-stone-100 px-2 py-1 text-xs font-medium text-stone-500 transition hover:bg-stone-200 hover:text-stone-700"
-                  >
-                    닫기
-                  </button>
-                </div>
-
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
-                      toast.event.linked
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-amber-50 text-amber-700"
-                    }`}
-                  >
-                    {toast.event.linked ? "주문 연결 완료" : "주문 미연결"}
-                  </span>
-                  <Link
-                    to="/admin/webhooks"
-                    className="text-xs font-semibold text-brand-700 underline decoration-brand-200 underline-offset-4 transition hover:decoration-brand-500"
-                  >
-                    로그 보기
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : null}
-
         <section className="border-b border-stone-200/70 pb-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="flex flex-wrap items-center gap-3">
@@ -141,7 +90,107 @@ export default function AdminShell({
                 관리자
               </span>
             </div>
-            {actions && <div className="flex flex-wrap gap-3 self-start">{actions}</div>}
+            <div className="flex flex-wrap items-start gap-3 self-start">
+              {actions}
+              <div ref={notificationPanelRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotificationPanelOpen((current) => {
+                      const next = !current;
+                      if (next) {
+                        setUnreadCount(0);
+                      }
+                      return next;
+                    });
+                  }}
+                  className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-stone-200 bg-white/95 text-stone-600 shadow-sm transition hover:border-brand-300 hover:text-brand-700"
+                  aria-label="웹훅 알림 열기"
+                  aria-expanded={notificationPanelOpen}
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.7}
+                      d="M14.857 17H9.143m9.571 0A2.857 2.857 0 0 1 15.857 19.857H8.143A2.857 2.857 0 0 1 5.286 17m13.428 0v-4.286A6.714 6.714 0 0 0 12 6a6.714 6.714 0 0 0-6.714 6.714V17m13.428 0H5.286"
+                    />
+                  </svg>
+                  {unreadCount > 0 ? (
+                    <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  ) : null}
+                </button>
+
+                {notificationPanelOpen ? (
+                  <div className="absolute right-0 top-full z-30 mt-3 w-[min(24rem,calc(100vw-3rem))] max-w-[calc(100vw-3rem)] overflow-hidden rounded-3xl border border-stone-200 bg-white/98 shadow-[0_28px_70px_-32px_rgba(15,23,42,0.35)] backdrop-blur">
+                    <div className="border-b border-stone-100 px-4 py-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-stone-900">Webhook 알림</p>
+                          <p className="mt-1 text-xs text-stone-500">Sweetbook 이벤트를 관리자 화면에서 바로 확인해요.</p>
+                        </div>
+                        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
+                          실시간
+                        </span>
+                      </div>
+                    </div>
+
+                    {webhookNotifications.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-sm text-stone-500">
+                        아직 도착한 웹훅 알림이 없어요.
+                      </div>
+                    ) : (
+                      <div className="max-h-[min(65vh,28rem)] overflow-y-auto px-3 py-3">
+                        <ul className="space-y-3">
+                          {webhookNotifications.map((event) => (
+                            <li key={event.id}>
+                              <Link
+                                to="/admin/webhooks"
+                                onClick={() => setNotificationPanelOpen(false)}
+                                className="block rounded-2xl border border-stone-200 bg-stone-50/70 px-4 py-3 transition hover:border-brand-300 hover:bg-brand-50/40"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="break-words text-sm font-semibold leading-6 text-stone-900">
+                                      {describeWebhookEvent(event)}
+                                    </p>
+                                    <p className="mt-2 break-all text-xs leading-5 text-stone-500">
+                                      {event.sweetbookOrderUid
+                                        ? `주문 UID ${event.sweetbookOrderUid}`
+                                        : "주문 UID가 없는 이벤트예요."}
+                                    </p>
+                                    <p className="mt-1 text-xs text-stone-500">{fmtWebhookDate(event.createdAt)}</p>
+                                  </div>
+                                  <span
+                                    className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                                      event.linked ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                                    }`}
+                                  >
+                                    {event.linked ? "연결됨" : "미연결"}
+                                  </span>
+                                </div>
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <div className="border-t border-stone-100 px-4 py-3">
+                      <Link
+                        to="/admin/webhooks"
+                        onClick={() => setNotificationPanelOpen(false)}
+                        className="text-xs font-semibold text-brand-700 underline decoration-brand-200 underline-offset-4 transition hover:decoration-brand-500"
+                      >
+                        전체 Webhook 로그 보기
+                      </Link>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
           </div>
 
           <nav className="mt-8 grid gap-3 md:grid-cols-3 lg:grid-cols-5">
@@ -187,4 +236,32 @@ function describeWebhookEvent(event: AdminWebhookEvent) {
 function fmtWebhookDate(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString("ko-KR");
+}
+
+function mergeWebhookEvents(current: AdminWebhookEvent[], incoming: AdminWebhookEvent[], limit: number) {
+  const merged = new Map<number, AdminWebhookEvent>();
+
+  for (const event of current) {
+    merged.set(event.id, event);
+  }
+  for (const event of incoming) {
+    merged.set(event.id, event);
+  }
+
+  return Array.from(merged.values())
+    .sort((left, right) => compareWebhookEvents(left, right))
+    .slice(0, limit);
+}
+
+function compareWebhookEvents(left: AdminWebhookEvent, right: AdminWebhookEvent) {
+  const createdAtDiff = toTimestamp(right.createdAt) - toTimestamp(left.createdAt);
+  if (createdAtDiff !== 0) {
+    return createdAtDiff;
+  }
+  return right.id - left.id;
+}
+
+function toTimestamp(value: string) {
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
 }
