@@ -67,21 +67,8 @@ async function createProjectViaApi(request, mode = "demo") {
   return createRes.json();
 }
 
-async function tryClickFirstVideoSuggestion(page) {
-  const card = page.locator(".editorial-card").filter({ hasText: "참고할 장면 후보" });
-  const btn = card.locator("button").filter({ has: page.locator("img") }).first();
-  try {
-    await btn.waitFor({ state: "visible", timeout: 5000 });
-    await btn.click();
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 async function drivePersonalizationToPreview(page, projectId, { maxMs }) {
   const deadline = Date.now() + maxMs;
-  let clickedVideo = false;
 
   while (Date.now() < deadline) {
     if (page.url().includes("/preview")) {
@@ -99,14 +86,6 @@ async function drivePersonalizationToPreview(page, projectId, { maxMs }) {
           waitUntil: "domcontentloaded",
         });
         return;
-      }
-
-      if (!clickedVideo) {
-        clickedVideo = await tryClickFirstVideoSuggestion(page);
-        if (clickedVideo) {
-          await page.waitForTimeout(1500);
-          continue;
-        }
       }
 
       const chipSection = page.locator("text=바로 답하기").locator("..");
