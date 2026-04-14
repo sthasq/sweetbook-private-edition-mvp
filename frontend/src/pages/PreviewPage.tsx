@@ -388,6 +388,13 @@ function BookPage({
             <NotebookCombinedPage entries={notebookPage.entries} pageNumber={pageNumber} />
           ) : (
             <GenericPreviewPage
+              key={[
+                page.key,
+                page.title ?? "",
+                page.description ?? "",
+                page.imageUrl ?? "",
+                galleryImageUrls.join("|"),
+              ].join("::")}
               page={page}
               fallbackTitle={fallbackTitle}
               templateLabel={templateLabel}
@@ -603,36 +610,33 @@ function GenericPreviewPage({
   const extraGalleryCount = Math.max(galleryImageUrls.length - visibleGalleryImages.length, 0);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
-  const contentSignature = [
-    page.key,
-    title,
-    description,
-    templateLabel,
-    page.imageUrl ?? "",
-    visibleGalleryImages.join("|"),
-  ].join("::");
   const [compactLevel, setCompactLevel] = useState(0);
-
-  useLayoutEffect(() => {
-    setCompactLevel(0);
-  }, [contentSignature]);
 
   useLayoutEffect(() => {
     const frame = frameRef.current;
     const body = bodyRef.current;
-    const frameOverflow =
-      frame !== null &&
-      (frame.scrollHeight > frame.clientHeight + 1 ||
-        frame.scrollWidth > frame.clientWidth + 1);
-    const bodyOverflow =
-      body !== null &&
-      (body.scrollHeight > body.clientHeight + 1 ||
-        body.scrollWidth > body.clientWidth + 1);
-
-    if ((frameOverflow || bodyOverflow) && compactLevel < 4) {
-      setCompactLevel((current) => current + 1);
+    if (!frame) {
+      return;
     }
-  }, [compactLevel, contentSignature]);
+    let frameId = 0;
+
+    const measureOverflow = () => {
+      const frameOverflow =
+        frame.scrollHeight > frame.clientHeight + 1 ||
+        frame.scrollWidth > frame.clientWidth + 1;
+      const bodyOverflow =
+        body !== null &&
+        (body.scrollHeight > body.clientHeight + 1 ||
+          body.scrollWidth > body.clientWidth + 1);
+
+      if (frameOverflow || bodyOverflow) {
+        setCompactLevel((current) => (current < 4 ? current + 1 : current));
+      }
+    };
+
+    frameId = requestAnimationFrame(measureOverflow);
+    return () => cancelAnimationFrame(frameId);
+  }, [compactLevel]);
 
   return (
     <div ref={frameRef} className="flex h-full min-h-0 flex-col overflow-hidden">
