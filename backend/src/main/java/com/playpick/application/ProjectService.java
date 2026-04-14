@@ -41,6 +41,7 @@ public class ProjectService {
 	private final OrderRecordRepository orderRecordRepository;
 	private final ProjectPreviewAssembler projectPreviewAssembler;
 	private final SweetbookService sweetbookService;
+	private final SweetbookWebhookService sweetbookWebhookService;
 	private final AsyncBookGenerationService asyncBookGenerationService;
 	private final TossPaymentsService tossPaymentsService;
 	private final ChatPersonalizationService chatPersonalizationService;
@@ -692,7 +693,9 @@ public class ProjectService {
 		orderRecord.setOrderedAt(orderedAt);
 		orderRecord.setLastEventType(result.simulated() ? "simulation.ready" : "order.created");
 		orderRecord.setLastEventAt(Instant.now());
-		return orderRecordRepository.save(orderRecord);
+		orderRecord = orderRecordRepository.save(orderRecord);
+		sweetbookWebhookService.reconcilePendingEvents(orderRecord);
+		return orderRecord;
 	}
 
 	private FulfillmentStatus toFulfillmentStatus(ProjectViews.FulfillmentResult result) {

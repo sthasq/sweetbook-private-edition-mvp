@@ -15,6 +15,7 @@ import com.playpick.domain.SweetbookWebhookEventRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 import java.util.Locale;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -94,13 +95,10 @@ public class SweetbookWebhookService {
 		if (!sweetbookOrderUid.isBlank()) {
 			OrderRecord orderRecord = orderRecordRepository.findBySweetbookOrderUid(sweetbookOrderUid).orElse(null);
 			if (orderRecord != null) {
+				reconcilePendingEvents(orderRecord);
 				linked = true;
-				FulfillmentStatus nextStatus = mapStatus(normalizedEventType, normalizedPayload, data, orderRecord.getStatus());
-				orderRecord.setStatus(nextStatus);
-				orderRecord.setLastEventType(normalizedEventType);
-				orderRecord.setLastEventAt(eventAt);
+				applyEventToOrderRecord(orderRecord, normalizedEventType, normalizedPayload, data, eventAt);
 				orderRecordRepository.save(orderRecord);
-				syncCustomerOrder(normalizedEventType, nextStatus, orderRecord);
 			}
 		}
 
@@ -116,6 +114,45 @@ public class SweetbookWebhookService {
 			event.isLinked()
 		));
 		return new Receipt(event.getId(), event.getEventType(), event.getSweetbookOrderUid(), linked, false);
+	}
+
+	public void reconcilePendingEvents(OrderRecord orderRecord) {
+		if (orderRecord == null
+			|| orderRecord.getSweetbookOrderUid() == null
+			|| orderRecord.getSweetbookOrderUid().isBlank()) {
+			return;
+		}
+
+		List<SweetbookWebhookEvent> pendingEvents = sweetbookWebhookEventRepository
+			.findBySweetbookOrderUidAndLinkedFalseOrderByCreatedAtAsc(orderRecord.getSweetbookOrderUid());
+		if (pendingEvents.isEmpty()) {
+			return;
+		}
+
+		for (SweetbookWebhookEvent pendingEvent : pendingEvents) {
+			Map<String, Object> payload = pendingEvent.getPayload() == null ? new LinkedHashMap<>() : pendingEvent.getPayload();
+			Map<String, Object> data = asMap(payload.get("data"));
+			String rawEventType = firstText(
+				pendingEvent.getEventType(),
+				payload.get("event"),
+				payload.get("type"),
+				payload.get("event_type"),
+				payload.get("eventType"),
+				data.get("event"),
+				data.get("event_type"),
+				"unknown"
+			);
+			String normalizedEventType = normalizeEventType(rawEventType, payload, data);
+			Instant eventAt = parseEventAt(payload, data);
+
+			applyEventToOrderRecord(orderRecord, normalizedEventType, payload, data, eventAt);
+			pendingEvent.setLinked(true);
+			pendingEvent.setSweetbookOrderUid(orderRecord.getSweetbookOrderUid());
+			sweetbookWebhookEventRepository.save(pendingEvent);
+			adminWebhookStreamService.publish(toSummary(pendingEvent));
+		}
+
+		orderRecordRepository.save(orderRecord);
 	}
 
 	private void verifyWebhookRequest(WebhookRequest request) {
@@ -170,6 +207,25 @@ public class SweetbookWebhookService {
 			customerOrder.setStatus(OrderStatus.PAID);
 			customerOrderRepository.save(customerOrder);
 		}
+	}
+
+	private void applyEventToOrderRecord(
+		OrderRecord orderRecord,
+		String normalizedEventType,
+		Map<String, Object> payload,
+		Map<String, Object> data,
+		Instant eventAt
+	) {
+		FulfillmentStatus nextStatus = mapStatus(normalizedEventType, payload, data, orderRecord.getStatus());
+		if (orderRecord.getLastEventAt() != null
+			&& eventAt.isBefore(orderRecord.getLastEventAt())
+			&& fulfillmentRank(nextStatus) <= fulfillmentRank(orderRecord.getStatus())) {
+			return;
+		}
+		orderRecord.setStatus(nextStatus);
+		orderRecord.setLastEventType(normalizedEventType);
+		orderRecord.setLastEventAt(eventAt);
+		syncCustomerOrder(normalizedEventType, nextStatus, orderRecord);
 	}
 
 	private FulfillmentStatus mapStatus(
@@ -383,6 +439,35 @@ public class SweetbookWebhookService {
 			builder.append(Character.forDigit(value & 0xF, 16));
 		}
 		return builder.toString();
+	}
+
+	private AdminViews.WebhookEventSummary toSummary(SweetbookWebhookEvent event) {
+		return new AdminViews.WebhookEventSummary(
+			event.getId(),
+			event.getEventType(),
+			event.getSweetbookOrderUid(),
+			event.getProcessedAt(),
+			event.getCreatedAt(),
+			event.isLinked()
+		);
+	}
+
+	private int fulfillmentRank(FulfillmentStatus status) {
+		if (status == null) {
+			return -1;
+		}
+		return switch (status) {
+			case PENDING_SUBMISSION -> 0;
+			case SIMULATED -> 0;
+			case SUBMITTED -> 1;
+			case PRODUCTION_CONFIRMED -> 2;
+			case PRODUCTION_STARTED -> 3;
+			case PRODUCTION_COMPLETED -> 4;
+			case SHIPPING_DEPARTED -> 5;
+			case SHIPPING_DELIVERED -> 6;
+			case CANCELLED -> 7;
+			case FAILED -> 8;
+		};
 	}
 
 	public record Receipt(

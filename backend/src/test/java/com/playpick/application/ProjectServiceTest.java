@@ -56,6 +56,9 @@ class ProjectServiceTest {
 	private SweetbookService sweetbookService;
 
 	@Mock
+	private SweetbookWebhookService sweetbookWebhookService;
+
+	@Mock
 	private AsyncBookGenerationService asyncBookGenerationService;
 
 	@Mock

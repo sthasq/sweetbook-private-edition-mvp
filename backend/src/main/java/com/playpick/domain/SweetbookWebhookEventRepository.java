@@ -9,4 +9,6 @@ public interface SweetbookWebhookEventRepository extends JpaRepository<Sweetbook
 	List<SweetbookWebhookEvent> findTop20ByOrderByCreatedAtDesc();
 
 	Optional<SweetbookWebhookEvent> findByDeliveryUid(String deliveryUid);
+
+	List<SweetbookWebhookEvent> findBySweetbookOrderUidAndLinkedFalseOrderByCreatedAtAsc(String sweetbookOrderUid);
 }

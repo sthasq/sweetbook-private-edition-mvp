@@ -12,8 +12,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.playpick.application.SweetbookWebhookService;
+import com.playpick.domain.OrderRecord;
+import com.playpick.domain.OrderRecordRepository;
+import com.playpick.domain.SweetbookWebhookEvent;
+import com.playpick.domain.SweetbookWebhookEventRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -46,6 +52,15 @@ class AuthAndAccessIntegrationTest {
 
 	@Autowired
 	private ObjectMapper objectMapper;
+
+	@Autowired
+	private SweetbookWebhookService sweetbookWebhookService;
+
+	@Autowired
+	private SweetbookWebhookEventRepository sweetbookWebhookEventRepository;
+
+	@Autowired
+	private OrderRecordRepository orderRecordRepository;
 
 	@Test
 	void signupLoginMeAndLogoutFlowWorks() throws Exception {
@@ -615,6 +630,108 @@ class AuthAndAccessIntegrationTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.fulfillmentStatus").value("SHIPPING_DEPARTED"))
 			.andExpect(jsonPath("$.lastFulfillmentEvent").value("shipping.departed"));
+	}
+
+	@Test
+	void sweetbookWebhookLinksEarlierUnlinkedEventsWhenLaterWebhookArrives() throws Exception {
+		MockHttpSession session = signUp(uniqueEmail("webhook-backfill"), "Webhook Backfill Fan");
+		long projectId = createProject(session, 1L, "demo");
+		placeOrder(session, projectId, "Webhook Backfill Fan", "010-2323-4545");
+
+		MvcResult summaryResult = mockMvc.perform(get("/api/projects/{projectId}/order-summary", projectId).session(session))
+			.andExpect(status().isOk())
+			.andReturn();
+
+		String fulfillmentOrderUid = readString(summaryResult, "fulfillmentOrderUid");
+		SweetbookWebhookEvent earlierEvent = new SweetbookWebhookEvent();
+		earlierEvent.setEventType("order.created");
+		earlierEvent.setSweetbookOrderUid(fulfillmentOrderUid);
+		earlierEvent.setPayload(objectMapper.readValue(
+			("""
+				{
+				  "event_type": "order.created",
+				  "created_at": "2026-04-14T11:30:00Z",
+				  "data": {
+				    "order_uid": "%s",
+				    "order_status": "PAID"
+				  }
+				}
+				""").formatted(fulfillmentOrderUid),
+			new TypeReference<LinkedHashMap<String, Object>>() {
+			}
+		));
+		earlierEvent.setLinked(false);
+		earlierEvent.setProcessedAt(Instant.parse("2026-04-14T11:30:01Z"));
+		earlierEvent = sweetbookWebhookEventRepository.save(earlierEvent);
+
+		long timestamp = Instant.now().getEpochSecond();
+		String payload = """
+			{
+			  "event_type": "order.status_changed",
+			  "created_at": "2026-04-14T11:35:00Z",
+			  "data": {
+			    "order_uid": "%s",
+			    "order_status": "shipped"
+			  }
+			}
+			""".formatted(fulfillmentOrderUid);
+
+		mockMvc.perform(post("/api/sweetbook/webhooks/events")
+				.header("X-Webhook-Timestamp", timestamp)
+				.header("X-Webhook-Signature", signWebhook(TEST_WEBHOOK_SECRET, timestamp, payload))
+				.header("X-Webhook-Delivery", "del-" + UUID.randomUUID())
+				.contentType(APPLICATION_JSON)
+				.content(payload))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.linked").value(true));
+
+		org.assertj.core.api.Assertions.assertThat(
+			sweetbookWebhookEventRepository.findById(earlierEvent.getId())
+				.orElseThrow()
+				.isLinked()
+		).isTrue();
+	}
+
+	@Test
+	void reconcilePendingEventsLinksSavedOrderCreatedWebhookAfterOrderRecordSave() throws Exception {
+		MockHttpSession session = signUp(uniqueEmail("webhook-reconcile"), "Webhook Reconcile Fan");
+		long projectId = createProject(session, 1L, "demo");
+		placeOrder(session, projectId, "Webhook Reconcile Fan", "010-8787-1212");
+
+		MvcResult summaryResult = mockMvc.perform(get("/api/projects/{projectId}/order-summary", projectId).session(session))
+			.andExpect(status().isOk())
+			.andReturn();
+
+		String fulfillmentOrderUid = readString(summaryResult, "fulfillmentOrderUid");
+		OrderRecord orderRecord = orderRecordRepository.findBySweetbookOrderUid(fulfillmentOrderUid).orElseThrow();
+
+		SweetbookWebhookEvent pendingEvent = new SweetbookWebhookEvent();
+		pendingEvent.setEventType("order.created");
+		pendingEvent.setSweetbookOrderUid(fulfillmentOrderUid);
+		pendingEvent.setPayload(objectMapper.readValue(
+			("""
+				{
+				  "event_type": "order.created",
+				  "created_at": "2026-04-14T11:40:00Z",
+				  "data": {
+				    "order_uid": "%s",
+				    "order_status": "PAID"
+				  }
+				}
+				""").formatted(fulfillmentOrderUid),
+			new TypeReference<LinkedHashMap<String, Object>>() {
+			}
+		));
+		pendingEvent.setLinked(false);
+		pendingEvent = sweetbookWebhookEventRepository.save(pendingEvent);
+
+		sweetbookWebhookService.reconcilePendingEvents(orderRecord);
+
+		org.assertj.core.api.Assertions.assertThat(
+			sweetbookWebhookEventRepository.findById(pendingEvent.getId())
+				.orElseThrow()
+				.isLinked()
+		).isTrue();
 	}
 
 	@Test
