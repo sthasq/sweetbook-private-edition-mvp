@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useLayoutEffect, useRef, useState } from "react";
+import HTMLFlipBook from "react-pageflip";
 import { useParams, useNavigate } from "react-router-dom";
 import { finalizeBook, generateBook, getPreview } from "../api/projects";
 import type { ProjectPreview } from "../types/api";
@@ -12,19 +13,83 @@ import {
 import { imageObjectPosition } from "../lib/imageFocus";
 import { resolveMediaUrl } from "../lib/appPaths";
 
-type PageTurnDirection = "next" | "prev";
+type FlipBookHandle = {
+  pageFlip: () => {
+    flip: (pageNum: number, corner?: "top" | "bottom") => void;
+    flipNext: (corner?: "top" | "bottom") => void;
+    flipPrev: (corner?: "top" | "bottom") => void;
+  };
+};
+
+type FlipBookEvent = {
+  data?: number | { page?: number };
+};
+
+type PreviewCoverPayload = {
+  title: string;
+  subtitle: string;
+  periodText: string;
+  spineTitle: string;
+  coverPhoto: string;
+  templateLabel?: string;
+};
+
+type PreviewLeaf =
+  | {
+    kind: "cover-back";
+    key: string;
+    cover: PreviewCoverPayload;
+  }
+  | {
+    kind: "cover-front";
+    key: string;
+    cover: PreviewCoverPayload;
+  }
+  | {
+    kind: "inside-blank";
+    key: string;
+  }
+  | {
+    kind: "page";
+    key: string;
+    page: ProjectPreview["pages"][number];
+    interiorPageNumber: number;
+  };
+
+type PreviewSpread = {
+  key: string;
+  leafStart: number;
+  label: string;
+  interiorPageNumbers: number[];
+  thumbnailPage: ProjectPreview["pages"][number] | null;
+};
+
+type PreviewThumbnail = {
+  key: string;
+  leafStart: number;
+  label: string;
+  imageUrl: string;
+};
+
+type PreviewBookModel = {
+  coverPage: ProjectPreview["pages"][number] | null;
+  interiorPages: ProjectPreview["pages"];
+  leaves: PreviewLeaf[];
+  spreads: PreviewSpread[];
+  thumbnails: PreviewThumbnail[];
+  interiorPageCount: number;
+};
 
 export default function PreviewPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const flipBookRef = useRef<FlipBookHandle | null>(null);
   const [preview, setPreview] = useState<ProjectPreview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [generating, setGenerating] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [activeSpread, setActiveSpread] = useState(0);
-  const [pageTurnDirection, setPageTurnDirection] = useState<PageTurnDirection | null>(null);
-  const [pageTurnToken, setPageTurnToken] = useState(0);
 
   useEffect(() => {
     if (!projectId) return;
@@ -33,6 +98,16 @@ export default function PreviewPage() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [projectId]);
+
+  useEffect(() => {
+    if (!preview) {
+      return;
+    }
+    const nextLeafCount = buildPreviewBookModel(preview.pages).leaves.length;
+    setActiveSpread((current) =>
+      normalizePreviewSpreadStart(current, nextLeafCount),
+    );
+  }, [preview]);
 
   async function handlePrimaryAction() {
     if (!projectId) return;
@@ -71,20 +146,20 @@ export default function PreviewPage() {
   if (!preview) return <ErrorBox message="포토북 정보를 불러올 수 없어요." />;
 
   const pages = preview.pages;
+  const bookModel = buildPreviewBookModel(pages);
   const readOnly = preview.status === "ORDERED";
-  const normalizedActiveSpread = normalizePreviewSpreadStart(activeSpread, pages.length);
-  const isCoverOnlyView = normalizedActiveSpread === 0;
-  const leftPage = pages[normalizedActiveSpread];
-  const rightPage = isCoverOnlyView ? undefined : pages[normalizedActiveSpread + 1];
+  const normalizedActiveSpread = normalizePreviewSpreadStart(activeSpread, bookModel.leaves.length);
+  const currentSpreadView =
+    bookModel.spreads.find((spread) => spread.leafStart === normalizedActiveSpread) ??
+    bookModel.spreads[0] ??
+    null;
   const personalizationHighlights = buildPersonalizationHighlights(preview);
   const previewSummary = buildPreviewSummary(pages);
-  const quickJumps = buildPreviewQuickJumps(pages);
+  const quickJumps = buildPreviewQuickJumps(bookModel);
   const pricingHint = estimateEditionPricing(preview.edition.snapshot?.bookSpecUid);
   const previousSpread = previousPreviewSpreadStart(normalizedActiveSpread);
-  const nextSpread = nextPreviewSpreadStart(normalizedActiveSpread, pages.length);
-  const currentPageLabel = isCoverOnlyView || !rightPage
-    ? `${normalizedActiveSpread + 1} / ${pages.length}p`
-    : `${normalizedActiveSpread + 1}-${Math.min(normalizedActiveSpread + 2, pages.length)} / ${pages.length}p`;
+  const nextSpread = nextPreviewSpreadStart(normalizedActiveSpread, bookModel.leaves.length);
+  const currentPageLabel = currentSpreadView?.label ?? "표지";
   const primaryActionLabel =
     preview.status === "BOOK_CREATED"
       ? finalizing
@@ -96,14 +171,31 @@ export default function PreviewPage() {
           ? "포토북 만드는 중…"
           : "포토북 만들기";
 
+  function syncActiveSpread(flipEvent: FlipBookEvent) {
+    setActiveSpread(
+      normalizePreviewSpreadStart(readFlipBookPageIndex(flipEvent), bookModel.leaves.length),
+    );
+  }
+
   function navigateToSpread(targetSpread: number) {
-    const normalizedTargetSpread = normalizePreviewSpreadStart(targetSpread, pages.length);
+    const normalizedTargetSpread = normalizePreviewSpreadStart(targetSpread, bookModel.leaves.length);
     if (normalizedTargetSpread === normalizedActiveSpread) {
       return;
     }
-    setPageTurnDirection(normalizedTargetSpread > normalizedActiveSpread ? "next" : "prev");
-    setPageTurnToken((current) => current + 1);
-    setActiveSpread(normalizedTargetSpread);
+    const pageFlip = flipBookRef.current?.pageFlip();
+    if (!pageFlip) {
+      setActiveSpread(normalizedTargetSpread);
+      return;
+    }
+    if (normalizedTargetSpread === previousSpread) {
+      pageFlip.flipPrev("top");
+      return;
+    }
+    if (normalizedTargetSpread === nextSpread) {
+      pageFlip.flipNext("top");
+      return;
+    }
+    pageFlip.flip(normalizedTargetSpread, "top");
   }
 
   return (
@@ -137,7 +229,7 @@ export default function PreviewPage() {
                   </p>
                   {quickJumps.map((item) => (
                     <button
-                      key={`${item.pageIndex}-${item.label}`}
+                      key={`${item.key}-${item.label}`}
                       type="button"
                       onClick={() => navigateToSpread(item.spreadIndex)}
                       className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
@@ -154,43 +246,46 @@ export default function PreviewPage() {
             )}
 
             <div className="editorial-panel p-6 md:p-10">
-              {pages.length > 0 ? (
+              {bookModel.leaves.length > 0 ? (
                 <div className="relative">
-                  <div className="book-preview-stage">
-                    <div
-                      key={`${normalizedActiveSpread}-${pageTurnToken}`}
-                      data-page-turn={pageTurnDirection ?? "idle"}
-                      onAnimationEnd={() => setPageTurnDirection(null)}
-                      className="book-preview-sheet overflow-hidden rounded bg-white shadow-editorial"
-                    >
-                      {isCoverOnlyView ? (
-                        <div className="mx-auto min-h-[520px] max-w-2xl px-0 md:min-h-0 md:w-1/2 md:min-w-[320px] md:aspect-[4/5]">
-                          <BookPage
-                            page={leftPage}
-                            fallbackTitle="크리에이터가 구성한 페이지"
-                            pageNumber={1}
-                            templateDetail={preview.contentTemplateDetail}
-                          />
-                        </div>
-                      ) : (
-                        <div className="grid min-h-[520px] md:min-h-0 md:grid-cols-2 md:aspect-[8/5]">
-                          <BookPage
-                            page={leftPage}
-                            fallbackTitle="크리에이터가 구성한 페이지"
-                            pageNumber={normalizedActiveSpread + 1}
-                            templateDetail={preview.contentTemplateDetail}
-                          />
-                          <BookPage
-                            page={rightPage}
-                            fallbackTitle="내가 채운 페이지"
-                            pageNumber={Math.min(normalizedActiveSpread + 2, pages.length)}
-                            templateDetail={preview.contentTemplateDetail}
-                            right
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <HTMLFlipBook
+                    ref={flipBookRef}
+                    width={420}
+                    height={525}
+                    minWidth={280}
+                    maxWidth={520}
+                    minHeight={360}
+                    maxHeight={650}
+                    startPage={0}
+                    size="stretch"
+                    drawShadow
+                    flippingTime={900}
+                    usePortrait={false}
+                    startZIndex={12}
+                    autoSize
+                    maxShadowOpacity={0.22}
+                    showCover={false}
+                    mobileScrollSupport
+                    swipeDistance={24}
+                    clickEventForward
+                    useMouseEvents
+                    showPageCorners
+                    disableFlipByClick={false}
+                    className="preview-flipbook"
+                    style={{ margin: "0 auto" }}
+                    onInit={syncActiveSpread}
+                    onUpdate={syncActiveSpread}
+                    onFlip={syncActiveSpread}
+                  >
+                    {bookModel.leaves.map((leaf, leafIndex) => (
+                      <FlipBookLeaf
+                        key={leaf.key}
+                        leaf={leaf}
+                        templateDetail={preview.contentTemplateDetail}
+                        right={isRightHandBookPage(leafIndex)}
+                      />
+                    ))}
+                  </HTMLFlipBook>
 
                   <div className="mt-6 flex items-center justify-center gap-4">
                     <button
@@ -224,35 +319,34 @@ export default function PreviewPage() {
               )}
             </div>
 
-            {pages.length > 0 && (
+            {bookModel.thumbnails.length > 0 && (
               <div className="mt-5 flex gap-3 overflow-x-auto pb-2">
-                {pages.map((page, index) => {
-                  const spreadIndex = previewSpreadStartForPageIndex(index);
-                  const selected = spreadIndex === normalizedActiveSpread;
+                {bookModel.thumbnails.map((thumbnail) => {
+                  const selected = thumbnail.leafStart === normalizedActiveSpread;
                   return (
                     <button
-                      key={page.key}
-                      onClick={() => navigateToSpread(spreadIndex)}
+                      key={thumbnail.key}
+                      onClick={() => navigateToSpread(thumbnail.leafStart)}
                       className={`shrink-0 overflow-hidden rounded border p-1 transition ${
                         selected
                           ? "border-brand-400 bg-white shadow-sm"
                           : "border-stone-200/70 bg-white/70 opacity-80"
                       }`}
                     >
-                      {page.imageUrl ? (
+                      {thumbnail.imageUrl ? (
                         <img
-                          src={resolveMediaUrl(page.imageUrl)}
-                          alt={page.title}
+                          src={resolveMediaUrl(thumbnail.imageUrl)}
+                          alt={thumbnail.label}
                           className="h-20 w-16 object-cover"
                           style={{
                             objectPosition: imageObjectPosition(
-                              resolveMediaUrl(page.imageUrl),
+                              resolveMediaUrl(thumbnail.imageUrl),
                             ),
                           }}
                         />
                       ) : (
                         <div className="flex h-20 w-16 items-center justify-center bg-surface-low text-xs text-warm-500">
-                          {index + 1}
+                          {thumbnail.label}
                         </div>
                       )}
                     </button>
@@ -271,7 +365,7 @@ export default function PreviewPage() {
               <div className="mt-6 space-y-5">
                 <SummaryRow label="현재 단계" value={projectStageLabel(preview.status)} />
                 <SummaryRow label="에디션" value={preview.edition.title} />
-                <SummaryRow label="총 페이지" value={`${pages.length}p`} />
+                <SummaryRow label="총 페이지" value={`${bookModel.interiorPageCount}p`} />
                 <SummaryRow
                   label="예상 가격"
                   value={`${pricingHint.productPrice.toLocaleString("ko-KR")}원~`}
@@ -355,6 +449,64 @@ export default function PreviewPage() {
       </div>
     </div>
   );
+}
+
+const FlipBookLeaf = forwardRef<
+  HTMLDivElement,
+  {
+    leaf: PreviewLeaf;
+    templateDetail: ProjectPreview["contentTemplateDetail"];
+    right?: boolean;
+  }
+>(function FlipBookLeaf(
+  {
+    leaf,
+    templateDetail,
+    right = false,
+  },
+  ref,
+) {
+  return (
+    <div
+      ref={ref}
+      data-density={leaf.kind.startsWith("cover") ? "hard" : "soft"}
+    >
+      <div className="preview-flipbook-page">
+        <PreviewLeafPage leaf={leaf} templateDetail={templateDetail} right={right} />
+      </div>
+    </div>
+  );
+});
+
+function PreviewLeafPage({
+  leaf,
+  templateDetail,
+  right = false,
+}: {
+  leaf: PreviewLeaf;
+  templateDetail: ProjectPreview["contentTemplateDetail"];
+  right?: boolean;
+}) {
+  switch (leaf.kind) {
+    case "cover-back":
+      return <WrapCoverBackPage cover={leaf.cover} />;
+    case "cover-front":
+      return <WrapCoverFrontPage cover={leaf.cover} />;
+    case "inside-blank":
+      return <InsideCoverBlankPage right={right} />;
+    case "page":
+      return (
+        <BookPage
+          page={leaf.page}
+          fallbackTitle={`페이지 ${leaf.interiorPageNumber}`}
+          pageNumber={leaf.interiorPageNumber}
+          templateDetail={templateDetail}
+          right={right}
+        />
+      );
+    default:
+      return null;
+  }
 }
 
 function BookPage({
@@ -462,6 +614,7 @@ type MixedCoverPayload = {
 };
 
 type MixedPublishPayload = {
+  photo: string;
   title: string;
   publishDate: string;
   author: string;
@@ -826,23 +979,41 @@ function MixedPublishPage({
   publish: MixedPublishPayload;
 }) {
   return (
-    <div className="flex h-full min-h-0 flex-col justify-between bg-[#fcf8f2] text-stone-900">
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-500">
-          {publish.templateLabel ?? "발행면"}
-        </p>
-        <h3 className="mt-3 text-3xl font-bold text-brand-700">{publish.title}</h3>
-        <div className="mt-6 grid gap-3 text-sm leading-relaxed text-stone-700">
-          <p>발행일: {publish.publishDate}</p>
-          <p>만든이: {publish.author}</p>
-          <p>제작사: {publish.publisher}</p>
+    <div className="flex h-full min-h-0 flex-col justify-between bg-white text-stone-900">
+      <div className="max-w-[13rem] space-y-4">
+        {publish.photo && (
+          <div className="overflow-hidden rounded bg-stone-100 shadow-sm">
+            <img
+              src={resolveMediaUrl(publish.photo)}
+              alt={publish.title}
+              className="aspect-square w-full object-cover"
+              style={{
+                objectPosition: imageObjectPosition(resolveMediaUrl(publish.photo)),
+              }}
+            />
+          </div>
+        )}
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-warm-500">
+            {publish.templateLabel ?? "발행면"}
+          </p>
+          <h3 className="mt-3 text-lg font-semibold tracking-tight text-stone-800">
+            {publish.title}
+          </h3>
+        </div>
+        <div className="space-y-1.5 text-[11px] leading-5 text-stone-500">
+          <p>발행일 · {publish.publishDate}</p>
+          <p>만든이 · {publish.author}</p>
+          <p>제작 · {publish.publisher}</p>
           <p>{publish.hashtags}</p>
         </div>
       </div>
-      <div className="mt-8 rounded-2xl bg-white px-5 py-5 shadow-sm">
-        <p className="text-xs leading-6 text-warm-500">
-          이번 책은 사진+글, 글만, 갤러리 템플릿을 섞어서 한 권의 흐름으로 구성했어요.
+
+      <div className="space-y-5">
+        <p className="font-headline text-3xl font-semibold tracking-tight text-[#ea5b6b]">
+          Sweetbook
         </p>
+        <PreviewBarcodeMark />
       </div>
     </div>
   );
@@ -1018,6 +1189,7 @@ function readMixedPublishPayload(page: ProjectPreview["pages"][number] | undefin
   const payload = page?.payload as Record<string, unknown> | undefined;
   if (!payload || payload.previewTemplate !== "MIXED_PUBLISH") return null;
   return {
+    photo: typeof payload.photo === "string" ? payload.photo : "",
     title: typeof payload.title === "string" ? payload.title : "",
     publishDate: typeof payload.publishDate === "string" ? payload.publishDate : "",
     author: typeof payload.author === "string" ? payload.author : "",
@@ -1059,6 +1231,138 @@ function readMixedBlankPayload(page: ProjectPreview["pages"][number] | undefined
     month: typeof payload.month === "number" ? payload.month : Number(payload.month ?? 0),
     templateLabel: typeof payload.templateLabel === "string" ? payload.templateLabel : undefined,
   };
+}
+
+function readPreviewCoverPayload(page: ProjectPreview["pages"][number] | null) {
+  const mixedCover = readMixedCoverPayload(page ?? undefined);
+  if (mixedCover) {
+    return mixedCover;
+  }
+
+  const notebookCover = readNotebookCoverPayload(page ?? undefined);
+  if (!notebookCover) {
+    return null;
+  }
+
+  return {
+    title: notebookCover.childName,
+    subtitle: notebookCover.schoolName,
+    periodText: notebookCover.periodText,
+    spineTitle: notebookCover.schoolName || notebookCover.childName,
+    coverPhoto: notebookCover.coverPhoto,
+    templateLabel: notebookCover.volumeLabel || "표지",
+  };
+}
+
+function isCoverPreviewPage(page: ProjectPreview["pages"][number] | undefined) {
+  return Boolean(readPreviewCoverPayload(page ?? null));
+}
+
+function buildPreviewBookModel(pages: ProjectPreview["pages"]): PreviewBookModel {
+  const coverPage = isCoverPreviewPage(pages[0]) ? pages[0] : null;
+  const interiorPages = coverPage ? pages.slice(1) : pages;
+  const leaves: PreviewLeaf[] = [];
+  const cover = readPreviewCoverPayload(coverPage);
+
+  if (cover) {
+    leaves.push(
+      { kind: "cover-back", key: `${coverPage?.key ?? "cover"}-back`, cover },
+      { kind: "cover-front", key: `${coverPage?.key ?? "cover"}-front`, cover },
+    );
+  }
+
+  if (cover && interiorPages.length > 0) {
+    leaves.push({ kind: "inside-blank", key: "inside-front-cover" });
+  }
+
+  interiorPages.forEach((page, index) => {
+    leaves.push({
+      kind: "page",
+      key: page.key,
+      page,
+      interiorPageNumber: index + 1,
+    });
+  });
+
+  if (cover && interiorPages.length > 0) {
+    leaves.push({ kind: "inside-blank", key: "inside-back-cover" });
+  }
+
+  if (leaves.length % 2 === 1) {
+    leaves.push({ kind: "inside-blank", key: "inside-balancer" });
+  }
+
+  const spreads: PreviewSpread[] = [];
+  for (let leafStart = 0; leafStart < leaves.length; leafStart += 2) {
+    const spreadLeaves = leaves.slice(leafStart, leafStart + 2);
+    const interiorPageNumbers = spreadLeaves.flatMap((leaf) =>
+      leaf.kind === "page" ? [leaf.interiorPageNumber] : [],
+    );
+    const label = labelPreviewSpread(interiorPageNumbers, leafStart === 0 && Boolean(cover));
+    const thumbnailLeaf =
+      spreadLeaves.find((leaf) => leaf.kind === "page") ??
+      spreadLeaves.find((leaf) => leaf.kind === "cover-front") ??
+      null;
+
+    spreads.push({
+      key: spreadLeaves.map((leaf) => leaf.key).join(":"),
+      leafStart,
+      label,
+      interiorPageNumbers,
+      thumbnailPage:
+        thumbnailLeaf?.kind === "page"
+          ? thumbnailLeaf.page
+          : coverPage,
+    });
+  }
+
+  const thumbnails: PreviewThumbnail[] = [
+    ...(coverPage
+      ? [{
+        key: `${coverPage.key}-thumb`,
+        leafStart: 0,
+        label: "표지",
+        imageUrl: cover?.coverPhoto || coverPage.imageUrl || "",
+      }]
+      : []),
+    ...interiorPages.map((page, index) => {
+      const interiorPageNumber = index + 1;
+      return {
+        key: `${page.key}-thumb`,
+        leafStart: findSpreadStartForInteriorPage(spreads, interiorPageNumber),
+        label: String(interiorPageNumber),
+        imageUrl: page.imageUrl || "",
+      };
+    }),
+  ];
+
+  return {
+    coverPage,
+    interiorPages,
+    leaves,
+    spreads,
+    thumbnails,
+    interiorPageCount: interiorPages.length,
+  };
+}
+
+function labelPreviewSpread(interiorPageNumbers: number[], isCoverSpread: boolean) {
+  if (isCoverSpread || interiorPageNumbers.length === 0) {
+    return "표지";
+  }
+
+  if (interiorPageNumbers.length === 1) {
+    return `페이지 ${interiorPageNumbers[0]}`;
+  }
+
+  return `페이지 ${interiorPageNumbers[0]}-${interiorPageNumbers[interiorPageNumbers.length - 1]}`;
+}
+
+function findSpreadStartForInteriorPage(spreads: PreviewSpread[], interiorPageNumber: number) {
+  return (
+    spreads.find((spread) => spread.interiorPageNumbers.includes(interiorPageNumber))
+      ?.leafStart ?? 0
+  );
 }
 
 function readTemplateLabel(page: ProjectPreview["pages"][number] | undefined) {
@@ -1139,6 +1443,133 @@ function readGalleryImageUrls(page: ProjectPreview["pages"][number] | undefined)
   );
 }
 
+function WrapCoverBackPage({
+  cover,
+}: {
+  cover: PreviewCoverPayload;
+}) {
+  return (
+    <div className="relative h-full overflow-hidden bg-[#fbf6ee] text-stone-900">
+      <div className="absolute inset-y-0 right-0 w-10 bg-[#912f34]" />
+      <div className="flex h-full flex-col justify-between px-8 py-9">
+        <div className="pr-10" />
+        <div className="space-y-5 pr-12">
+          {cover.subtitle && (
+            <p className="text-sm leading-6 text-stone-500">
+              {cover.subtitle}
+            </p>
+          )}
+          <div className="space-y-3">
+            <p className="font-headline text-3xl font-semibold tracking-tight text-[#ea5b6b]">
+              Sweetbook
+            </p>
+            <PreviewBarcodeMark />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WrapCoverFrontPage({
+  cover,
+}: {
+  cover: PreviewCoverPayload;
+}) {
+  const coverPhotoUrl = resolveMediaUrl(cover.coverPhoto);
+
+  return (
+    <div className="relative h-full overflow-hidden bg-[#fbf6ee] text-stone-900">
+      <div className="absolute inset-y-0 left-0 flex w-10 items-center justify-center bg-[#912f34]">
+        <span
+          className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white"
+          style={{ writingMode: "vertical-rl" }}
+        >
+          {cover.spineTitle || cover.title}
+        </span>
+      </div>
+      <div
+        className="absolute right-9 top-0 h-14 w-7 bg-[#912f34]"
+        style={{ clipPath: "polygon(0 0, 100% 0, 100% 78%, 50% 100%, 0 78%)" }}
+      />
+
+      <div className="flex h-full flex-col px-10 py-9">
+        <div className="ml-10">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#a16f6a]">
+            {cover.templateLabel ?? "표지"}
+          </p>
+          <div className="mt-4 border-b border-[#b65256]/40 pb-3">
+            <h3 className={`font-headline font-bold tracking-tight text-[#9c3035] ${previewHeadingSizeClass(cover.title)}`}>
+              {cover.title}
+            </h3>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-6 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#b07068]">
+            <div className="border-b border-[#d2b8ad] pb-2">
+              <span>to.</span>
+            </div>
+            <div className="border-b border-[#d2b8ad] pb-2 text-right">
+              <span>{cover.periodText || "date."}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-7 ml-10 flex-1 overflow-hidden bg-[#efe7dc] shadow-sm">
+          {coverPhotoUrl ? (
+            <img
+              src={coverPhotoUrl}
+              alt={cover.title}
+              className="h-full w-full object-cover"
+              style={{
+                objectPosition: imageObjectPosition(coverPhotoUrl),
+              }}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-stone-400">
+              표지 이미지
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InsideCoverBlankPage({ right = false }: { right?: boolean }) {
+  return (
+    <div
+      className={`h-full bg-white ${right ? "border-l border-stone-200/60" : ""}`}
+    />
+  );
+}
+
+function PreviewBarcodeMark() {
+  return (
+    <div className="inline-flex flex-col gap-2">
+      <div
+        className="h-6 w-28 bg-white"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(90deg, #111827 0 2px, transparent 2px 4px, #111827 4px 5px, transparent 5px 7px)",
+        }}
+      />
+      <p className="text-[9px] tracking-[0.18em] text-stone-400">
+        PREVIEW EDITION
+      </p>
+    </div>
+  );
+}
+
+function readFlipBookPageIndex(flipEvent: FlipBookEvent) {
+  const data = flipEvent?.data;
+  if (typeof data === "number") {
+    return data;
+  }
+  if (typeof data === "object" && data !== null && typeof data.page === "number") {
+    return data.page;
+  }
+  return 0;
+}
+
 function isRenderableImageReference(value: string) {
   const trimmed = value.trim();
   if (!trimmed || /\s/.test(trimmed)) {
@@ -1163,6 +1594,10 @@ function isRenderableImageReference(value: string) {
   );
 }
 
+function isRightHandBookPage(pageIndex: number) {
+  return pageIndex % 2 === 1;
+}
+
 type PreviewSummary = {
   photoCount: number;
   storyPageCount: number;
@@ -1177,7 +1612,7 @@ type PreviewSummary = {
 
 type PreviewJump = {
   label: string;
-  pageIndex: number;
+  key: string;
   spreadIndex: number;
 };
 
@@ -1275,60 +1710,59 @@ function buildPreviewSummary(pages: ProjectPreview["pages"]): PreviewSummary {
   };
 }
 
-function buildPreviewQuickJumps(pages: ProjectPreview["pages"]): PreviewJump[] {
+function buildPreviewQuickJumps(bookModel: PreviewBookModel): PreviewJump[] {
   const jumps: PreviewJump[] = [];
 
-  pages.forEach((page, pageIndex) => {
-    const spreadIndex = previewSpreadStartForPageIndex(pageIndex);
-    const mixedCover = readMixedCoverPayload(page);
+  if (bookModel.coverPage) {
+    jumps.push({ key: "cover", label: "표지", spreadIndex: 0 });
+  }
+
+  bookModel.interiorPages.forEach((page, index) => {
+    const interiorPageNumber = index + 1;
+    const spreadIndex = findSpreadStartForInteriorPage(bookModel.spreads, interiorPageNumber);
     const mixedPublish = readMixedPublishPayload(page);
     const mixedBlank = readMixedBlankPayload(page);
     const galleryImageUrls = readGalleryImageUrls(page);
-    if (readNotebookCoverPayload(page)) {
-      jumps.push({ label: "표지", pageIndex, spreadIndex });
-      return;
-    }
-    if (mixedCover) {
-      jumps.push({ label: "표지", pageIndex, spreadIndex });
-      return;
-    }
-    if (mixedPublish) {
-      jumps.push({ label: "발행면", pageIndex, spreadIndex });
-      return;
-    }
-    if (readNotebookPublishPayload(page)) {
-      jumps.push({ label: "발행면", pageIndex, spreadIndex });
-      return;
-    }
+
     if (mixedBlank) {
       return;
     }
+    if (mixedPublish || readNotebookPublishPayload(page)) {
+      jumps.push({ key: page.key, label: "발행면", spreadIndex });
+      return;
+    }
+
     const notebookPage = readNotebookPagePayload(page);
     if (notebookPage) {
       const firstEntry = notebookPage.entries[0];
-      const label = firstEntry
-        ? `${firstEntry.monthLabel} ${firstEntry.dateLabel}`
-        : `내지 ${pageIndex + 1}`;
-      jumps.push({ label, pageIndex, spreadIndex });
+      jumps.push({
+        key: page.key,
+        label: firstEntry ? `${firstEntry.monthLabel} ${firstEntry.dateLabel}` : `페이지 ${interiorPageNumber}`,
+        spreadIndex,
+      });
       return;
     }
+
     if (galleryImageUrls.length > 0) {
-      jumps.push({ label: page.title || `갤러리 ${pageIndex + 1}`, pageIndex, spreadIndex });
+      jumps.push({
+        key: page.key,
+        label: page.title || `페이지 ${interiorPageNumber}`,
+        spreadIndex,
+      });
       return;
     }
+
     if (page.title) {
-      jumps.push({ label: page.title, pageIndex, spreadIndex });
+      jumps.push({ key: page.key, label: page.title, spreadIndex });
     }
   });
 
-  return jumps.slice(0, 8);
-}
+  const deduped = jumps.filter(
+    (item, index, array) =>
+      array.findIndex((candidate) => candidate.spreadIndex === item.spreadIndex) === index,
+  );
 
-function previewSpreadStartForPageIndex(pageIndex: number) {
-  if (pageIndex <= 0) {
-    return 0;
-  }
-  return pageIndex % 2 === 1 ? pageIndex : pageIndex - 1;
+  return deduped.slice(0, 8);
 }
 
 function normalizePreviewSpreadStart(spreadStart: number, pageCount: number) {
@@ -1336,28 +1770,20 @@ function normalizePreviewSpreadStart(spreadStart: number, pageCount: number) {
     return 0;
   }
   const bounded = Math.max(0, Math.min(spreadStart, pageCount - 1));
-  return previewSpreadStartForPageIndex(bounded);
+  return bounded % 2 === 0 ? bounded : bounded - 1;
 }
 
 function previousPreviewSpreadStart(spreadStart: number) {
-  if (spreadStart <= 0) {
-    return 0;
-  }
-  if (spreadStart === 1) {
-    return 0;
-  }
-  return Math.max(1, spreadStart - 2);
+  return spreadStart <= 0 ? 0 : Math.max(0, spreadStart - 2);
 }
 
 function nextPreviewSpreadStart(spreadStart: number, pageCount: number) {
   if (pageCount <= 1) {
     return 0;
   }
-  if (spreadStart <= 0) {
-    return Math.min(1, pageCount - 1);
-  }
+  const lastSpreadStart = normalizePreviewSpreadStart(pageCount - 1, pageCount);
   const candidate = spreadStart + 2;
-  return candidate < pageCount ? candidate : spreadStart;
+  return candidate <= lastSpreadStart ? candidate : spreadStart;
 }
 
 function MetricCard({

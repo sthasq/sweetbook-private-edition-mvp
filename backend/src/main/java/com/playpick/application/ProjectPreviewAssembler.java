@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ProjectPreviewAssembler {
 
-	private static final int MAX_PREVIEW_PAGES = 24;
+	private static final int INTERIOR_PREVIEW_PAGES = 24;
 	private static final int MAX_GALLERY_IMAGES_PER_LAYOUT = 4;
 	private static final int MAX_SELECTED_CURATED_IMAGES = 40;
 	private static final Set<String> NOTEBOOK_ACCENT_MONTHS_SPRING = Set.of("3", "4", "5");
@@ -142,7 +142,7 @@ public class ProjectPreviewAssembler {
 		List<String> curatedImageUrls = collectCuratedImageUrls(curatedAssets);
 		int reservedStoryImages = Math.min(3, curatedImageUrls.size());
 		List<String> galleryPool = curatedImageUrls.subList(reservedStoryImages, curatedImageUrls.size());
-		int contentPageCount = Math.max(1, MAX_PREVIEW_PAGES - 2);
+		int contentPageCount = Math.max(1, INTERIOR_PREVIEW_PAGES - 1);
 		List<ProjectViews.Page> selectedNarrativePages = new ArrayList<>(narrativePages);
 
 		List<List<String>> imageGroups = groupCuratedImages(
@@ -187,11 +187,12 @@ public class ProjectPreviewAssembler {
 		LocalDate today = LocalDate.now(ZoneOffset.UTC);
 		result.add(buildMixedCoverPreviewPage(edition, fanNickname, personalization, today));
 		result.addAll(storyPages);
-		while (result.size() < MAX_PREVIEW_PAGES - 1) {
+		while (result.size() < INTERIOR_PREVIEW_PAGES) {
 			result.add(buildMixedBlankPreviewPage(edition.title(), today.plusDays(result.size())));
 		}
 		result.add(buildMixedPublishPreviewPage(edition, today));
-		return result.size() > MAX_PREVIEW_PAGES ? result.subList(0, MAX_PREVIEW_PAGES) : result;
+		int maxPreviewItems = INTERIOR_PREVIEW_PAGES + 1;
+		return result.size() > maxPreviewItems ? result.subList(0, maxPreviewItems) : result;
 	}
 
 	private ProjectViews.Page buildStoryPreviewPage(
@@ -242,10 +243,11 @@ public class ProjectPreviewAssembler {
 			"publish",
 			"발행면",
 			edition.creator().displayName(),
-			"",
+			edition.coverImageUrl(),
 			Map.of(
 				"previewTemplate", "MIXED_PUBLISH",
 				"title", edition.title(),
+				"photo", edition.coverImageUrl(),
 				"publishDate", today.getYear() + "." + String.format("%02d", today.getMonthValue()) + "." + String.format("%02d", today.getDayOfMonth()),
 				"author", edition.creator().displayName(),
 				"publisher", "(주)스위트북 x PlayPick",
