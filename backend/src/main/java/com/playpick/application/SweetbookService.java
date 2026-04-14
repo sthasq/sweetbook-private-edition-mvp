@@ -35,6 +35,13 @@ public class SweetbookService {
 	private static final int MAX_SELECTED_CURATED_IMAGES = 40;
 	private static final DateTimeFormatter SWEETBOOK_DATE_RANGE_FORMAT = DateTimeFormatter.ofPattern("yyyy.MM.dd");
 	private static final DateTimeFormatter SWEETBOOK_PUBLISH_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy.MM.dd");
+	private static final List<String> GENERATED_DEMO_VARIANT_SUFFIXES = List.of(
+		"-detail",
+		"-warm-film",
+		"-matte-fade",
+		"-mono-grain"
+	);
+	private static final List<String> DEMO_ASSET_EXTENSIONS = List.of(".png", ".jpg", ".jpeg", ".webp");
 
 	private final SweetbookClient sweetbookClient;
 	private final SweetbookProperties sweetbookProperties;
@@ -1193,6 +1200,12 @@ public class SweetbookService {
 			);
 		}
 
+		String remappedDemoAssetUrl = remapGeneratedDemoAssetUrl(trimmedValue, uri);
+		if (remappedDemoAssetUrl != null) {
+			cacheLiveAssetUrl(liveAssetUrlCache, trimmedValue, remappedDemoAssetUrl);
+			return remappedDemoAssetUrl;
+		}
+
 		String publishedLocalAssetUrl = publishLocalAssetIfPossible(trimmedValue, uri);
 		if (publishedLocalAssetUrl != null) {
 			cacheLiveAssetUrl(liveAssetUrlCache, trimmedValue, publishedLocalAssetUrl);
@@ -1223,6 +1236,67 @@ public class SweetbookService {
 		resolvedUrl = uri.toString();
 		cacheLiveAssetUrl(liveAssetUrlCache, trimmedValue, resolvedUrl);
 		return resolvedUrl;
+	}
+
+	private String remapGeneratedDemoAssetUrl(String rawValue, URI uri) {
+		if (publicAssetPublishingService.isConfigured()) {
+			return null;
+		}
+
+		String assetPath = extractAppRelativeDemoAssetPath(rawValue, uri);
+		if (assetPath == null || !assetPath.startsWith("/demo-assets/generated/")) {
+			return null;
+		}
+
+		String canonicalAssetPath = findCanonicalDemoAssetPath(assetPath);
+		if (canonicalAssetPath == null) {
+			return null;
+		}
+
+		log.info("Remapping generated demo asset {} to canonical asset {} for Sweetbook live draft", assetPath, canonicalAssetPath);
+		return appProperties.resolvePublicUrl(canonicalAssetPath);
+	}
+
+	private String extractAppRelativeDemoAssetPath(String rawValue, URI uri) {
+		String candidatePath;
+		if (uri.isAbsolute()) {
+			candidatePath = uri.getPath();
+		} else if (rawValue.startsWith("/")) {
+			candidatePath = rawValue;
+		} else {
+			candidatePath = "/" + rawValue;
+		}
+
+		if (candidatePath == null || candidatePath.isBlank()) {
+			return null;
+		}
+
+		String normalized = candidatePath.replace('\\', '/');
+		int demoAssetIndex = normalized.indexOf("/demo-assets/");
+		if (demoAssetIndex < 0) {
+			return null;
+		}
+		return normalized.substring(demoAssetIndex);
+	}
+
+	private String findCanonicalDemoAssetPath(String assetPath) {
+		String normalized = assetPath.replace('\\', '/');
+		String fileName = Path.of(normalized).getFileName().toString();
+		int extensionIndex = fileName.lastIndexOf('.');
+		String stem = extensionIndex >= 0 ? fileName.substring(0, extensionIndex) : fileName;
+		String baseName = GENERATED_DEMO_VARIANT_SUFFIXES.stream()
+			.filter(stem::endsWith)
+			.findFirst()
+			.map(suffix -> stem.substring(0, stem.length() - suffix.length()))
+			.orElse(stem);
+
+		for (String extension : DEMO_ASSET_EXTENSIONS) {
+			String candidatePath = "/demo-assets/" + baseName + extension;
+			if (resolvePublishableAssetPath(candidatePath) != null) {
+				return candidatePath;
+			}
+		}
+		return null;
 	}
 
 	private String publishLocalAssetIfPossible(String rawValue, URI uri) {
