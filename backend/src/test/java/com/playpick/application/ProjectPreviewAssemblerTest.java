@@ -74,6 +74,8 @@ class ProjectPreviewAssemblerTest {
 		assertThat(preview.pages()).hasSize(24);
 		assertThat(preview.pages().get(0).payload()).containsEntry("previewTemplate", "MIXED_COVER");
 		assertThat(preview.pages().get(0).payload()).containsEntry("spineTitle", "경신 Diary Book");
+		assertThat(preview.pages().get(23).key()).isEqualTo("publish");
+		assertThat(preview.pages().get(23).payload()).containsEntry("previewTemplate", "MIXED_PUBLISH");
 		assertThat(storyPages(preview))
 			.anySatisfy(page -> assertThat(page.description()).contains("1332일"))
 			.anySatisfy(page -> assertThat(page.title()).isEqualTo("당신이 남긴 문장은 여기 둘게요"))
@@ -282,6 +284,7 @@ class ProjectPreviewAssemblerTest {
 		ProjectViews.Preview preview = assembler.assemble(project, edition);
 
 		assertThat(preview.pages()).hasSize(24);
+		assertThat(preview.pages().get(23).key()).isEqualTo("publish");
 		assertThat(galleryPages(preview)).isNotEmpty();
 		assertThat(galleryPages(preview))
 			.allSatisfy(page -> assertThat((List<?>) page.payload().get("imageUrls")).hasSizeBetween(1, 4));

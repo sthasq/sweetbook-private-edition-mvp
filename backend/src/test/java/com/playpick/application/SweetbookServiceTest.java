@@ -253,6 +253,71 @@ class SweetbookServiceTest {
 			.isNotEmpty()
 			.filteredOn(uid -> !"75vMl9IeyPMI".equals(uid) && !"2mi1ao0Z4Vxl".equals(uid))
 			.contains("3FhSEhJ94c0T", "vHA59XPPKqak", "y5Ih0Uo7tuQ3");
+		assertThat(templateUids.get(templateUids.size() - 1)).isEqualTo("75vMl9IeyPMI");
+	}
+
+	@Test
+	void sendsLiveCompatibleParameterKeysForMixedContentTemplates() {
+		SweetbookClient sweetbookClient = mock(SweetbookClient.class);
+		PublicAssetPublishingService publicAssetPublishingService = mock(PublicAssetPublishingService.class);
+		SweetbookProperties sweetbookProperties = liveSweetbookProperties();
+		AppProperties appProperties = new AppProperties();
+		appProperties.setFrontendBaseUrl("https://playpick.example.com");
+
+		when(sweetbookClient.getBookSpecs()).thenReturn(List.of(new SweetbookViews.BookSpec("SQUAREBOOK_HC", "Square", 24, 130, 2)));
+		when(sweetbookClient.getTemplates("SQUAREBOOK_HC")).thenReturn(defaultTemplates());
+		when(sweetbookClient.createBook(anyMap(), anyString())).thenReturn("bk_test");
+		when(publicAssetPublishingService.isConfigured()).thenReturn(false);
+
+		List<ContentInvocation> contentInvocations = new ArrayList<>();
+		doAnswer(invocation -> {
+			contentInvocations.add(new ContentInvocation(
+				invocation.getArgument(1),
+				invocation.getArgument(2)
+			));
+			return null;
+		}).when(sweetbookClient).addContents(anyString(), anyString(), anyMap(), anyString());
+
+		SweetbookService service = new SweetbookService(
+			sweetbookClient,
+			sweetbookProperties,
+			appProperties,
+			publicAssetPublishingService
+		);
+
+		service.prepareBookDraft(previewWithCuratedImages(24), "ext", "idem", false);
+
+		Map<String, Object> photoPayload = contentInvocations.stream()
+			.filter(invocation -> "3FhSEhJ94c0T".equals(invocation.templateUid()))
+			.map(ContentInvocation::params)
+			.findFirst()
+			.orElseThrow();
+		assertThat(photoPayload)
+			.containsKeys("date", "title", "diaryText", "photo1")
+			.doesNotContainKey("collagePhotos");
+		assertThat(String.valueOf(photoPayload.get("date"))).matches("\\d{1,2}\\.\\d{2}");
+
+		Map<String, Object> textPayload = contentInvocations.stream()
+			.filter(invocation -> "vHA59XPPKqak".equals(invocation.templateUid()))
+			.map(ContentInvocation::params)
+			.findFirst()
+			.orElseThrow();
+		assertThat(textPayload)
+			.containsKeys("date", "title", "diaryText")
+			.doesNotContainKey("collagePhotos");
+		assertThat(String.valueOf(textPayload.get("date"))).matches("\\d{1,2}\\.\\d{2}");
+
+		Map<String, Object> galleryPayload = contentInvocations.stream()
+			.filter(invocation -> "y5Ih0Uo7tuQ3".equals(invocation.templateUid()))
+			.map(ContentInvocation::params)
+			.findFirst()
+			.orElseThrow();
+		assertThat(galleryPayload)
+			.containsKeys("date", "collagePhotos")
+			.doesNotContainKey("photo1");
+		assertThat(galleryPayload.get("collagePhotos")).isInstanceOf(List.class);
+		assertThat(((List<?>) galleryPayload.get("collagePhotos"))).isNotEmpty();
+		assertThat(String.valueOf(galleryPayload.get("date"))).matches("\\d{1,2}\\.\\d{2}");
 	}
 
 	@Test
@@ -437,5 +502,8 @@ class SweetbookServiceTest {
 				new ProjectViews.Page("official-closing", "클로징", "설명", "", Map.of())
 			)
 		);
+	}
+
+	private record ContentInvocation(String templateUid, Map<String, Object> params) {
 	}
 }

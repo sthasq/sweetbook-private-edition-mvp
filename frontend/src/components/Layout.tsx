@@ -221,7 +221,7 @@ export default function Layout() {
         )}
       </header>
 
-      <main className="flex-1 overflow-x-hidden">
+      <main className="flex-1">
         <div
           key={displayedRoute}
           className="route-transition"

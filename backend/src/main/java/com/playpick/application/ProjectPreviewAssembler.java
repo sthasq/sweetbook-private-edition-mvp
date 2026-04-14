@@ -186,11 +186,11 @@ public class ProjectPreviewAssembler {
 		List<ProjectViews.Page> result = new ArrayList<>();
 		LocalDate today = LocalDate.now(ZoneOffset.UTC);
 		result.add(buildMixedCoverPreviewPage(edition, fanNickname, personalization, today));
-		result.add(buildMixedPublishPreviewPage(edition, today));
 		result.addAll(storyPages);
-		while (result.size() < MAX_PREVIEW_PAGES) {
+		while (result.size() < MAX_PREVIEW_PAGES - 1) {
 			result.add(buildMixedBlankPreviewPage(edition.title(), today.plusDays(result.size())));
 		}
+		result.add(buildMixedPublishPreviewPage(edition, today));
 		return result.size() > MAX_PREVIEW_PAGES ? result.subList(0, MAX_PREVIEW_PAGES) : result;
 	}
 
