@@ -88,9 +88,9 @@ class ProjectPreviewAssemblerTest {
 			1L,
 			"Astra Vale 사막 횡단 메모리북 데모",
 			"가상 여행 크리에이터 Astra Vale의 기록 감성으로 구성한 메모리북 데모",
-			"/demo-assets/panibottle-cover.jpg",
+			"/demo-assets/astra-vale-cover.png",
 			"PUBLISHED",
-			new EditionViews.Creator(1L, "Astra Vale", "@astravale", "/demo-assets/panibottle-avatar.jpg", true),
+			new EditionViews.Creator(1L, "Astra Vale", "@astravale", "/demo-assets/astra-vale-avatar.png", true),
 			new EditionViews.Snapshot(
 				10L,
 				1,
@@ -101,7 +101,7 @@ class ProjectPreviewAssemblerTest {
 				Map.of("title", "크리에이터 인사", "message", "같이 여행 가듯 넘겨 보세요."),
 				Map.of("title", "마지막 인사", "message", "다음 장면도 같이 저장해요."),
 				Instant.parse("2026-04-08T00:00:00Z"),
-				List.of(new EditionViews.CuratedAsset(1L, "IMAGE", "Intro Visual", "/demo-assets/panibottle-cover.jpg", 1)),
+				List.of(new EditionViews.CuratedAsset(1L, "IMAGE", "Intro Visual", "/demo-assets/astra-vale-cover.png", 1)),
 				List.of()
 			),
 			Instant.parse("2026-04-01T00:00:00Z"),

@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
-  <rect width="600" height="600" rx="120" fill="#ceb084"/>
-  <circle cx="300" cy="300" r="232" fill="#5f402e"/>
-  <circle cx="300" cy="248" r="108" fill="#e9d7bc"/>
-  <path d="M176 470 C206 388 394 388 424 470" fill="#e9d7bc"/>
-  <text x="300" y="556" fill="#fff3df" font-size="44" font-weight="700" text-anchor="middle" font-family="Arial, sans-serif">PANI</text>
-</svg>
