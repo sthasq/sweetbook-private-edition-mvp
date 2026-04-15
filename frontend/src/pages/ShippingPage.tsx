@@ -152,8 +152,14 @@ export default function ShippingPage() {
     setError("");
     try {
       const session = await createPaymentSession(pid, form);
-      setPaymentSession(session);
-      setPaymentUnavailable(false);
+      if (!session.enabled) {
+        setPaymentSession(null);
+        setPaymentUnavailable(true);
+        setError("");
+      } else {
+        setPaymentSession(session);
+        setPaymentUnavailable(false);
+      }
     } catch (e: unknown) {
       const message =
         e instanceof Error ? e.message : "결제 세션을 준비하지 못했습니다.";
