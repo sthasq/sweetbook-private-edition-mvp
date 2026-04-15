@@ -23,6 +23,7 @@ import com.playpick.domain.FanProjectRepository;
 import com.playpick.domain.FanProjectStatus;
 import com.playpick.domain.OrderRecordRepository;
 import com.playpick.security.CurrentUserService;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -185,6 +186,71 @@ class ProjectServiceTest {
 		projectService.reconcilePendingWebhooksAfterCommit("or_now");
 
 		verify(sweetbookWebhookService).reconcilePendingEventsByOrderUid("or_now");
+	}
+
+	@Test
+	void preparePaymentReturnsDisabledSessionWhenTossIsNotConfigured() {
+		AppUser owner = new AppUser();
+		owner.setId(12L);
+		owner.setRole(AppUserRole.FAN);
+		owner.setDisplayName("팬");
+		owner.setEmail("fan@playpick.local");
+
+		Edition edition = new Edition();
+		edition.setId(7L);
+		edition.setTitle("Trio Archive");
+
+		EditionVersion editionVersion = new EditionVersion();
+		editionVersion.setId(31L);
+		editionVersion.setEdition(edition);
+
+		FanProject project = new FanProject();
+		project.setId(55L);
+		project.setOwnerUser(owner);
+		project.setEditionVersion(editionVersion);
+		project.setStatus(FanProjectStatus.FINALIZED);
+		project.setSweetbookBookUid("sb-book-55");
+
+		ProjectCommands.Shipping shipping = new ProjectCommands.Shipping(
+			"팬",
+			"010-1234-5678",
+			"06236",
+			"서울 강남구 테헤란로 123",
+			"8층",
+			2
+		);
+
+		when(currentUserService.requireCurrentAppUser()).thenReturn(owner);
+		when(fanProjectRepository.findById(55L)).thenReturn(Optional.of(project));
+		when(customerOrderRepository.findByFanProjectId(55L)).thenReturn(Optional.empty());
+		when(sweetbookService.estimateOrder(55L, "sb-book-55", shipping)).thenReturn(new ProjectViews.Estimate(
+			55L,
+			"KRW",
+			new BigDecimal("3420.00"),
+			new BigDecimal("3420.00"),
+			BigDecimal.ZERO,
+			BigDecimal.ZERO,
+			BigDecimal.ZERO,
+			BigDecimal.ZERO,
+			true,
+			Map.of()
+		));
+		when(tossPaymentsProperties.isReady()).thenReturn(false);
+		when(appProperties.getMarginRate()).thenReturn(new BigDecimal("0.35"));
+		when(appProperties.getCommissionRate()).thenReturn(new BigDecimal("0.20"));
+		when(appProperties.getFrontendBaseUrl()).thenReturn("http://localhost:3000");
+
+		ProjectViews.PaymentSession session = projectService.preparePayment(55L, shipping);
+
+		assertThat(session.enabled()).isFalse();
+		assertThat(session.provider()).isEqualTo("TOSS_PAYMENTS");
+		assertThat(session.amount()).isEqualByComparingTo("4617.00");
+		assertThat(session.customerName()).isEqualTo("팬");
+		assertThat(session.customerEmail()).isEqualTo("fan@playpick.local");
+		assertThat(session.customerMobilePhone()).isEqualTo("01012345678");
+		assertThat(session.successUrl()).isEqualTo("http://localhost:3000/projects/55/payment/success");
+		assertThat(session.failUrl()).isEqualTo("http://localhost:3000/projects/55/payment/fail");
+		verify(customerOrderRepository, never()).save(any());
 	}
 
 	@Test

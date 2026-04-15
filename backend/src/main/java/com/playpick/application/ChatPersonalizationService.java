@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.playpick.config.AppProperties;
 import com.playpick.config.OpenRouterProperties;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -13,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -31,6 +34,12 @@ public class ChatPersonalizationService {
 	private static final int MAX_MESSAGE_LENGTH = 1200;
 	private static final int MAX_SUGGESTED_REPLIES = 4;
 	private static final int SUGGESTED_REPLY_MAX_LENGTH = 72;
+	private static final Pattern ISO_DATE_PATTERN = Pattern.compile("(\\d{4})-(\\d{1,2})-(\\d{1,2})");
+	private static final Pattern KOREAN_DATE_PATTERN = Pattern.compile("(\\d{4})년\\s*(\\d{1,2})월\\s*(\\d{1,2})일?");
+	private static final Pattern KOREAN_MONTH_PATTERN = Pattern.compile("(\\d{4})년\\s*(\\d{1,2})월");
+	private static final Pattern KOREAN_SEASON_PATTERN = Pattern.compile("(\\d{4})년\\s*(봄|여름|가을|겨울)");
+	private static final Pattern LAST_YEAR_SEASON_PATTERN = Pattern.compile("작년\\s*(봄|여름|가을|겨울)");
+	private static final Pattern YEARS_AGO_PATTERN = Pattern.compile("(\\d+)년\\s*전");
 
 	private final OpenRouterProperties properties;
 	private final AppProperties appProperties;
@@ -42,12 +51,19 @@ public class ChatPersonalizationService {
 		Map<String, Object> personalizationData,
 		List<ProjectCommands.ChatMessage> messages
 	) {
-		if (!properties.isChatReady()) {
-			throw new AppException(HttpStatus.BAD_REQUEST, "OpenRouter is not configured");
-		}
-
 		List<EditionViews.PersonalizationField> fields = resolveFields(edition);
 		List<ProjectCommands.ChatMessage> safeMessages = sanitizeMessages(messages);
+
+		if (!properties.isChatReady()) {
+			log.info("ChatPersonalization: OpenRouter not configured, using deterministic mock chat flow");
+			return buildMockChatResponse(
+				edition,
+				personalizationData == null ? Map.of() : personalizationData,
+				fields,
+				safeMessages
+			);
+		}
+
 		Map<String, Object> payload = new LinkedHashMap<>();
 		payload.put("model", properties.getChatModel());
 		payload.put("response_format", Map.of("type", "json_object"));
@@ -101,6 +117,294 @@ public class ChatPersonalizationService {
 		} catch (Exception exception) {
 			throw new AppException(HttpStatus.BAD_GATEWAY, "OpenRouter chat generation failed", exception);
 		}
+	}
+
+	private ProjectViews.ChatPersonalization buildMockChatResponse(
+		EditionViews.Detail edition,
+		Map<String, Object> personalizationData,
+		List<EditionViews.PersonalizationField> fields,
+		List<ProjectCommands.ChatMessage> messages
+	) {
+		Map<String, Object> proposal = deriveMockProposalFromConversation(personalizationData, fields, messages);
+		EditionViews.PersonalizationField nextField = fields.stream()
+			.filter(field -> !hasMeaningfulValue(proposal.get(field.fieldKey())))
+			.findFirst()
+			.orElse(null);
+
+		if (nextField == null) {
+			Map<String, Object> completedProposal = new LinkedHashMap<>(proposal);
+			Map<String, Object> bookCopy = buildMockBookCopy(edition, personalizationData, completedProposal);
+			if (!bookCopy.isEmpty()) {
+				completedProposal.put("bookCopy", bookCopy);
+			}
+			return new ProjectViews.ChatPersonalization(
+				"좋아요. 지금은 체험 모드 기준으로 포토북 문구 초안까지 바로 정리했어요. 미리보기에서 이어서 확인해볼게요.",
+				completedProposal,
+				true,
+				List.of()
+			);
+		}
+
+		String reply = buildMockReplyForNextField(edition, proposal, nextField, messages);
+		List<String> suggestedReplies = buildSuggestedReplies(
+			edition,
+			personalizationData,
+			fields,
+			proposal.isEmpty() ? null : proposal,
+			messages
+		);
+		return new ProjectViews.ChatPersonalization(
+			reply,
+			proposal.isEmpty() ? null : proposal,
+			false,
+			suggestedReplies
+		);
+	}
+
+	private Map<String, Object> deriveMockProposalFromConversation(
+		Map<String, Object> personalizationData,
+		List<EditionViews.PersonalizationField> fields,
+		List<ProjectCommands.ChatMessage> messages
+	) {
+		Map<String, Object> proposal = mergeKnownValues(personalizationData, fields, null);
+		List<ProjectCommands.ChatMessage> userMessages = messages.stream()
+			.filter(message -> "user".equals(message.role()))
+			.toList();
+
+		for (ProjectCommands.ChatMessage message : userMessages) {
+			EditionViews.PersonalizationField nextField = fields.stream()
+				.filter(field -> !hasMeaningfulValue(proposal.get(field.fieldKey())))
+				.findFirst()
+				.orElse(null);
+			if (nextField == null) {
+				break;
+			}
+			Object value = resolveMockFieldValue(nextField, message.content(), personalizationData);
+			if (value != null) {
+				proposal.put(nextField.fieldKey(), value);
+			}
+		}
+
+		return proposal;
+	}
+
+	private Object resolveMockFieldValue(
+		EditionViews.PersonalizationField field,
+		String rawMessage,
+		Map<String, Object> personalizationData
+	) {
+		String normalizedType = nullToEmpty(field.inputType()).trim().toUpperCase();
+		String text = nullToEmpty(rawMessage).trim();
+		if (text.isBlank()) {
+			return null;
+		}
+
+		if ("VIDEO_PICKER".equals(normalizedType)) {
+			return resolveFavoriteVideoId(text, personalizationData);
+		}
+		if ("DATE".equals(normalizedType)) {
+			return normalizeMockDate(text);
+		}
+
+		if (field.maxLength() != null && field.maxLength() > 0 && text.length() > field.maxLength()) {
+			return text.substring(0, field.maxLength()).trim();
+		}
+		return text;
+	}
+
+	private String resolveFavoriteVideoId(String rawMessage, Map<String, Object> personalizationData) {
+		Object raw = personalizationData.get("topVideos");
+		if (!(raw instanceof List<?> list) || list.isEmpty()) {
+			return null;
+		}
+
+		String normalizedMessage = rawMessage.trim().toLowerCase();
+		String fallbackVideoId = null;
+		for (Object item : list) {
+			if (!(item instanceof Map<?, ?> map)) {
+				continue;
+			}
+			String videoId = map.get("videoId") == null ? "" : String.valueOf(map.get("videoId")).trim();
+			String title = map.get("title") == null ? "" : String.valueOf(map.get("title")).trim();
+			if (fallbackVideoId == null && !videoId.isBlank()) {
+				fallbackVideoId = videoId;
+			}
+			String normalizedTitle = title.toLowerCase();
+			if (!videoId.isBlank() && normalizedMessage.equals(videoId.toLowerCase())) {
+				return videoId;
+			}
+			if (!normalizedTitle.isBlank()
+				&& (normalizedTitle.contains(normalizedMessage) || normalizedMessage.contains(normalizedTitle))) {
+				return videoId;
+			}
+		}
+		return fallbackVideoId;
+	}
+
+	private String normalizeMockDate(String rawMessage) {
+		String text = nullToEmpty(rawMessage).trim();
+		if (text.isBlank()) {
+			return null;
+		}
+
+		Matcher isoMatcher = ISO_DATE_PATTERN.matcher(text);
+		if (isoMatcher.find()) {
+			return formatDate(
+				Integer.parseInt(isoMatcher.group(1)),
+				Integer.parseInt(isoMatcher.group(2)),
+				Integer.parseInt(isoMatcher.group(3))
+			);
+		}
+
+		Matcher koreanDateMatcher = KOREAN_DATE_PATTERN.matcher(text);
+		if (koreanDateMatcher.find()) {
+			return formatDate(
+				Integer.parseInt(koreanDateMatcher.group(1)),
+				Integer.parseInt(koreanDateMatcher.group(2)),
+				Integer.parseInt(koreanDateMatcher.group(3))
+			);
+		}
+
+		Matcher koreanMonthMatcher = KOREAN_MONTH_PATTERN.matcher(text);
+		if (koreanMonthMatcher.find()) {
+			return formatDate(
+				Integer.parseInt(koreanMonthMatcher.group(1)),
+				Integer.parseInt(koreanMonthMatcher.group(2)),
+				1
+			);
+		}
+
+		Matcher koreanSeasonMatcher = KOREAN_SEASON_PATTERN.matcher(text);
+		if (koreanSeasonMatcher.find()) {
+			return formatDate(
+				Integer.parseInt(koreanSeasonMatcher.group(1)),
+				seasonStartMonth(koreanSeasonMatcher.group(2)),
+				1
+			);
+		}
+
+		Matcher lastYearSeasonMatcher = LAST_YEAR_SEASON_PATTERN.matcher(text);
+		if (lastYearSeasonMatcher.find()) {
+			return formatDate(LocalDate.now().getYear() - 1, seasonStartMonth(lastYearSeasonMatcher.group(1)), 1);
+		}
+
+		Matcher yearsAgoMatcher = YEARS_AGO_PATTERN.matcher(text);
+		if (yearsAgoMatcher.find()) {
+			return formatDate(LocalDate.now().getYear() - Integer.parseInt(yearsAgoMatcher.group(1)), 1, 1);
+		}
+
+		return LocalDate.now().minusYears(1).toString();
+	}
+
+	private String buildMockReplyForNextField(
+		EditionViews.Detail edition,
+		Map<String, Object> proposal,
+		EditionViews.PersonalizationField nextField,
+		List<ProjectCommands.ChatMessage> messages
+	) {
+		boolean firstTurn = messages.stream().noneMatch(message -> "user".equals(message.role()));
+		String creatorName = edition.creator() == null ? "크리에이터" : nullToEmpty(edition.creator().displayName());
+		String fanNickname = proposal.get("fanNickname") == null ? "" : String.valueOf(proposal.get("fanNickname")).trim();
+
+		return switch (nullToEmpty(nextField.fieldKey()).trim()) {
+			case "fanNickname" ->
+				"지금은 체험 모드로 빠르게 책 재료를 모아볼게요. 가장 먼저, 포토북에 적힐 이름이나 닉네임을 알려주세요.";
+			case "subscribedSince" ->
+				(firstTurn ? "" : (fanNickname.isBlank() ? "좋아요. " : fanNickname + "님, ")) +
+					creatorName + "와의 시간이 언제부터 시작됐는지 알려주세요. 대략적인 계절감이어도 괜찮아요.";
+			case "favoriteVideoId" ->
+				(fanNickname.isBlank() ? "좋아요. " : fanNickname + "님, ") +
+					"가장 오래 남은 장면이나 영상 제목을 하나만 떠올려볼까요?";
+			case "fanNote" ->
+				"좋아요. 마지막으로 이번 포토북에 꼭 남기고 싶은 한 줄 마음을 들려주세요.";
+			default ->
+				"좋아요. 이어서 " + nextField.label() + "도 짧게 알려주시면 체험용 초안을 바로 만들어볼게요.";
+		};
+	}
+
+	private Map<String, Object> buildMockBookCopy(
+		EditionViews.Detail edition,
+		Map<String, Object> personalizationData,
+		Map<String, Object> proposal
+	) {
+		String fanNickname = proposal.get("fanNickname") == null ? "팬" : String.valueOf(proposal.get("fanNickname")).trim();
+		String subscribedSince = proposal.get("subscribedSince") == null ? "" : String.valueOf(proposal.get("subscribedSince")).trim();
+		String fanNote = proposal.get("fanNote") == null ? "" : String.valueOf(proposal.get("fanNote")).trim();
+		String creatorName = edition.creator() == null ? "크리에이터" : nullToEmpty(edition.creator().displayName());
+		String favoriteVideoTitle = findFavoriteVideoTitle(
+			personalizationData,
+			proposal.get("favoriteVideoId") == null ? "" : String.valueOf(proposal.get("favoriteVideoId")).trim()
+		);
+
+		Map<String, Object> result = new LinkedHashMap<>();
+		result.put(
+			"relationshipTitle",
+			SweetbookTemplateCopyPolicy.photoStoryTitle(
+				subscribedSince.isBlank() ? "여기까지 와줘서 반가워요" : "우리의 시간이 여기 왔어요"
+			)
+		);
+		result.put(
+			"relationshipBody",
+			SweetbookTemplateCopyPolicy.photoStoryBody(
+				subscribedSince.isBlank()
+					? fanNickname + "님과 " + creatorName + "의 장면을 다정하게 엮어볼게요."
+					: fanNickname + "님이 " + subscribedSince + "부터 품어온 마음을 담아볼게요.",
+				fanNickname + "님을 위한 다정한 첫 장을 열어볼게요."
+			)
+		);
+		result.put("momentTitle", SweetbookTemplateCopyPolicy.photoStoryTitle("이 장면을 고른 마음"));
+		result.put(
+			"momentBody",
+			SweetbookTemplateCopyPolicy.photoStoryBody(
+				"'" + (favoriteVideoTitle.isBlank() ? edition.title() : favoriteVideoTitle) + "'의 여운을 책 한가운데에 남길게요.",
+				"당신이 오래 붙잡고 있던 장면의 여운을 담아둘게요."
+			)
+		);
+		result.put("fanNoteTitle", SweetbookTemplateCopyPolicy.photoStoryTitle("당신의 문장을 둘게요"));
+		result.put(
+			"fanNoteBody",
+			SweetbookTemplateCopyPolicy.photoStoryBody(
+				fanNote,
+				fanNickname + "님이 남긴 마음을 마지막까지 이어갈게요."
+			)
+		);
+		return result;
+	}
+
+	private String findFavoriteVideoTitle(Map<String, Object> personalizationData, String favoriteVideoId) {
+		Object raw = personalizationData.get("topVideos");
+		if (!(raw instanceof List<?> list) || list.isEmpty()) {
+			return "";
+		}
+		for (Object item : list) {
+			if (!(item instanceof Map<?, ?> map)) {
+				continue;
+			}
+			String videoId = map.get("videoId") == null ? "" : String.valueOf(map.get("videoId")).trim();
+			String title = map.get("title") == null ? "" : String.valueOf(map.get("title")).trim();
+			if (!favoriteVideoId.isBlank() && favoriteVideoId.equals(videoId)) {
+				return title;
+			}
+		}
+		Object first = list.get(0);
+		if (first instanceof Map<?, ?> map && map.get("title") != null) {
+			return String.valueOf(map.get("title")).trim();
+		}
+		return "";
+	}
+
+	private int seasonStartMonth(String season) {
+		return switch (season) {
+			case "봄" -> 3;
+			case "여름" -> 6;
+			case "가을" -> 9;
+			case "겨울" -> 12;
+			default -> 1;
+		};
+	}
+
+	private String formatDate(int year, int month, int day) {
+		return LocalDate.of(year, month, day).toString();
 	}
 
 	private ProjectViews.ChatPersonalization parseChatResponse(
@@ -628,9 +932,7 @@ public class ChatPersonalizationService {
 			if (value.isBlank()) {
 				continue;
 			}
-			if (value.length() > entry.getValue()) {
-				value = value.substring(0, entry.getValue());
-			}
+			value = SweetbookTemplateCopyPolicy.truncateInline(value, entry.getValue());
 			result.put(entry.getKey(), value);
 		}
 		return result.isEmpty() ? null : result;
