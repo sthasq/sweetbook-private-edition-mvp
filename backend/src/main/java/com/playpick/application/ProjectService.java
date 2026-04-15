@@ -301,9 +301,6 @@ public class ProjectService {
 	public ProjectViews.PaymentSession preparePayment(Long projectId, ProjectCommands.Shipping shipping) {
 		FanProject project = requireOwnedProject(projectId);
 		requireFinalizedBook(project);
-		if (!tossPaymentsProperties.isReady()) {
-			throw new AppException(HttpStatus.BAD_REQUEST, "Toss Payments is not configured");
-		}
 
 		CustomerOrder existingOrder = customerOrderRepository.findByFanProjectId(projectId).orElse(null);
 		if (existingOrder != null && existingOrder.getStatus() == OrderStatus.PAID) {
@@ -313,6 +310,24 @@ public class ProjectService {
 		ProjectViews.Estimate vendorEstimate = sweetbookService.estimateOrder(projectId, project.getSweetbookBookUid(), shipping);
 		OrderPricing pricing = calculatePricing(vendorEstimate.totalAmount());
 		AppUser currentUser = currentUserService.requireCurrentAppUser();
+		if (!tossPaymentsProperties.isReady()) {
+			return new ProjectViews.PaymentSession(
+				projectId,
+				"TOSS_PAYMENTS",
+				false,
+				"",
+				"",
+				"",
+				buildOrderName(project, shipping),
+				pricing.totalAmount(),
+				currentUser.getDisplayName(),
+				currentUser.getEmail(),
+				sanitizePhone(shipping.recipientPhone()),
+				appProperties.getFrontendBaseUrl() + "/projects/" + projectId + "/payment/success",
+				appProperties.getFrontendBaseUrl() + "/projects/" + projectId + "/payment/fail"
+			);
+		}
+
 		CustomerOrder customerOrder = existingOrder == null ? new CustomerOrder() : existingOrder;
 		customerOrder.setFanProject(project);
 		customerOrder.setOrderUid(newSiteOrderUid());

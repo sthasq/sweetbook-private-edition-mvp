@@ -5,7 +5,7 @@ final class SweetbookTemplateCopyPolicy {
 	static final String INFLUENCER_PLACEHOLDER = "인플루언서가 채워넣는 문구입니다.";
 
 	static final int PHOTO_STORY_TITLE_MAX = 18;
-	static final int PHOTO_STORY_BODY_MAX = 28;
+	static final int PHOTO_STORY_BODY_MAX = 44;
 	static final int TEXT_STORY_TITLE_MAX = 20;
 	static final int TEXT_STORY_BODY_MAX = 84;
 	static final int GALLERY_TITLE_MAX = 14;
@@ -49,7 +49,7 @@ final class SweetbookTemplateCopyPolicy {
 		return truncateInline(firstNonBlank(description, fallbackText), TEXT_STORY_BODY_MAX);
 	}
 
-	private static String truncateInline(String value, int maxLength) {
+	static String truncateInline(String value, int maxLength) {
 		String normalized = normalizeInline(value);
 		if (normalized.isEmpty() || normalized.length() <= maxLength) {
 			return normalized;

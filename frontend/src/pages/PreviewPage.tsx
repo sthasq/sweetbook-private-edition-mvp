@@ -527,14 +527,14 @@ export default function PreviewPage() {
               {preview.status !== "ORDERED" && (
                 <div className="mt-8 rounded bg-gold-400/15 px-4 py-4 text-sm leading-relaxed text-gold-500">
                   {isBookGenerationActive
-                    ? "Sweetbook 드래프트를 백그라운드에서 만들고 있어요. 이 화면을 닫지 않아도 계속 진행됩니다."
+                    ? "Sweetbook 드래프트를 백그라운드에서 만들고 있어요. 보통 1~2분 정도 걸릴 수 있고, 이 화면을 닫지 않아도 계속 진행됩니다."
                     : bookGenerationFailed
                       ? "생성이 중단되면 같은 버튼으로 다시 시도할 수 있어요. 잠시 후 재시도해도 계속 안 되면 이미지 공개 URL을 함께 점검해볼게요."
                     : preview.status === "BOOK_CREATED"
-                    ? "포토북이 준비됐어요! '인쇄용으로 확정하기'를 누르면 배송 · 결제 단계로 넘어갈 수 있어요."
+                    ? "포토북이 준비됐어요! '인쇄용으로 확정하기'는 1~2분 정도 걸릴 수 있고, 완료되면 배송 · 결제 단계로 넘어갈 수 있어요."
                     : preview.status === "FINALIZED"
                       ? "모든 준비가 끝났어요. '배송 · 결제로 이동'을 눌러 주문을 완료해주세요."
-                      : "아래 '포토북 만들기' 버튼을 누르면 입력한 내용으로 포토북이 완성돼요."}
+                      : "아래 '포토북 만들기' 버튼을 누르면 입력한 내용으로 포토북이 완성돼요. 생성에는 1~2분 정도 걸릴 수 있어요."}
                 </div>
               )}
             </div>

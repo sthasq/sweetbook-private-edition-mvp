@@ -152,7 +152,9 @@ class ProjectPreviewAssemblerTest {
 			.anySatisfy(page -> assertThat(page.description()).contains("연두님이 Astra Vale의 기록"))
 			.anySatisfy(page -> assertThat(page.title()).isEqualTo("플랫폼에 남은 잔상"))
 			.anySatisfy(page -> assertThat(page.title()).isEqualTo("연두님이 붙잡아 둔 한 문장"))
-			.anySatisfy(page -> assertThat(page.description()).startsWith("스쳐 지나갈 것").hasSizeLessThanOrEqualTo(28));
+			.anySatisfy(page -> assertThat(page.description())
+				.startsWith("스쳐 지나갈 것")
+				.hasSizeLessThanOrEqualTo(SweetbookTemplateCopyPolicy.PHOTO_STORY_BODY_MAX));
 	}
 
 	@Test
@@ -239,7 +241,9 @@ class ProjectPreviewAssemblerTest {
 		assertThat(introPage.title()).isEqualTo(expectedIntroCopy.title());
 		assertThat(introPage.description()).isEqualTo(expectedIntroCopy.description());
 		assertThat(relationshipPage.title()).hasSizeLessThanOrEqualTo(18).endsWith("...");
-		assertThat(relationshipPage.description()).hasSizeLessThanOrEqualTo(28).endsWith("...");
+		assertThat(relationshipPage.description())
+			.hasSizeLessThanOrEqualTo(SweetbookTemplateCopyPolicy.PHOTO_STORY_BODY_MAX)
+			.endsWith("...");
 		assertThat(galleryPage.description()).isEqualTo("대표 장면을 모은 갤러리 페이지입니다.");
 	}
 
