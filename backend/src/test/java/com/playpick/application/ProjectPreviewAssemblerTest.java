@@ -230,8 +230,14 @@ class ProjectPreviewAssemblerTest {
 		ProjectViews.Page galleryPage = galleryPages(preview).stream()
 			.findFirst()
 			.orElseThrow();
+		SweetbookTemplateCopyPolicy.PageCopy expectedIntroCopy = SweetbookTemplateCopyPolicy.limitStoryPage(
+			"아주 길어서 잘려야 하는 인트로 제목입니다",
+			"크리에이터가 적은 긴 인트로 메시지",
+			false
+		);
 
-		assertThat(introPage.description()).isEqualTo(SweetbookTemplateCopyPolicy.INFLUENCER_PLACEHOLDER);
+		assertThat(introPage.title()).isEqualTo(expectedIntroCopy.title());
+		assertThat(introPage.description()).isEqualTo(expectedIntroCopy.description());
 		assertThat(relationshipPage.title()).hasSizeLessThanOrEqualTo(18).endsWith("...");
 		assertThat(relationshipPage.description()).hasSizeLessThanOrEqualTo(28).endsWith("...");
 		assertThat(galleryPage.description()).isEqualTo("대표 장면을 모은 갤러리 페이지입니다.");

@@ -6,6 +6,8 @@
  *
  * 실행: npm run e2e:extended
  *
+ * 포함 시나리오: 팬(가입~주문)·결제 실패 페이지·크리에이터 스튜디오·관리자 콘솔(5화면).
+ *
  * Sweetbook 라이브 연동이 실패하는 환경에서는 배송·결제 단계를 건너뛰고 종료 코드 0으로 통과합니다.
  * 반드시 끝까지 실패시키려면: E2E_STRICT=1 npm run e2e:extended
  */
@@ -14,6 +16,8 @@ import { chromium } from "playwright";
 const BASE = process.env.BASE_URL || "http://localhost:3000";
 const E2E_STRICT =
   process.env.E2E_STRICT === "1" || process.env.E2E_STRICT === "true";
+const HEADED =
+  process.env.HEADED === "1" || process.env.HEADED === "true";
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
@@ -293,7 +297,7 @@ async function shippingEstimateAndPaymentUi(page) {
 }
 
 async function main() {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: !HEADED });
   const failures = [];
 
   async function step(name, fn) {
@@ -396,6 +400,88 @@ async function main() {
         timeout: 15_000,
         },
       );
+    } finally {
+      await ctx.close();
+    }
+  });
+
+  await step("크리에이터: 주문 대시보드 → 에디션 제작", async () => {
+    const ctx = await browser.newContext({
+      viewport: { width: 1280, height: 900 },
+      baseURL: BASE,
+    });
+    try {
+      const page = await ctx.newPage();
+      await login(page, "creator@playpick.local", "Creator123!");
+      await page.goto(appUrl("/studio/orders"), {
+        waitUntil: "domcontentloaded",
+      });
+      await page.getByRole("heading", { name: "크리에이터 스튜디오" }).waitFor({
+        timeout: 20_000,
+      });
+      await page.getByText("주문 대시보드").first().waitFor({ timeout: 15_000 });
+      await page.getByRole("link", { name: "새 에디션 제작" }).click();
+      await page.waitForURL(/\/studio\/editions\/new/, { timeout: 20_000 });
+      await page.getByRole("heading", { name: "에디션 기본 정보" }).waitFor({
+        timeout: 30_000,
+      });
+      return "studio editions/new";
+    } finally {
+      await ctx.close();
+    }
+  });
+
+  await step("관리자: 대시보드·정산·주문·Webhook·사용자", async () => {
+    const ctx = await browser.newContext({
+      viewport: { width: 1280, height: 900 },
+      baseURL: BASE,
+    });
+    try {
+      const page = await ctx.newPage();
+      await login(page, "admin@playpick.local", "Admin12345!");
+      await page.goto(appUrl("/admin/dashboard"), {
+        waitUntil: "domcontentloaded",
+      });
+      await page.getByRole("heading", { name: "PlayPick Admin" }).waitFor({
+        timeout: 20_000,
+      });
+      await page
+        .getByText("총매출, Sweetbook 원가, 분배 마진과 정산 흐름", {
+          exact: false,
+        })
+        .first()
+        .waitFor({ timeout: 15_000 });
+      await page.getByText("매출 현황").first().waitFor({ timeout: 10_000 });
+
+      await page.getByRole("link", { name: /정산 현황/ }).click();
+      await page.waitForURL(/\/admin\/settlements/, { timeout: 15_000 });
+      await page
+        .getByText("크리에이터별 총매출", { exact: false })
+        .first()
+        .waitFor({ timeout: 15_000 });
+
+      await page.getByRole("link", { name: /주문 관리/ }).click();
+      await page.waitForURL(/\/admin\/orders/, { timeout: 15_000 });
+      await page
+        .getByText("플랫폼 전체 주문을 확인하고", { exact: false })
+        .first()
+        .waitFor({ timeout: 15_000 });
+
+      await page.getByRole("link", { name: /Webhook 로그/ }).click();
+      await page.waitForURL(/\/admin\/webhooks/, { timeout: 15_000 });
+      await page
+        .getByText("Sweetbook에서 수신한 최근 Webhook", { exact: false })
+        .first()
+        .waitFor({ timeout: 15_000 });
+
+      await page.getByRole("link", { name: /사용자 관리/ }).click();
+      await page.waitForURL(/\/admin\/users/, { timeout: 15_000 });
+      await page
+        .getByText("플랫폼에 가입한 전체 사용자를 조회하고", { exact: false })
+        .first()
+        .waitFor({ timeout: 15_000 });
+
+      return "admin nav ok";
     } finally {
       await ctx.close();
     }

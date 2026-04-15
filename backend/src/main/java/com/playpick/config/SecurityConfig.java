@@ -33,7 +33,7 @@ public class SecurityConfig {
 		http
 			.csrf(csrf -> csrf
 				.csrfTokenRepository(csrfTokenRepository)
-				.ignoringRequestMatchers("/api/sweetbook/webhooks/**", "/h2-console/**")
+				.ignoringRequestMatchers("/api/sweetbook/webhooks/**")
 			)
 			.httpBasic(AbstractHttpConfigurer::disable)
 			.formLogin(AbstractHttpConfigurer::disable)
@@ -45,8 +45,7 @@ public class SecurityConfig {
 				.requestMatchers(
 					"/swagger-ui/**",
 					"/swagger-ui.html",
-					"/v3/api-docs/**",
-					"/h2-console/**"
+					"/v3/api-docs/**"
 				).permitAll()
 				.requestMatchers("/api/auth/csrf", "/api/auth/session").permitAll()
 				.requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/logout").permitAll()

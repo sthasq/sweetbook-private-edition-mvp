@@ -12,5 +12,6 @@ ARG APP_BASE_PATH=/
 ENV APP_BASE_PATH=$APP_BASE_PATH
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY docker-entrypoint.d/40-configure-app-base.sh /docker-entrypoint.d/40-configure-app-base.sh
-RUN chmod +x /docker-entrypoint.d/40-configure-app-base.sh
+# Windows checkouts may use CRLF; strip CR so the shebang is valid inside Linux containers.
+RUN sed -i 's/\r$//' /docker-entrypoint.d/40-configure-app-base.sh && chmod +x /docker-entrypoint.d/40-configure-app-base.sh
 EXPOSE 80
