@@ -315,7 +315,6 @@ public class SweetbookService {
 		DraftProgressListener progressListener
 	) {
 		LocalDate today = LocalDate.now();
-		String fanNickname = String.valueOf(preview.personalizationData().getOrDefault("fanNickname", "팬"));
 
 		Map<String, Object> coverParams = buildMixedCoverParams(
 			preview,
@@ -329,7 +328,6 @@ public class SweetbookService {
 		List<LiveContentInstruction> instructions = buildLiveContentInstructions(
 			contentPages,
 			resolvedTemplates,
-			fanNickname,
 			preview.edition().title(),
 			today,
 			pagePlan.contentPages()
@@ -661,7 +659,6 @@ public class SweetbookService {
 	private List<LiveContentInstruction> buildLiveContentInstructions(
 		List<BookContentPage> sourcePages,
 		ResolvedTemplates resolvedTemplates,
-		String fanNickname,
 		String bookTitle,
 		LocalDate today,
 		int contentPageCount
@@ -675,7 +672,7 @@ public class SweetbookService {
 			SweetbookViews.Template template = selectContentTemplate(page, resolvedTemplates);
 			instructions.add(new LiveContentInstruction(
 				template,
-				buildMixedContentParams(page, fanNickname, bookTitle, today, index),
+				buildMixedContentParams(page, today, index),
 				"page"
 			));
 			consumedPhysicalPages++;
@@ -718,8 +715,6 @@ public class SweetbookService {
 
 	private Map<String, Object> buildMixedContentParams(
 		BookContentPage page,
-		String fanNickname,
-		String bookTitle,
 		LocalDate today,
 		int index
 	) {
@@ -729,18 +724,17 @@ public class SweetbookService {
 		if (page.primaryImageUrl() == null || page.primaryImageUrl().isBlank()) {
 			return buildMixedTextStoryParams(page, today.plusDays(index));
 		}
-		return buildMixedPhotoStoryParams(page, fanNickname, today.plusDays(index));
+		return buildMixedPhotoStoryParams(page, today.plusDays(index));
 	}
 
 	private Map<String, Object> buildMixedPhotoStoryParams(
 		BookContentPage page,
-		String fanNickname,
 		LocalDate pageDate
 	) {
 		Map<String, Object> params = new LinkedHashMap<>();
 		putMixedDiaryDateParams(params, pageDate);
-		params.put("title", truncate(page.title(), 48));
-		params.put("diaryText", buildDiaryStoryText(page, fanNickname));
+		params.put("title", SweetbookTemplateCopyPolicy.photoStoryTitle(page.title()));
+		params.put("diaryText", buildDiaryStoryText(page));
 		params.put("photo1", page.primaryImageUrl());
 		params.put("photo2", page.imageUrls().size() > 1 ? page.imageUrls().get(1) : "");
 		return params;
@@ -749,8 +743,8 @@ public class SweetbookService {
 	private Map<String, Object> buildMixedTextStoryParams(BookContentPage page, LocalDate pageDate) {
 		Map<String, Object> params = new LinkedHashMap<>();
 		putMixedDiaryDateParams(params, pageDate);
-		params.put("title", truncate(page.title(), 48));
-		params.put("diaryText", truncate(fallback(page.description(), page.title()), 700));
+		params.put("title", SweetbookTemplateCopyPolicy.textStoryTitle(page.title()));
+		params.put("diaryText", SweetbookTemplateCopyPolicy.textStoryBody(page.description(), page.title()));
 		return params;
 	}
 
@@ -774,10 +768,8 @@ public class SweetbookService {
 		params.put("dateB", formattedDate);
 	}
 
-	private String buildDiaryStoryText(BookContentPage page, String fanNickname) {
-		String description = fallback(page.description(), "PlayPick 굿즈 페이지");
-		String text = page.title() + "\n\n" + description + "\n\n" + fanNickname + "님을 위해 고른 장면을 한 페이지로 정리했어요.";
-		return truncate(text, 700);
+	private String buildDiaryStoryText(BookContentPage page) {
+		return SweetbookTemplateCopyPolicy.photoStoryBody(page.description(), page.title());
 	}
 
 	private String formatMixedDiaryDate(LocalDate date) {

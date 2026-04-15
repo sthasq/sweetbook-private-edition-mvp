@@ -44,7 +44,7 @@ public class ProjectPreviewAssembler {
 		ProjectViews.Page officialIntroPage = buildStoryPreviewPage(
 			"official-intro",
 			asCopyText(edition.snapshot().officialIntro(), "title", "heading", "크리에이터의 첫 장"),
-			asCopyText(edition.snapshot().officialIntro(), "message", "body", ""),
+			SweetbookTemplateCopyPolicy.INFLUENCER_PLACEHOLDER,
 			nthAssetImage(edition.snapshot().curatedAssets(), 0, edition.coverImageUrl())
 		);
 
@@ -95,7 +95,7 @@ public class ProjectPreviewAssembler {
 		ProjectViews.Page officialClosingPage = buildStoryPreviewPage(
 			"official-closing",
 			asCopyText(edition.snapshot().officialClosing(), "title", "heading", "엔딩 노트"),
-			asCopyText(edition.snapshot().officialClosing(), "message", "body", ""),
+			SweetbookTemplateCopyPolicy.INFLUENCER_PLACEHOLDER,
 			nthAssetImage(edition.snapshot().curatedAssets(), 2, "")
 		);
 
@@ -202,13 +202,14 @@ public class ProjectPreviewAssembler {
 		String imageUrl
 	) {
 		boolean textOnly = imageUrl == null || imageUrl.isBlank();
+		SweetbookTemplateCopyPolicy.PageCopy copy = SweetbookTemplateCopyPolicy.limitStoryPage(title, description, textOnly);
 		Map<String, Object> payload = new LinkedHashMap<>();
 		payload.put("pageKind", textOnly ? "TEXT_STORY" : "PHOTO_STORY");
 		payload.put("templateLabel", textOnly ? "일기장B 글만" : "일기장B 사진+글");
 		return new ProjectViews.Page(
 			key,
-			title,
-			description,
+			copy.title(),
+			copy.description(),
 			imageUrl,
 			Map.copyOf(payload)
 		);
@@ -530,12 +531,14 @@ public class ProjectPreviewAssembler {
 			case 1 -> "무드 컷 셀렉션";
 			default -> "포토북 갤러리";
 		};
-		String description = imageUrls.size()
-			+ "개의 장면을 한 번에 담아 템포를 바꿔주는 갤러리 페이지입니다.";
+		SweetbookTemplateCopyPolicy.PageCopy copy = SweetbookTemplateCopyPolicy.limitGalleryPage(
+			chapterTitle,
+			"대표 장면을 모은 갤러리 페이지입니다."
+		);
 		return new ProjectViews.Page(
 			"gallery-" + (index + 1),
-			chapterTitle,
-			description,
+			copy.title(),
+			copy.description(),
 			imageUrl,
 			Map.of(
 				"pageKind", "GALLERY",
@@ -596,7 +599,7 @@ public class ProjectPreviewAssembler {
 
 	private String describeCuratedAsset(EditionViews.CuratedAsset asset, String creatorName, String fanNickname) {
 		return switch (asset.assetType()) {
-			case "MESSAGE" -> asNonBlankString(asset.content(), creatorName + "가 이번 협업 에디션을 위해 남긴 메모입니다.");
+			case "MESSAGE" -> SweetbookTemplateCopyPolicy.INFLUENCER_PLACEHOLDER;
 			default -> creatorName + "가 이 에디션의 결을 만들기 위해 직접 고른 공식 장면이에요. " + fanNickname + "님의 문장과 나란히 놓였을 때 한 권의 포토북으로 읽히도록 배치했어요.";
 		};
 	}
