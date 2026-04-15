@@ -153,6 +153,43 @@ class AuthAndAccessIntegrationTest {
 	}
 
 	@Test
+	void adminRoleCannotBeRequestedFromPublicSignup() throws Exception {
+		mockMvc.perform(post("/api/auth/signup")
+				.with(csrf())
+				.contentType(APPLICATION_JSON)
+				.content("""
+					{
+					  "email": "%s",
+					  "password": "Admin12345!",
+					  "displayName": "Blocked Admin",
+					  "role": "ADMIN"
+					}
+					""".formatted(uniqueEmail("blocked-admin"))))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.detail").value("Admin sign-up is not allowed"));
+	}
+
+	@Test
+	void sweetbookMetadataEndpointsRemainPublic() throws Exception {
+		mockMvc.perform(get("/api/sweetbook/status"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.mode").isNotEmpty());
+
+		mockMvc.perform(get("/api/sweetbook/book-specs"))
+			.andExpect(status().isOk());
+
+		mockMvc.perform(get("/api/sweetbook/templates"))
+			.andExpect(status().isOk());
+	}
+
+	@Test
+	void unlistedApiPathIsDeniedByDefault() throws Exception {
+		mockMvc.perform(get("/api/sweetbook/webhooks/events"))
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.detail").value("Authentication required"));
+	}
+
+	@Test
 	void csrfIsRequiredForStateChangingRequests() throws Exception {
 		mockMvc.perform(post("/api/auth/signup")
 				.contentType(APPLICATION_JSON)
@@ -500,7 +537,7 @@ class AuthAndAccessIntegrationTest {
 
 	@Test
 	void adminCanSubscribeToWebhookStream() throws Exception {
-		MockHttpSession adminSession = signUpAdmin(uniqueEmail("admin-stream"), "Admin Stream");
+		MockHttpSession adminSession = loginSeededAdmin();
 
 		mockMvc.perform(get("/api/admin/webhooks/stream").session(adminSession))
 			.andExpect(status().isOk())
@@ -511,7 +548,7 @@ class AuthAndAccessIntegrationTest {
 
 	@Test
 	void adminCanVerifyCreatorUsingCreatorProfileIdFromUsersResponse() throws Exception {
-		MockHttpSession adminSession = signUpAdmin(uniqueEmail("admin"), "Admin User");
+		MockHttpSession adminSession = loginSeededAdmin();
 		String creatorEmail = uniqueEmail("creator-verify");
 		signUpCreator(creatorEmail, "Verify Creator", "@verify_creator");
 
@@ -890,22 +927,8 @@ class AuthAndAccessIntegrationTest {
 		return (MockHttpSession) result.getRequest().getSession(false);
 	}
 
-	private MockHttpSession signUpAdmin(String email, String displayName) throws Exception {
-		MvcResult result = mockMvc.perform(post("/api/auth/signup")
-				.with(csrf())
-				.contentType(APPLICATION_JSON)
-				.content("""
-					{
-					  "email": "%s",
-					  "password": "Admin12345!",
-					  "displayName": "%s",
-					  "role": "ADMIN"
-					}
-					""".formatted(email, displayName)))
-			.andExpect(status().isOk())
-			.andReturn();
-
-		return (MockHttpSession) result.getRequest().getSession(false);
+	private MockHttpSession loginSeededAdmin() throws Exception {
+		return login("admin@playpick.local", "Admin12345!");
 	}
 
 	private long createProject(MockHttpSession session, long editionId, String mode) throws Exception {

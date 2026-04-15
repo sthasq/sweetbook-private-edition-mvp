@@ -41,6 +41,9 @@ public class AuthService {
 			throw new AppException(HttpStatus.CONFLICT, "Email is already registered");
 		}
 		AppUserRole role = command.role() == null ? AppUserRole.FAN : command.role();
+		if (role == AppUserRole.ADMIN) {
+			throw new AppException(HttpStatus.BAD_REQUEST, "Admin sign-up is not allowed");
+		}
 
 		AppUser user = new AppUser();
 		user.setEmail(normalizedEmail);

@@ -3,17 +3,27 @@ import type { AdminWebhookEvent } from "../types/api";
 
 const ADMIN_WEBHOOK_EVENT_NAME = "playpick:admin-webhook";
 
-export function openAdminWebhookStream(onWebhook: (event: AdminWebhookEvent) => void) {
+export function openAdminWebhookStream(
+  onWebhook: (event: AdminWebhookEvent) => void,
+  onError?: (error: unknown) => void,
+) {
   const eventSource = new EventSource(resolveAppUrl("/api/admin/webhooks/stream"), {
     withCredentials: true,
   });
 
   eventSource.addEventListener("webhook", (event) => {
     const message = event as MessageEvent<string>;
-    const payload = JSON.parse(message.data) as AdminWebhookEvent;
-    onWebhook(payload);
-    dispatchAdminWebhookEvent(payload);
+    try {
+      const payload = JSON.parse(message.data) as AdminWebhookEvent;
+      onWebhook(payload);
+      dispatchAdminWebhookEvent(payload);
+    } catch (error) {
+      onError?.(error);
+    }
   });
+  eventSource.onerror = (error) => {
+    onError?.(error);
+  };
 
   return () => {
     eventSource.close();
