@@ -1,8 +1,3 @@
-param(
-  [ValidateSet("h2", "mysql")]
-  [string]$Database = "mysql"
-)
-
 function Test-DockerEngine {
   $null = & docker version --format '{{.Server.Version}}' 2>$null
   return $LASTEXITCODE -eq 0
@@ -156,81 +151,71 @@ if ((Test-BlankEnv "GOOGLE_CLIENT_ID") -or (Test-BlankEnv "GOOGLE_CLIENT_SECRET"
   Write-Host "Google OAuth envs are empty or missing. YouTube login may stay disabled." -ForegroundColor Yellow
 }
 
-if ($Database -eq "mysql") {
-  $mysqlHost = if ($env:MYSQL_HOST) { $env:MYSQL_HOST } else { "localhost" }
-  $mysqlPort = if ($env:MYSQL_PORT) { $env:MYSQL_PORT } else { "3307" }
-  $mysqlDatabase = if ($env:MYSQL_DATABASE) { $env:MYSQL_DATABASE } else { "playpick" }
-  $redisHost = if ($env:REDIS_HOST) { $env:REDIS_HOST } else { "localhost" }
-  $redisPort = if ($env:REDIS_PORT) { $env:REDIS_PORT } else { "6380" }
+$mysqlHost = if ($env:MYSQL_HOST) { $env:MYSQL_HOST } else { "localhost" }
+$mysqlPort = if ($env:MYSQL_PORT) { $env:MYSQL_PORT } else { "3307" }
+$mysqlDatabase = if ($env:MYSQL_DATABASE) { $env:MYSQL_DATABASE } else { "playpick" }
+$redisHost = if ($env:REDIS_HOST) { $env:REDIS_HOST } else { "localhost" }
+$redisPort = if ($env:REDIS_PORT) { $env:REDIS_PORT } else { "6380" }
 
-  $portOwner = Get-PortOwnerProcessName -Port ([int]$mysqlPort)
-  if ($portOwner -and -not (Test-DockerOwnedPort -ProcessName $portOwner)) {
-    Write-Host "Port $mysqlPort is already in use by '$portOwner'." -ForegroundColor Red
-    Write-Host "Docker MySQL needs ${mysqlHost}:$mysqlPort. Stop that service first, then run .\\run_local.ps1 again." -ForegroundColor Yellow
-    exit 1
-  }
-
-  if (-not (Test-DockerEngine)) {
-    Write-Host "Docker Desktop is not running. Start Docker Desktop and try again." -ForegroundColor Red
-    exit 1
-  }
-
-  Push-Location $rootDir
-  try {
-    & docker compose up -d mysql redis
-    if ($LASTEXITCODE -ne 0) {
-      throw "docker compose up -d mysql redis failed."
-    }
-  } finally {
-    Pop-Location
-  }
-
-  $mysqlContainerId = Get-ComposeMysqlContainerId -ProjectRoot $rootDir
-  if ($mysqlContainerId) {
-    $containerRootPassword = Get-ContainerEnvValue -ContainerId $mysqlContainerId -Name "MYSQL_ROOT_PASSWORD"
-    if ($containerRootPassword -and $env:MYSQL_ROOT_PASSWORD -and $containerRootPassword -ne $env:MYSQL_ROOT_PASSWORD) {
-      Write-Host "Docker MySQL container credentials do not match this project's .env." -ForegroundColor Red
-      Write-Host "This usually means the container or volume was created with older credentials." -ForegroundColor Yellow
-      Write-Host "Run 'docker compose down -v' in the project root, then run .\\run_local.ps1 again to recreate MySQL on ${mysqlHost}:$mysqlPort." -ForegroundColor Yellow
-      exit 1
-    }
-  }
-
-  if (-not $env:SPRING_DATASOURCE_URL) {
-    $env:SPRING_DATASOURCE_URL = "jdbc:mysql://${mysqlHost}:${mysqlPort}/${mysqlDatabase}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul"
-  } else {
-    $env:SPRING_DATASOURCE_URL = "jdbc:mysql://${mysqlHost}:${mysqlPort}/${mysqlDatabase}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul"
-  }
-
-  if ($env:MYSQL_USERNAME) {
-    $env:SPRING_DATASOURCE_USERNAME = $env:MYSQL_USERNAME
-  } else {
-    $env:SPRING_DATASOURCE_USERNAME = "playpick"
-  }
-
-  if ($env:MYSQL_PASSWORD) {
-    $env:SPRING_DATASOURCE_PASSWORD = $env:MYSQL_PASSWORD
-  } elseif ($env:MYSQL_ROOT_PASSWORD) {
-    $env:SPRING_DATASOURCE_PASSWORD = $env:MYSQL_ROOT_PASSWORD
-  } else {
-    $env:SPRING_DATASOURCE_PASSWORD = "playpick"
-  }
-
-  $env:SPRING_DATA_REDIS_HOST = $redisHost
-  $env:SPRING_DATA_REDIS_PORT = $redisPort
-
-  Write-Host "Running backend with MySQL datasource: $($env:SPRING_DATASOURCE_URL)" -ForegroundColor Cyan
-  Write-Host "Using Redis-backed HTTP sessions: $($env:SPRING_DATA_REDIS_HOST):$($env:SPRING_DATA_REDIS_PORT)" -ForegroundColor Cyan
-  Write-Host "Use -Database h2 if you need the temporary in-memory profile." -ForegroundColor DarkGray
-  $serverPortOwner = Get-PortOwnerProcessName -Port 8080
-  if ($serverPortOwner) {
-    Write-Host "Port 8080 is already in use by '$serverPortOwner'." -ForegroundColor Red
-    Write-Host "Stop that process or change SERVER_PORT before running the backend." -ForegroundColor Yellow
-    exit 1
-  }
-  .\gradlew.bat bootRun --args="--spring.profiles.active=local,mysql-local,session-redis --server.port=8080"
-  exit $LASTEXITCODE
+$portOwner = Get-PortOwnerProcessName -Port ([int]$mysqlPort)
+if ($portOwner -and -not (Test-DockerOwnedPort -ProcessName $portOwner)) {
+  Write-Host "Port $mysqlPort is already in use by '$portOwner'." -ForegroundColor Red
+  Write-Host "Docker MySQL needs ${mysqlHost}:$mysqlPort. Stop that service first, then run .\\run_local.ps1 again." -ForegroundColor Yellow
+  exit 1
 }
 
-Write-Host "Running backend with H2 in-memory datasource." -ForegroundColor Cyan
-.\gradlew.bat bootRun --args="--spring.profiles.active=local --server.port=8080"
+if (-not (Test-DockerEngine)) {
+  Write-Host "Docker Desktop is not running. Start Docker Desktop and try again." -ForegroundColor Red
+  exit 1
+}
+
+Push-Location $rootDir
+try {
+  & docker compose up -d mysql redis
+  if ($LASTEXITCODE -ne 0) {
+    throw "docker compose up -d mysql redis failed."
+  }
+} finally {
+  Pop-Location
+}
+
+$mysqlContainerId = Get-ComposeMysqlContainerId -ProjectRoot $rootDir
+if ($mysqlContainerId) {
+  $containerRootPassword = Get-ContainerEnvValue -ContainerId $mysqlContainerId -Name "MYSQL_ROOT_PASSWORD"
+  if ($containerRootPassword -and $env:MYSQL_ROOT_PASSWORD -and $containerRootPassword -ne $env:MYSQL_ROOT_PASSWORD) {
+    Write-Host "Docker MySQL container credentials do not match this project's .env." -ForegroundColor Red
+    Write-Host "This usually means the container or volume was created with older credentials." -ForegroundColor Yellow
+    Write-Host "Run 'docker compose down -v' in the project root, then run .\\run_local.ps1 again to recreate MySQL on ${mysqlHost}:$mysqlPort." -ForegroundColor Yellow
+    exit 1
+  }
+}
+
+$env:SPRING_DATASOURCE_URL = "jdbc:mysql://${mysqlHost}:${mysqlPort}/${mysqlDatabase}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul"
+
+if ($env:MYSQL_USERNAME) {
+  $env:SPRING_DATASOURCE_USERNAME = $env:MYSQL_USERNAME
+} else {
+  $env:SPRING_DATASOURCE_USERNAME = "playpick"
+}
+
+if ($env:MYSQL_PASSWORD) {
+  $env:SPRING_DATASOURCE_PASSWORD = $env:MYSQL_PASSWORD
+} elseif ($env:MYSQL_ROOT_PASSWORD) {
+  $env:SPRING_DATASOURCE_PASSWORD = $env:MYSQL_ROOT_PASSWORD
+} else {
+  $env:SPRING_DATASOURCE_PASSWORD = "playpick"
+}
+
+$env:SPRING_DATA_REDIS_HOST = $redisHost
+$env:SPRING_DATA_REDIS_PORT = $redisPort
+
+Write-Host "Running backend with MySQL datasource: $($env:SPRING_DATASOURCE_URL)" -ForegroundColor Cyan
+Write-Host "Using Redis-backed HTTP sessions: $($env:SPRING_DATA_REDIS_HOST):$($env:SPRING_DATA_REDIS_PORT)" -ForegroundColor Cyan
+$serverPortOwner = Get-PortOwnerProcessName -Port 8080
+if ($serverPortOwner) {
+  Write-Host "Port 8080 is already in use by '$serverPortOwner'." -ForegroundColor Red
+  Write-Host "Stop that process or change SERVER_PORT before running the backend." -ForegroundColor Yellow
+  exit 1
+}
+.\gradlew.bat bootRun --args="--spring.profiles.active=session-redis --server.port=8080"
+exit $LASTEXITCODE

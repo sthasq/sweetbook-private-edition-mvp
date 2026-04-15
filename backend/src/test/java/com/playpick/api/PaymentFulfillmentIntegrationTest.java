@@ -46,7 +46,7 @@ import org.springframework.test.web.servlet.MvcResult;
 	"app.public-base-url=https://playpick.example.com"
 })
 @AutoConfigureMockMvc
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 class PaymentFulfillmentIntegrationTest {
 
 	@Autowired

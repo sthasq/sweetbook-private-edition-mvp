@@ -43,7 +43,7 @@ import org.springframework.test.web.servlet.MvcResult;
 	"app.public-base-url=https://playpick.example.com"
 })
 @AutoConfigureMockMvc
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 class AuthAndAccessIntegrationTest {
 
 	private static final String TEST_WEBHOOK_SECRET = "test-webhook-secret";
