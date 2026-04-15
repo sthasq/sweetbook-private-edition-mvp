@@ -44,7 +44,7 @@ public class ProjectPreviewAssembler {
 		ProjectViews.Page officialIntroPage = buildStoryPreviewPage(
 			"official-intro",
 			asCopyText(edition.snapshot().officialIntro(), "title", "heading", "크리에이터의 첫 장"),
-			SweetbookTemplateCopyPolicy.INFLUENCER_PLACEHOLDER,
+			asCopyText(edition.snapshot().officialIntro(), "message", "body", SweetbookTemplateCopyPolicy.INFLUENCER_PLACEHOLDER),
 			nthAssetImage(edition.snapshot().curatedAssets(), 0, edition.coverImageUrl())
 		);
 
@@ -95,7 +95,7 @@ public class ProjectPreviewAssembler {
 		ProjectViews.Page officialClosingPage = buildStoryPreviewPage(
 			"official-closing",
 			asCopyText(edition.snapshot().officialClosing(), "title", "heading", "엔딩 노트"),
-			SweetbookTemplateCopyPolicy.INFLUENCER_PLACEHOLDER,
+			asCopyText(edition.snapshot().officialClosing(), "message", "body", SweetbookTemplateCopyPolicy.INFLUENCER_PLACEHOLDER),
 			nthAssetImage(edition.snapshot().curatedAssets(), 2, "")
 		);
 
