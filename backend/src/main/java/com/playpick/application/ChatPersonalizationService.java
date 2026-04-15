@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.playpick.config.AppProperties;
 import com.playpick.config.OpenRouterProperties;
 import java.io.IOException;
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -404,7 +405,12 @@ public class ChatPersonalizationService {
 	}
 
 	private String formatDate(int year, int month, int day) {
-		return LocalDate.of(year, month, day).toString();
+		try {
+			return LocalDate.of(year, month, day).toString();
+		} catch (DateTimeException exception) {
+			log.debug("ChatPersonalization: invalid mock date parsed from user input year={}, month={}, day={}", year, month, day);
+			return null;
+		}
 	}
 
 	private ProjectViews.ChatPersonalization parseChatResponse(

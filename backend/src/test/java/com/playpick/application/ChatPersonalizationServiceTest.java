@@ -145,6 +145,31 @@ class ChatPersonalizationServiceTest {
 		assertThat(response.proposal()).containsKey("bookCopy");
 	}
 
+	@Test
+	void ignoresInvalidCalendarDatesInMockChatFlow() {
+		EditionViews.Detail edition = demoEdition();
+
+		ProjectViews.ChatPersonalization response = service.chat(
+			edition,
+			Map.of(
+				"topVideos", List.of(
+					Map.of("videoId", "collab-demo-1", "title", "첫 장의 셀피", "thumbnailUrl", "/demo-assets/cover.jpg"),
+					Map.of("videoId", "collab-demo-2", "title", "밤기차 플랫폼", "thumbnailUrl", "/demo-assets/cover.jpg")
+				)
+			),
+			List.of(
+				new ProjectCommands.ChatMessage("user", "연두"),
+				new ProjectCommands.ChatMessage("user", "2026년 13월 40일에 입덕했어요.")
+			)
+		);
+
+		assertThat(response.done()).isFalse();
+		assertThat(response.reply()).contains("언제부터 시작됐는지");
+		assertThat(response.proposal())
+			.containsEntry("fanNickname", "연두")
+			.doesNotContainKey("subscribedSince");
+	}
+
 	private EditionViews.Detail demoEdition() {
 		return new EditionViews.Detail(
 			1L,
