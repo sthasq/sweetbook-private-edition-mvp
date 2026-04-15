@@ -357,7 +357,9 @@ class SweetbookServiceTest {
 			.findFirst()
 			.orElseThrow();
 		assertThat(String.valueOf(photoPayload.get("title"))).hasSizeLessThanOrEqualTo(18).endsWith("...");
-		assertThat(String.valueOf(photoPayload.get("diaryText"))).hasSizeLessThanOrEqualTo(28).doesNotContain("\n");
+		assertThat(String.valueOf(photoPayload.get("diaryText")))
+			.hasSizeLessThanOrEqualTo(SweetbookTemplateCopyPolicy.PHOTO_STORY_BODY_MAX)
+			.doesNotContain("\n");
 		assertThat(String.valueOf(photoPayload.get("diaryText"))).doesNotContain("님을 위해");
 
 		Map<String, Object> textPayload = contentInvocations.stream()
