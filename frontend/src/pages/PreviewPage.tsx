@@ -527,7 +527,7 @@ export default function PreviewPage() {
               {preview.status !== "ORDERED" && (
                 <div className="mt-8 rounded bg-gold-400/15 px-4 py-4 text-sm leading-relaxed text-gold-500">
                   {isBookGenerationActive
-                    ? "Sweetbook 드래프트를 백그라운드에서 만들고 있어요. 보통 1~2분 정도 걸릴 수 있고, 이 화면을 닫지 않아도 계속 진행됩니다."
+                    ? "Sweetbook 드래프트를 생성하고 있어요. 보통 1~2분 정도 걸리며, 이 화면을 닫아도 작업은 계속 진행됩니다."
                     : bookGenerationFailed
                       ? "생성이 중단되면 같은 버튼으로 다시 시도할 수 있어요. 잠시 후 재시도해도 계속 안 되면 이미지 공개 URL을 함께 점검해볼게요."
                     : preview.status === "BOOK_CREATED"
