@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.Map;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
@@ -51,10 +52,17 @@ public class SecurityConfig {
 				.requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/logout").permitAll()
 				.requestMatchers("/api/assets/**").permitAll()
 				.requestMatchers("/api/editions/**").permitAll()
+				.requestMatchers(HttpMethod.GET,
+					"/api/sweetbook/book-specs",
+					"/api/sweetbook/templates",
+					"/api/sweetbook/templates/*",
+					"/api/sweetbook/status"
+				).permitAll()
+				.requestMatchers(HttpMethod.POST, "/api/sweetbook/webhooks/events").permitAll()
 				.requestMatchers("/api/admin/**").hasRole("ADMIN")
 				.requestMatchers("/api/studio/**").hasRole("CREATOR")
 				.requestMatchers("/api/projects/**", "/api/me/**", "/api/auth/me").authenticated()
-				.anyRequest().permitAll()
+				.anyRequest().denyAll()
 			)
 			.exceptionHandling(exceptions -> exceptions
 				.authenticationEntryPoint((request, response, exception) ->

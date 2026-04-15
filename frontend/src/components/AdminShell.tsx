@@ -38,6 +38,8 @@ export default function AdminShell({
       if (!notificationPanelOpenRef.current) {
         setUnreadCount((current) => Math.min(current + 1, 99));
       }
+    }, (error) => {
+      console.warn("Admin webhook stream error", error);
     });
 
     return () => {
