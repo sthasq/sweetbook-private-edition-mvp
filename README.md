@@ -10,6 +10,7 @@
 ![Redis 7](https://img.shields.io/badge/Redis_7-DC382D?style=flat-square&logo=redis&logoColor=white)
 
 **라이브 데모**: [https://gscheon.com/sweetbook-demo/](https://gscheon.com/sweetbook-demo/)  
+**케이스 스터디**: [docs/portfolio/playpick-case-study.md](docs/portfolio/playpick-case-study.md)  
 **배포 가이드**: [deploy/README.md](deploy/README.md)
 
 ---
