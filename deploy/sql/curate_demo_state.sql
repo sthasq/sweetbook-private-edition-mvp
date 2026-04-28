@@ -26,7 +26,7 @@ WHERE au.email = 'fan@playpick.local'
 ORDER BY fp.created_at DESC
 LIMIT 1;
 
--- Keep one progressed fulfillment example so reviewer pages show more than SUBMITTED.
+-- Keep one progressed fulfillment example so demo pages show more than SUBMITTED.
 INSERT IGNORE INTO keep_demo_projects (id)
 SELECT fp.id
 FROM fan_project fp

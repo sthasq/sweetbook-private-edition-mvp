@@ -10,15 +10,15 @@
 ![Redis 7](https://img.shields.io/badge/Redis_7-DC382D?style=flat-square&logo=redis&logoColor=white)
 
 - **라이브 데모**: [https://gscheon.com/sweetbook-demo/](https://gscheon.com/sweetbook-demo/)
-- **평가자 가이드**: [docs/portfolio/reviewer-guide.md](docs/portfolio/reviewer-guide.md)
-- **케이스 스터디**: [docs/portfolio/playpick-case-study.md](docs/portfolio/playpick-case-study.md)
+- **프로젝트 가이드**: [docs/project/project-guide.md](docs/project/project-guide.md)
+- **케이스 스터디**: [docs/project/playpick-case-study.md](docs/project/playpick-case-study.md)
 - **배포 가이드**: [deploy/README.md](deploy/README.md)
 
 ---
 
-## 채용 포트폴리오 빠른 평가 가이드
+## 빠른 검토 가이드
 
-처음 저장소를 열어보는 평가자가 짧은 시간 안에 확인할 수 있도록, 핵심 확인 지점을 먼저 정리했습니다.
+처음 저장소를 열어보는 사람이 짧은 시간 안에 확인할 수 있도록, 핵심 지점을 먼저 정리했습니다.
 
 | 보고 싶은 것 | 빠른 확인 위치 |
 | --- | --- |
@@ -26,7 +26,7 @@
 | Sweetbook Books/Orders API 연동 방식 | [Sweetbook API 연동 범위](#7-sweetbook-api-연동-범위), `backend/src/main/java/com/playpick/infrastructure/sweetbook/SweetbookClient.java` |
 | 보안/운영 고려 | 세션 인증, CSRF, Role 권한, HMAC 웹훅, 중복 이벤트 무해화, 관리자 SSE |
 | 로컬 실행 가능성 | [데모와 로컬 실행](#9-데모와-로컬-실행), `.env.example`, `docker-compose.yml` |
-| 더 깊은 설명 | [평가자 가이드](docs/portfolio/reviewer-guide.md), [케이스 스터디](docs/portfolio/playpick-case-study.md) |
+| 더 깊은 설명 | [프로젝트 가이드](docs/project/project-guide.md), [케이스 스터디](docs/project/playpick-case-study.md) |
 
 ### 5분 데모 동선
 
@@ -279,7 +279,7 @@ flowchart TD
 <details>
 <summary><strong>외부 API 키 없이도 전체 흐름이 돌아가야 했다</strong></summary>
 
-포트폴리오 프로젝트는 평가자가 모든 외부 키를 갖고 있지 않아도 흐름을 확인할 수 있어야 합니다.
+공개 데모 프로젝트는 보는 사람이 모든 외부 키를 갖고 있지 않아도 흐름을 확인할 수 있어야 합니다.
 
 - `OPENROUTER_API_KEY` 없음 -> 결정적 데모 응답으로 AI 인터뷰 동작
 - `SWEETBOOK_API_KEY` 없음 -> 책 생성, 견적, 주문이 시뮬레이션 응답으로 동작

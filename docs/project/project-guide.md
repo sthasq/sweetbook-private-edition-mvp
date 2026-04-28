@@ -1,6 +1,6 @@
-# PlayPick Reviewer Guide
+# PlayPick Project Guide
 
-이 문서는 채용 포트폴리오 평가자가 PlayPick 저장소를 빠르게 훑고, 구현 깊이를 확인할 수 있도록 만든 안내입니다.
+이 문서는 PlayPick 저장소를 처음 보는 사람이 서비스 흐름과 구현 지점을 빠르게 확인할 수 있도록 만든 안내입니다.
 
 ## 1. 먼저 보면 좋은 것
 
@@ -51,9 +51,9 @@ npm run build
 
 로컬 Docker 스택을 실행한 뒤에는 `frontend` 디렉터리에서 `npm run e2e:extended`로 팬, 크리에이터, 관리자 주요 흐름을 더 넓게 확인할 수 있습니다.
 
-## 5. 포트폴리오 관점에서 강조하고 싶은 점
+## 5. 프로젝트에서 강조하고 싶은 점
 
 - 외부 인쇄 API를 단순 호출하는 데서 멈추지 않고 팬, 크리에이터, 관리자 역할이 있는 제품 흐름으로 풀었습니다.
-- API Key가 없어도 평가자가 전체 흐름을 확인할 수 있도록 Sweetbook, OpenRouter, Toss Payments 연동에 시뮬레이션 모드를 두었습니다.
+- API Key가 없어도 전체 흐름을 확인할 수 있도록 Sweetbook, OpenRouter, Toss Payments 연동에 시뮬레이션 모드를 두었습니다.
 - 웹훅은 단순 수신이 아니라 HMAC 서명 검증, timestamp 허용 범위, `delivery_uid` 기반 중복 처리, 관리자 SSE 스트림까지 구현했습니다.
 - 주문 시점의 원가, 마진, 플랫폼 수수료, 크리에이터 정산액을 스냅샷으로 남겨 운영 데이터가 정책 변경에 덜 흔들리도록 설계했습니다.
