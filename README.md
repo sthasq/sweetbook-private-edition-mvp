@@ -9,9 +9,32 @@
 ![MySQL 8](https://img.shields.io/badge/MySQL_8-4479A1?style=flat-square&logo=mysql&logoColor=white)
 ![Redis 7](https://img.shields.io/badge/Redis_7-DC382D?style=flat-square&logo=redis&logoColor=white)
 
-**라이브 데모**: [https://gscheon.com/sweetbook-demo/](https://gscheon.com/sweetbook-demo/)  
-**케이스 스터디**: [docs/portfolio/playpick-case-study.md](docs/portfolio/playpick-case-study.md)  
-**배포 가이드**: [deploy/README.md](deploy/README.md)
+- **라이브 데모**: [https://gscheon.com/sweetbook-demo/](https://gscheon.com/sweetbook-demo/)
+- **평가자 가이드**: [docs/portfolio/reviewer-guide.md](docs/portfolio/reviewer-guide.md)
+- **케이스 스터디**: [docs/portfolio/playpick-case-study.md](docs/portfolio/playpick-case-study.md)
+- **배포 가이드**: [deploy/README.md](deploy/README.md)
+
+---
+
+## 채용 포트폴리오 빠른 평가 가이드
+
+처음 저장소를 열어보는 평가자가 짧은 시간 안에 확인할 수 있도록, 핵심 확인 지점을 먼저 정리했습니다.
+
+| 보고 싶은 것 | 빠른 확인 위치 |
+| --- | --- |
+| 제품 문제 정의와 사용자 흐름 | [프로젝트 개요](#1-프로젝트-개요), [핵심 사용자 흐름](#2-핵심-사용자-흐름) |
+| Sweetbook Books/Orders API 연동 방식 | [Sweetbook API 연동 범위](#7-sweetbook-api-연동-범위), `backend/src/main/java/com/playpick/infrastructure/sweetbook/SweetbookClient.java` |
+| 보안/운영 고려 | 세션 인증, CSRF, Role 권한, HMAC 웹훅, 중복 이벤트 무해화, 관리자 SSE |
+| 로컬 실행 가능성 | [데모와 로컬 실행](#9-데모와-로컬-실행), `.env.example`, `docker-compose.yml` |
+| 더 깊은 설명 | [평가자 가이드](docs/portfolio/reviewer-guide.md), [케이스 스터디](docs/portfolio/playpick-case-study.md) |
+
+### 5분 데모 동선
+
+1. [라이브 데모](https://gscheon.com/sweetbook-demo/) 접속
+2. 팬 계정으로 로그인: `fan@playpick.local` / `Fan12345!`
+3. 에디션 선택 -> AI 인터뷰 -> 포토북 프리뷰 -> 배송/견적 -> 데모 주문 흐름 확인
+4. 관리자 계정으로 전환: `admin@playpick.local` / `Admin12345!`
+5. 주문, 정산, Sweetbook 웹훅 로그와 실시간 스트림 영역 확인
 
 ---
 
@@ -303,6 +326,22 @@ docker compose up -d --build
 - `OPENROUTER_API_KEY`가 없으면 AI 인터뷰는 결정적 데모 응답으로 동작합니다.
 - `SWEETBOOK_API_KEY`가 없으면 책 생성, 견적, 주문은 시뮬레이션 응답으로 동작합니다.
 - `TOSS_PAYMENTS_*`가 비어 있으면 일반 데모 주문 흐름으로 자동 전환됩니다.
+
+### 검증 명령
+
+```bash
+# Backend
+cd backend
+./gradlew test --no-daemon
+
+# Frontend
+cd frontend
+npm ci
+npm run lint
+npm run build
+```
+
+확장 E2E는 로컬 Docker 스택을 띄운 뒤 `frontend` 디렉터리에서 `npm run e2e:extended`로 실행할 수 있습니다.
 
 배포 세부 절차는 [deploy/README.md](deploy/README.md)를 참고하세요.
 

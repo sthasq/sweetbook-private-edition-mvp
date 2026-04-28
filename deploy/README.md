@@ -10,7 +10,10 @@
 
 ## GitHub secrets
 
-- `SWEETBOOK_DEMO_DEPLOY_KEY`: private SSH key that can log in to `opc@138.2.120.43`
+- `SWEETBOOK_DEMO_DEPLOY_HOST`: OCI host address
+- `SWEETBOOK_DEMO_DEPLOY_USER`: SSH user for the OCI host
+- `SWEETBOOK_DEMO_DEPLOY_PATH`: remote app directory, for example `/home/opc/apps/sweetbook-demo`
+- `SWEETBOOK_DEMO_DEPLOY_KEY`: private SSH key that can log in to the OCI host
 - `SWEETBOOK_DEMO_ENV_FILE`: full contents of the production `.env.production` file
 
 ## Routine deploy flow

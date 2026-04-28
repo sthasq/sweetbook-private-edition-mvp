@@ -17,11 +17,17 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      DEPLOY_HOST: 138.2.120.43
-      DEPLOY_USER: opc
-      DEPLOY_PATH: /home/opc/apps/sweetbook-demo
+      DEPLOY_HOST: ${{ secrets.SWEETBOOK_DEMO_DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.SWEETBOOK_DEMO_DEPLOY_USER }}
+      DEPLOY_PATH: ${{ secrets.SWEETBOOK_DEMO_DEPLOY_PATH }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Validate deploy secrets
+        run: |
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          test -n "$DEPLOY_PATH"
 
       - uses: actions/setup-java@v4
         with:

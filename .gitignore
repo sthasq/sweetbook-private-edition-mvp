@@ -1,8 +1,10 @@
 # environment
 .env
 .env.local
+.env.production
 .env.*.local
 !.env.example
+!.env.production.example
 
 # node
 /node_modules
